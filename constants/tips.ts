@@ -1,0 +1,36 @@
+export const POKEMON_TIPS = [
+    "A Pokémon's IVs can make a big difference at higher levels.",
+    "Two Pokémon with the same CP can perform very differently.",
+    "Perfect IV Pokémon aren't always the best choice for PvP.",
+    "Powering up costs more Stardust at higher levels.",
+    "Type effectiveness can turn the tide of any battle.",
+    "Some Pokémon have hidden abilities that activate in special conditions.",
+    "Evolution doesn't always mean a Pokémon gets stronger in every stat.",
+    "Legendary Pokémon are powerful, but not always the best for every situation.",
+    "Weather conditions can boost certain types of Pokémon moves.",
+    "Shiny Pokémon are extremely rare but have the same stats as regular ones.",
+    "Some Pokémon can only evolve when traded with another trainer.",
+    "Egg moves can give your Pokémon an edge in competitive battles.",
+    "Status conditions like paralysis and burn can drastically change battle outcomes.",
+    "Dual-type Pokémon have both advantages and weaknesses from both types.",
+    "Some moves have secondary effects like flinching or stat changes.",
+    "Critical hits ignore stat changes and deal 1.5x damage.",
+    "Pokémon with higher Speed stats usually attack first in battle.",
+    "Abilities like Levitate make Ground-type moves completely ineffective.",
+    "Some Pokémon have different forms with completely different stats.",
+    "Mega Evolution temporarily boosts a Pokémon's stats during battle.",
+    "Nature affects which stats grow faster as your Pokémon levels up.",
+    "Held items can give your Pokémon powerful advantages in battle.",
+    "Some Pokémon can learn moves outside their primary type.",
+    "Breeding Pokémon can pass down moves and abilities to offspring.",
+    "Regional variants of Pokémon can have completely different types.",
+    "Some moves are more effective when used in specific weather conditions.",
+    "Pokémon with high Defense can withstand physical attacks better.",
+    "Special Defense protects against special moves like Flamethrower and Psychic.",
+    "STAB (Same Type Attack Bonus) gives a 1.5x boost to matching type moves.",
+    "Some Pokémon evolve only during specific times of day or in certain locations.",
+] as const;
+
+export function getRandomTip(): string {
+    return POKEMON_TIPS[Math.floor(Math.random() * POKEMON_TIPS.length)];
+}
