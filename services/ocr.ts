@@ -1,50 +1,69 @@
 /**
- * OCR Service - Phase 5F/5G
+ * OCR Service - Phase 6C
  * 
- * CRITICAL BLOCKER IDENTIFIED:
- * Tesseract.js requires Web Workers which are NOT available in React Native/Expo.
- * Error: "Property 'Worker' doesn't exist"
- * 
- * OPTIONS:
- * 1. Keep stub (current approach) - manual input only
- * 2. Use native OCR via dev client (ML Kit/Vision) - requires native code
- * 3. Use cloud OCR API (Google Vision, AWS Textract) - requires API keys
- * 
- * Current implementation: STUB (manual input fallback)
+ * Android: Uses native ML Kit Text Recognition with refined parsing
+ * iOS: Stubbed (manual input only)
  */
+
+import { NativeModules, Platform } from 'react-native';
+
+const { PokemonOcrModule } = NativeModules;
 
 export interface OCRResult {
     name: string | null;
     cp: number | null;
     hp: number | null;
+    iv?: {
+        atk: number | null;
+        def: number | null;
+        sta: number | null;
+    } | null;
+    level?: number | null;
+    barPositions?: {
+        attack?: number;
+        defense?: number;
+        hp?: number;
+    };
 }
 
 /**
  * Extract Pokémon data from screenshot
  * 
- * CURRENTLY STUBBED - Returns null for all fields
- * Real OCR requires either:
- * - Native module (dev client)
- * - Cloud API (costs money)
+ * Android: Uses ML Kit native OCR with refined parsing
+ * iOS: Returns null (manual input fallback)
  * 
  * @param uri - Image URI from image picker
- * @returns OCR results with name, CP, HP (or null if not detected)
+ * @returns OCR results with name, CP, HP, optional IV and level
  */
 export async function extractPokemonFromImage(uri: string): Promise<OCRResult> {
-    // Tesseract.js DOES NOT WORK in React Native/Expo
-    // Web Workers are not available
+    // Android: Use native ML Kit OCR
+    if (Platform.OS === 'android' && PokemonOcrModule) {
+        try {
+            const result = await PokemonOcrModule.extractFromImage(uri);
+            console.log('Native OCR Result:', result);
 
-    // Return null for all fields - user will use manual input
-    return {
-        name: null,
-        cp: null,
-        hp: null,
-    };
+            return {
+                name: result.name || null,
+                cp: result.cp || null,
+                hp: result.hp || null,
+                iv: result.iv || null,
+                level: result.level || null,
+                barPositions: result.barPositions || undefined,
+            };
+        } catch (error) {
+            console.error('Native OCR error:', error);
+            // Fall back to manual input on error
+            return { name: null, cp: null, hp: null, iv: null, level: null };
+        }
+    }
+
+    // iOS or fallback: Return null (manual input)
+    return { name: null, cp: null, hp: null, iv: null, level: null };
 }
 
 /**
  * Parse OCR text to extract Pokémon data
- * Ready for when real OCR is integrated
+ * Used by native module, kept for reference
  * 
  * @param text - Raw OCR text output
  * @returns Parsed Pokémon data
@@ -54,6 +73,8 @@ export function parsePokemonText(text: string): OCRResult {
         name: null,
         cp: null,
         hp: null,
+        iv: null,
+        level: null,
     };
 
     // Clean up text (remove extra whitespace, normalize)

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import ImageDebugOverlay from '../debug/ImageDebugOverlay';
 
 export type PokemonDisplayData = {
     name: string | null;
@@ -13,6 +14,11 @@ export type PokemonDisplayData = {
         percent: number;
     } | null;
     imageUri: string;
+    barPositions?: {
+        attack?: number;
+        defense?: number;
+        hp?: number;
+    };
     scannedAt?: number;
 };
 
@@ -26,7 +32,7 @@ export default function PokemonDetailView({ data, children }: PokemonDetailViewP
         <>
             {/* Screenshot Preview */}
             <View style={styles.imageContainer}>
-                <Image source={{ uri: data.imageUri }} style={styles.image} resizeMode="contain" />
+                <ImageDebugOverlay imageUri={data.imageUri} barPositions={data.barPositions} />
                 {data.iv && (
                     <View style={styles.ivBadge}>
                         <Text style={styles.ivBadgeText}>{data.iv.percent}%</Text>

@@ -83,6 +83,7 @@ export default function ScanResultScreen() {
         level: null,
         iv: null,
         imageUri: imageUri || '',
+        barPositions: ocrResult.barPositions,
     };
 
     const handleSave = async () => {
