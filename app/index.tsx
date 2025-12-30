@@ -19,9 +19,10 @@ const { width, height } = Dimensions.get('window');
 // Radial menu configuration
 const MENU_ITEMS = [
   { id: 'profile', icon: 'person' as const, label: 'Profile', color: '#FF6B6B', angle: 180 },
-  { id: 'filter', icon: 'filter' as const, label: 'Filter', color: '#4CAF50', angle: 135 },
-  { id: 'pokehub', icon: 'planet' as const, label: 'PokéHub', color: '#FF9800', angle: 90 },
-  { id: 'sort', icon: 'swap-vertical' as const, label: 'Sort', color: '#2196F3', angle: 45 },
+  { id: 'filter', icon: 'filter' as const, label: 'Filter', color: '#4CAF50', angle: 144 },
+  { id: 'pokehub', icon: 'planet' as const, label: 'PokéHub', color: '#FF9800', angle: 108 },
+  { id: 'shop', icon: 'cart' as const, label: 'Shop', color: '#F59E0B', angle: 72 },
+  { id: 'sort', icon: 'swap-vertical' as const, label: 'Sort', color: '#2196F3', angle: 36 },
   { id: 'settings', icon: 'settings' as const, label: 'Settings', color: '#9C27B0', angle: 0 },
 ];
 
@@ -44,6 +45,11 @@ interface DailyInteraction {
   date: string; // YYYY-MM-DD
   heartsGiven: number; // 0-3
   pokemonIds: number[];
+}
+
+interface EconomyData {
+  balance: number;
+  lastDailyRewardDate: string; // YYYY-MM-DD
 }
 
 const ParticleOverlay = ({ color, intensity }: { color: string; intensity: 'low' | 'high' }) => {
@@ -124,6 +130,17 @@ export default function PokedexListScreen() {
     heartsGiven: 0,
     pokemonIds: [],
   });
+  const [economy, setEconomy] = useState<EconomyData>({
+    balance: 0,
+    lastDailyRewardDate: '',
+  });
+  const [economyModal, setEconomyModal] = useState<{ visible: boolean; title: string; message: string; type: 'reward' | 'info' }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+  const [selectedBuddyProgress, setSelectedBuddyProgress] = useState<{ name: string; buddy: BuddyData } | null>(null);
   const [buddyHelpModalOpen, setBuddyHelpModalOpen] = useState(false);
 
   // Auth state
@@ -199,6 +216,37 @@ export default function PokedexListScreen() {
           setTodayInteraction({ date: today, heartsGiven: 0, pokemonIds: [] });
         }
       }
+
+      // Economy & Daily Reward Logic
+      let currentEconomy = { balance: 0, lastDailyRewardDate: '' };
+      if (user.unsafeMetadata.economy) {
+        currentEconomy = user.unsafeMetadata.economy as EconomyData;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (currentEconomy.lastDailyRewardDate !== today) {
+        // Grant Daily Reward
+        const rewardAmount = 50;
+        currentEconomy.balance += rewardAmount;
+        currentEconomy.lastDailyRewardDate = today;
+
+        setEconomyModal({
+          visible: true,
+          title: '📅 Daily Login Reward!',
+          message: `You received ${rewardAmount} Dex Coins! 💰\nNew Balance: ${currentEconomy.balance}`,
+          type: 'reward'
+        });
+
+        // Update Metadata immediately
+        user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            economy: currentEconomy,
+          },
+        }).catch(console.error);
+      }
+      setEconomy(currentEconomy);
+
     } else {
       // Clear data if logged out
       setBuddyData({});
@@ -207,6 +255,7 @@ export default function PokedexListScreen() {
         heartsGiven: 0,
         pokemonIds: [],
       });
+      setEconomy({ balance: 0, lastDailyRewardDate: '' });
     }
   }, [user]);
 
@@ -392,7 +441,10 @@ export default function PokedexListScreen() {
           setSortOpen(true);
           break;
         case 'pokehub':
-          router.push('/coming-soon');
+          router.push('/pokehub');
+          break;
+        case 'shop':
+          router.push('/shop');
           break;
         case 'profile':
           // Check if user is signed in
@@ -438,6 +490,16 @@ export default function PokedexListScreen() {
     setNicknameModalOpen(false);
     setSelectedPokemon(null);
     setNicknameInput('');
+  };
+
+  const handleLongPressHearts = (pokemon: PokemonWithNickname) => {
+    const buddy = buddyData[pokemon.id] || {
+      pokemonId: pokemon.id,
+      level: 0,
+      consecutiveDays: 0,
+      lastInteractionDate: '',
+    };
+    setSelectedBuddyProgress({ name: pokemon.nickname || pokemon.name, buddy });
   };
 
   const handleSortSelect = (option: SortOption) => {
@@ -661,6 +723,11 @@ export default function PokedexListScreen() {
               e.stopPropagation();
               giveHeart(item.id);
             }}
+            onLongPress={(e) => {
+              e.stopPropagation();
+              handleLongPressHearts(item);
+            }}
+            delayLongPress={500}
           >
             <View style={styles.buddyHeartsGrid}>
               {[1, 2, 3, 4].map((heartNum) => {
@@ -743,30 +810,30 @@ export default function PokedexListScreen() {
             e.stopPropagation();
             giveHeart(item.id);
           }}
+          onLongPress={(e) => {
+            e.stopPropagation();
+            handleLongPressHearts(item);
+          }}
+          delayLongPress={500}
         >
           <View style={styles.buddyHeartsList}>
-            {[1, 2, 3, 4].map((heartNum) => {
-              const buddy = buddyData[item.id];
-              const isFilled = buddy && buddy.level >= heartNum;
-              return (
-                <Ionicons
-                  key={heartNum}
-                  name={isFilled ? 'heart' : 'heart-outline'}
-                  size={10}
-                  color={isFilled ? '#FF6B6B' : 'rgba(255,255,255,0.4)'}
-                  style={{ marginRight: 2 }}
-                />
-              );
-            })}
+            {[1, 2, 3, 4].map((h) => (
+              <Ionicons
+                key={h}
+                name="heart"
+                size={10}
+                color={h <= buddyLevel ? '#e11d48' : 'rgba(255, 255, 255, 0.3)'}
+                style={{ marginRight: h < 4 ? 2 : 0 }}
+              />
+            ))}
+            {buddyLevel === 4 && (
+              <Image
+                source={require('@/assets/images/best-buddy.png')}
+                style={styles.bestBuddyBadgeList}
+                resizeMode="contain"
+              />
+            )}
           </View>
-          {/* Best Buddy Badge - Only at level 4 */}
-          {buddyData[item.id]?.level === 4 && (
-            <Image
-              source={require('@/assets/images/best-buddy.png')}
-              style={styles.bestBuddyBadgeList}
-              resizeMode="contain"
-            />
-          )}
         </Pressable>
         {settings.shinySprites && (
           <View style={styles.shinyIndicatorRight}>
@@ -866,6 +933,27 @@ export default function PokedexListScreen() {
             style={styles.logoImage}
             resizeMode="contain"
           />
+          <Pressable
+            style={({ pressed }) => [
+              styles.coinWallet,
+              settings.darkMode && styles.coinWalletDark,
+              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }
+            ]}
+            onPress={() => setEconomyModal({
+              visible: true,
+              title: '💰 Dex Coin Balance',
+              message: `${economy.balance} Dex coins.\nUse it to purchase items from the store!!`,
+              type: 'info'
+            })}
+          >
+            <Image
+              source={require('@/assets/images/dex-coin.png')}
+              style={styles.coinWalletIcon}
+            />
+            <Text style={[styles.coinWalletText, settings.darkMode && styles.coinWalletTextDark]}>
+              {economy.balance}
+            </Text>
+          </Pressable>
           <Pressable
             style={({ pressed }) => [
               styles.buddyHelpButton,
@@ -1455,6 +1543,102 @@ export default function PokedexListScreen() {
         </View>
       </Modal>
 
+      {/* Buddy Progress Modal */}
+      <Modal visible={!!selectedBuddyProgress} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => setSelectedBuddyProgress(null)}>
+        <View style={styles.centeredModalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedBuddyProgress(null)} />
+          <View style={[styles.modalContent, styles.buddyProgressModal, { borderRadius: 20 }, settings.darkMode && styles.modalContentDark]}>
+            <Ionicons name="heart-circle" size={60} color="#e11d48" style={{ alignSelf: 'center', marginBottom: 16 }} />
+            <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark, { textAlign: 'center' }]}>
+              {selectedBuddyProgress?.name}'s Friendship
+            </Text>
+
+            <View style={styles.progressList}>
+              {[
+                { level: 1, name: 'Good Buddy', days: 1 },
+                { level: 2, name: 'Great Buddy', days: 4 },
+                { level: 3, name: 'Ultra Buddy', days: 11 },
+                { level: 4, name: 'Best Buddy', days: 21 },
+              ].map((tier) => {
+                const daysLeft = Math.max(0, tier.days - (selectedBuddyProgress?.buddy.consecutiveDays || 0));
+                const isReached = daysLeft === 0;
+                return (
+                  <View key={tier.level} style={[styles.progressRow, settings.darkMode && styles.progressRowDark]}>
+                    <View style={styles.progressRowLeft}>
+                      <Ionicons name={isReached ? "checkmark-circle" : "time-outline"} size={24} color={isReached ? "#4ade80" : "#9ca3af"} />
+                      <View>
+                        <Text style={[styles.progressTierName, settings.darkMode && styles.tierNameDark]}>{tier.name}</Text>
+                        <Text style={styles.progressTierDays}>{tier.days} Days Streak</Text>
+                      </View>
+                    </View>
+                    <View>
+                      {isReached ? (
+                        <Text style={styles.progressReachedText}>Reached!</Text>
+                      ) : (
+                        <Text style={styles.progressLeftText}>{daysLeft} days left</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalClose,
+                styles.economyModalButton,
+                { marginTop: 20, width: '100%' },
+                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => setSelectedBuddyProgress(null)}
+            >
+              <Text style={[styles.modalCloseText, { color: '#fff' }]}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Economy/Reward Modal */}
+      <Modal visible={economyModal.visible} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => setEconomyModal({ ...economyModal, visible: false })}>
+        <View style={styles.centeredModalOverlay}>
+          <View style={[styles.modalContent, styles.economyModalContent, { borderRadius: 20 }, settings.darkMode && styles.modalContentDark, economyModal.type === 'reward' && styles.economyModalReward]}>
+            {economyModal.type === 'reward' && (
+              <Animated.View style={styles.rewardIconContainer}>
+                <Image source={require('@/assets/images/dex-coin.png')} style={styles.rewardCoinIconLarge} />
+                <View style={styles.rewardBadgeContainer}>
+                  <Ionicons name="gift" size={20} color="#fff" />
+                </View>
+              </Animated.View>
+            )}
+            {economyModal.type === 'info' && (
+              <View style={styles.infoIconContainer}>
+                <Image source={require('@/assets/images/dex-coin.png')} style={styles.rewardCoinIcon} />
+              </View>
+            )}
+
+            <Text style={[styles.economyModalTitle, settings.darkMode && styles.modalTitleDark]}>
+              {economyModal.title}
+            </Text>
+
+            <Text style={[styles.economyModalText, settings.darkMode && styles.buddyModalTextDark]}>
+              {economyModal.message}
+            </Text>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalClose,
+                styles.economyModalButton,
+                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => setEconomyModal({ ...economyModal, visible: false })}
+            >
+              <Text style={styles.modalCloseText}>
+                {economyModal.type === 'reward' ? 'Claim!' : 'Got it'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* Auth Modal */}
       <AuthModal
         visible={authModalOpen}
@@ -2036,10 +2220,11 @@ const styles = StyleSheet.create({
   },
   gridCardId: {
     fontSize: 10,
-    fontWeight: '600',
     color: '#fff',
     opacity: 0.8,
     alignSelf: 'flex-start',
+    marginTop: 16,
+    marginLeft: 4,
   },
   gridCardImage: {
     width: 85,
@@ -2206,6 +2391,156 @@ const styles = StyleSheet.create({
     top: 20,
     zIndex: 10,
     padding: 8,
+  },
+  coinWallet: {
+    position: 'absolute',
+    left: 16,
+    top: 24,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  coinWalletDark: {
+    backgroundColor: '#333',
+    borderColor: '#444',
+  },
+  coinWalletIcon: {
+    width: 18,
+    height: 18,
+    marginRight: 6,
+  },
+  coinWalletText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
+  coinWalletTextDark: {
+    color: '#FFD700',
+  },
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Economy Modal Styles
+  economyModalContent: {
+    padding: 30,
+    alignItems: 'center',
+    maxWidth: 340,
+    width: '85%',
+  },
+  economyModalReward: {
+    borderColor: '#FFD700',
+    borderWidth: 2,
+    shadowColor: '#FFD700',
+    shadowOpacity: 0.4,
+    shadowRadius: 15, // Glowing effect
+    elevation: 10,
+  },
+  rewardIconContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rewardCoinIconLarge: {
+    width: 100,
+    height: 100,
+  },
+  rewardBadgeContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#FF4500', // Orange-Red for gift badge
+    borderRadius: 15,
+    padding: 6,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  infoIconContainer: {
+    marginBottom: 16,
+  },
+  rewardCoinIcon: {
+    width: 60,
+    height: 60,
+  },
+  economyModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#333',
+    textAlign: 'center',
+  },
+  economyModalText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  economyModalButton: {
+    minWidth: 140,
+    backgroundColor: '#007AFF',
+    marginTop: 0,
+  },
+  // Buddy Progress Modal Styles
+  buddyProgressModal: {
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+  },
+  progressList: {
+    width: '100%',
+    gap: 12,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+  },
+  progressRowDark: {
+    backgroundColor: '#374151',
+  },
+  progressRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  progressTierName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  tierNameDark: {
+    color: '#e5e7eb',
+  },
+  progressTierDays: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  progressReachedText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4ade80',
+  },
+  progressLeftText: {
+    fontSize: 14,
+    color: '#f59e0b',
+    fontWeight: '600',
   },
   // Buddy Modal Styles
   buddyModalContent: {
