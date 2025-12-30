@@ -1,8 +1,9 @@
+import { GlowBorder, ShineOverlay } from '@/components/BuddyCardEffects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { getRandomTip } from '@/constants/tips';
 import { fetchPokemonBatch, fetchPokemonList, Pokemon } from '@/services/pokeapi';
-import { useAuth } from '@clerk/clerk-expo';
+import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,11 +25,58 @@ const MENU_ITEMS = [
   { id: 'settings', icon: 'settings' as const, label: 'Settings', color: '#9C27B0', angle: 0 },
 ];
 
-type SortOption = 'id-asc' | 'id-desc' | 'name-asc' | 'name-desc';
+type SortOption = 'id-asc' | 'id-desc' | 'name-asc' | 'name-desc' | 'buddy-desc';
 
 interface PokemonWithNickname extends Pokemon {
   nickname?: string;
 }
+
+// Buddy System Interfaces
+interface BuddyData {
+  pokemonId: number;
+  level: 0 | 1 | 2 | 3 | 4; // 0=none, 1=good, 2=great, 3=ultra, 4=best
+  consecutiveDays: number;
+  lastInteractionDate: string; // YYYY-MM-DD
+  achievedBestBuddyDate?: string;
+}
+
+interface DailyInteraction {
+  date: string; // YYYY-MM-DD
+  heartsGiven: number; // 0-3
+  pokemonIds: number[];
+}
+
+const ParticleOverlay = ({ color, intensity }: { color: string; intensity: 'low' | 'high' }) => {
+  // Deterministic positions to prevent jitter during re-renders
+  const positions = [
+    { top: '10%', left: '10%' },
+    { top: '80%', left: '80%' },
+    { top: '20%', left: '70%' },
+    { top: '70%', left: '20%' },
+    { top: '40%', left: '40%' },
+  ];
+
+  const particles = intensity === 'high' ? [0, 1, 2, 3, 4] : [0, 1, 2];
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {particles.map((i) => (
+        <Ionicons
+          key={i}
+          name="sparkles"
+          size={intensity === 'high' ? 12 : 10}
+          color={color}
+          style={{
+            position: 'absolute',
+            ...positions[i],
+            opacity: 0.6,
+            transform: [{ scale: 0.8 }],
+          } as any}
+        />
+      ))}
+    </View>
+  );
+};
 
 export default function PokedexListScreen() {
   const [allPokemon, setAllPokemon] = useState<PokemonWithNickname[]>([]);
@@ -69,8 +117,18 @@ export default function PokedexListScreen() {
   // Nicknames storage
   const [nicknames, setNicknames] = useState<Record<number, string>>({});
 
+  // Buddy System state
+  const [buddyData, setBuddyData] = useState<Record<number, BuddyData>>({});
+  const [todayInteraction, setTodayInteraction] = useState<DailyInteraction>({
+    date: new Date().toISOString().split('T')[0],
+    heartsGiven: 0,
+    pokemonIds: [],
+  });
+  const [buddyHelpModalOpen, setBuddyHelpModalOpen] = useState(false);
+
   // Auth state
-  const { isSignedIn } = useAuth();
+  // Auth state
+  const { isSignedIn, user } = useUser();
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // UI enhancement states
@@ -87,6 +145,7 @@ export default function PokedexListScreen() {
   const randomTip = useMemo(() => getRandomTip(), []);
 
   // Load settings and nicknames from AsyncStorage
+  // Load buddy data from Clerk user metadata
   useEffect(() => {
     async function loadStoredData() {
       try {
@@ -107,6 +166,37 @@ export default function PokedexListScreen() {
     }
     loadStoredData();
   }, []);
+
+  // Sync Buddy Data with Clerk
+  useEffect(() => {
+    if (user) {
+      let loadedData = {};
+      if (user.unsafeMetadata.buddyData) {
+        loadedData = user.unsafeMetadata.buddyData as Record<number, BuddyData>;
+      }
+
+
+      setBuddyData(loadedData);
+      if (user.unsafeMetadata.todayInteraction) {
+        const interaction = user.unsafeMetadata.todayInteraction as DailyInteraction;
+        const today = new Date().toISOString().split('T')[0];
+        // Reset if it's a new day
+        if (interaction.date === today) {
+          setTodayInteraction(interaction);
+        } else {
+          setTodayInteraction({ date: today, heartsGiven: 0, pokemonIds: [] });
+        }
+      }
+    } else {
+      // Clear data if logged out
+      setBuddyData({});
+      setTodayInteraction({
+        date: new Date().toISOString().split('T')[0],
+        heartsGiven: 0,
+        pokemonIds: [],
+      });
+    }
+  }, [user]);
 
   // Save settings to AsyncStorage
   useEffect(() => {
@@ -216,6 +306,11 @@ export default function PokedexListScreen() {
             return a.name.localeCompare(b.name);
           case 'name-desc':
             return b.name.localeCompare(a.name);
+          case 'buddy-desc':
+            const buddyA = buddyData[a.id] || { level: 0, consecutiveDays: 0 };
+            const buddyB = buddyData[b.id] || { level: 0, consecutiveDays: 0 };
+            if (buddyB.level !== buddyA.level) return buddyB.level - buddyA.level;
+            return buddyB.consecutiveDays - buddyA.consecutiveDays;
           default:
             return 0;
         }
@@ -229,7 +324,7 @@ export default function PokedexListScreen() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [pokemonWithNicknames, selectedRegionIndex, searchQuery, selectedTypes, sortOption]);
+  }, [pokemonWithNicknames, selectedRegionIndex, searchQuery, selectedTypes, sortOption, buddyData]);
 
   // Toggle menu with animation
   const toggleMenu = () => {
@@ -348,6 +443,105 @@ export default function PokedexListScreen() {
     setSelectedTypes([]);
   };
 
+  // Buddy System: Give heart to Pokémon
+  const giveHeart = async (pokemonId: number) => {
+    if (!isSignedIn || !user) {
+      setAuthModalOpen(true);
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if it's a new day
+    if (todayInteraction.date !== today) {
+      setTodayInteraction({ date: today, heartsGiven: 0, pokemonIds: [] });
+    }
+
+    // Check daily limit
+    if (todayInteraction.heartsGiven >= 3) {
+      Alert.alert('Daily Limit Reached', 'You can only give hearts to 3 Pokémon per day. Come back tomorrow!');
+      return;
+    }
+
+    // Check if already gave heart to this Pokémon today
+    if (todayInteraction.pokemonIds.includes(pokemonId)) {
+      Alert.alert('Already Interacted', 'You already gave a heart to this Pokémon today!');
+      return;
+    }
+
+    // Get or create buddy data
+    const currentBuddy = buddyData[pokemonId] || {
+      pokemonId,
+      level: 0,
+      consecutiveDays: 0,
+      lastInteractionDate: '',
+    };
+
+    // Check if streak is broken
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    const isConsecutive = currentBuddy.lastInteractionDate === yesterdayStr || currentBuddy.consecutiveDays === 0;
+
+    if (!isConsecutive) {
+      // Streak broken, reset
+      currentBuddy.consecutiveDays = 0;
+    }
+
+    // Increment consecutive days
+    currentBuddy.consecutiveDays += 1;
+    currentBuddy.lastInteractionDate = today;
+
+    // Calculate buddy level based on consecutive days
+    let newLevel: 0 | 1 | 2 | 3 | 4 = 0;
+    if (currentBuddy.consecutiveDays >= 21) {
+      newLevel = 4; // Best Buddy
+      if (!currentBuddy.achievedBestBuddyDate) {
+        currentBuddy.achievedBestBuddyDate = today;
+        Alert.alert('🎉 Best Buddy!', `Congratulations! This Pokémon is now your Best Buddy!`);
+      }
+    } else if (currentBuddy.consecutiveDays >= 11) {
+      newLevel = 3; // Ultra Buddy
+    } else if (currentBuddy.consecutiveDays >= 4) {
+      newLevel = 2; // Great Buddy
+    } else if (currentBuddy.consecutiveDays >= 1) {
+      newLevel = 1; // Good Buddy
+    }
+
+    currentBuddy.level = newLevel;
+
+    // Update state
+    const newBuddyData = { ...buddyData, [pokemonId]: currentBuddy };
+    const newTodayInteraction = {
+      date: today,
+      heartsGiven: todayInteraction.heartsGiven + 1,
+      pokemonIds: [...todayInteraction.pokemonIds, pokemonId],
+    };
+
+    setBuddyData(newBuddyData);
+    setTodayInteraction(newTodayInteraction);
+
+    // Save to Clerk
+    try {
+      if (user) {
+        await user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            buddyData: newBuddyData,
+            todayInteraction: newTodayInteraction,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to save to Clerk:', err);
+    }
+
+    // Show success message
+    const levelNames = ['', 'Good Buddy', 'Great Buddy', 'Ultra Buddy', 'Best Buddy'];
+    Alert.alert('❤️ Heart Given!', `${levelNames[newLevel]} - ${currentBuddy.consecutiveDays} consecutive days!`);
+  };
+
   // Pull to refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
@@ -392,6 +586,35 @@ export default function PokedexListScreen() {
     const imageUrl = settings.shinySprites ? item.shinyImageUrl : item.imageUrl;
     const isDualType = item.types.length > 1;
 
+
+
+    // Buddy Perks Logic
+    const buddy = buddyData[item.id];
+    const buddyLevel = buddy?.level || 0;
+
+    // We render effects as children, not style props
+    let BuddyEffects = null;
+
+    if (buddyLevel === 4) { // Best Buddy
+      BuddyEffects = (
+        <>
+          <GlowBorder color="#FFD700" borderWidth={3} />
+          <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
+        </>
+      );
+    } else if (buddyLevel === 3) { // Ultra Buddy
+      BuddyEffects = (
+        <>
+          <GlowBorder color="#E5E4E2" borderWidth={2} />
+          <ShineOverlay color="rgba(255, 223, 0, 0.2)" duration={3000} />
+        </>
+      );
+    } else if (buddyLevel === 2) { // Great Buddy
+      BuddyEffects = (
+        <GlowBorder color="#00FFFF" borderWidth={2} />
+      );
+    }
+
     // Grid Layout Card
     if (settings.gridLayout) {
       return (
@@ -403,6 +626,7 @@ export default function PokedexListScreen() {
             { backgroundColor: isDualType ? 'transparent' : backgroundColor },
             settings.darkMode && styles.cardDark,
             pressed && styles.cardPressed,
+            { borderWidth: 0 } // Reset default border
           ]}
         >
           {isDualType && (
@@ -413,10 +637,43 @@ export default function PokedexListScreen() {
               style={StyleSheet.absoluteFill}
             />
           )}
+          {BuddyEffects}
           <Image
             source={require('@/assets/images/pokeball.png')}
             style={styles.gridCardWatermark}
           />
+          {/* Buddy Hearts - Top Left */}
+          <Pressable
+            style={styles.buddyHeartsContainerGrid}
+            onPress={(e) => {
+              e.stopPropagation();
+              giveHeart(item.id);
+            }}
+          >
+            <View style={styles.buddyHeartsGrid}>
+              {[1, 2, 3, 4].map((heartNum) => {
+                const buddy = buddyData[item.id];
+                const isFilled = buddy && buddy.level >= heartNum;
+                return (
+                  <Ionicons
+                    key={heartNum}
+                    name={isFilled ? 'heart' : 'heart-outline'}
+                    size={8}
+                    color={isFilled ? '#FF6B6B' : 'rgba(255,255,255,0.4)'}
+                    style={{ marginRight: 1 }}
+                  />
+                );
+              })}
+            </View>
+            {/* Best Buddy Badge - Only at level 4 */}
+            {buddyData[item.id]?.level === 4 && (
+              <Image
+                source={require('@/assets/images/best-buddy.png')}
+                style={styles.bestBuddyBadgeGrid}
+                resizeMode="contain"
+              />
+            )}
+          </Pressable>
           {settings.shinySprites && (
             <View style={styles.shinyIndicatorGridRight}>
               <Ionicons name="sparkles" size={14} color="#FFD700" />
@@ -451,6 +708,7 @@ export default function PokedexListScreen() {
           { backgroundColor: isDualType ? 'transparent' : backgroundColor },
           settings.darkMode && styles.cardDark,
           pressed && styles.cardPressed,
+          { borderWidth: 0 } // Reset default border
         ]}
       >
         {isDualType && (
@@ -461,10 +719,43 @@ export default function PokedexListScreen() {
             style={StyleSheet.absoluteFill}
           />
         )}
+        {BuddyEffects}
         <Image
           source={require('@/assets/images/pokeball.png')}
           style={styles.cardWatermark}
         />
+        {/* Buddy Hearts - Top Left */}
+        <Pressable
+          style={styles.buddyHeartsContainerList}
+          onPress={(e) => {
+            e.stopPropagation();
+            giveHeart(item.id);
+          }}
+        >
+          <View style={styles.buddyHeartsList}>
+            {[1, 2, 3, 4].map((heartNum) => {
+              const buddy = buddyData[item.id];
+              const isFilled = buddy && buddy.level >= heartNum;
+              return (
+                <Ionicons
+                  key={heartNum}
+                  name={isFilled ? 'heart' : 'heart-outline'}
+                  size={10}
+                  color={isFilled ? '#FF6B6B' : 'rgba(255,255,255,0.4)'}
+                  style={{ marginRight: 2 }}
+                />
+              );
+            })}
+          </View>
+          {/* Best Buddy Badge - Only at level 4 */}
+          {buddyData[item.id]?.level === 4 && (
+            <Image
+              source={require('@/assets/images/best-buddy.png')}
+              style={styles.bestBuddyBadgeList}
+              resizeMode="contain"
+            />
+          )}
+        </Pressable>
         {settings.shinySprites && (
           <View style={styles.shinyIndicatorRight}>
             <Ionicons name="sparkles" size={20} color="#FFD700" />
@@ -557,11 +848,22 @@ export default function PokedexListScreen() {
       <SafeAreaView edges={['top']} style={[styles.container, settings.darkMode && styles.containerDark]}>
         <StatusBar style={settings.darkMode ? 'light' : 'auto'} />
 
-        <Image
-          source={require('@/assets/images/pokedex.png')}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
+        <View style={styles.headerContainer}>
+          <Image
+            source={require('@/assets/images/pokedex.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Pressable
+            style={({ pressed }) => [
+              styles.buddyHelpButton,
+              pressed && { opacity: 0.7, transform: [{ scale: 0.95 }] }
+            ]}
+            onPress={() => setBuddyHelpModalOpen(true)}
+          >
+            <Ionicons name="help-circle" size={28} color={settings.darkMode ? '#14b8a6' : '#14b8a6'} />
+          </Pressable>
+        </View>
 
         <View style={styles.searchContainer}>
           <TextInput
@@ -806,6 +1108,20 @@ export default function PokedexListScreen() {
                   Name Z → A
                 </Text>
               </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.sortOption,
+                  sortOption === 'buddy-desc' && styles.sortOptionActive,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={() => handleSortSelect('buddy-desc')}
+              >
+                <Ionicons name="heart" size={20} color={sortOption === 'buddy-desc' ? '#007AFF' : '#666'} />
+                <Text style={[styles.sortOptionText, sortOption === 'buddy-desc' && styles.sortOptionTextActive]}>
+                  Buddy Level
+                </Text>
+              </Pressable>
             </View>
             <Pressable
               style={({ pressed }) => [
@@ -1029,6 +1345,91 @@ export default function PokedexListScreen() {
                 </View>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Buddy Help Modal */}
+      <Modal visible={buddyHelpModalOpen} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => setBuddyHelpModalOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.buddyModalContent, settings.darkMode && styles.modalContentDark]}>
+            <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark]}>❤️ Buddy System</Text>
+
+            <Text style={[styles.buddyModalText, settings.darkMode && styles.buddyModalTextDark]}>
+              Build a bond with your Pokémon by giving them hearts! Progress through 4 levels to become Best Buddies.
+            </Text>
+
+            <View style={styles.buddyLevelRow}>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart-outline" size={16} color="#ccc" />
+                <Ionicons name="heart-outline" size={16} color="#ccc" />
+                <Ionicons name="heart-outline" size={16} color="#ccc" />
+              </View>
+              <View style={styles.buddyLevelInfo}>
+                <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Good Buddy</Text>
+                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 1</Text>
+              </View>
+            </View>
+
+            <View style={styles.buddyLevelRow}>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart-outline" size={16} color="#ccc" />
+                <Ionicons name="heart-outline" size={16} color="#ccc" />
+              </View>
+              <View style={styles.buddyLevelInfo}>
+                <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Great Buddy</Text>
+                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 4 (1+3 days)</Text>
+              </View>
+            </View>
+
+            <View style={styles.buddyLevelRow}>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart-outline" size={16} color="#ccc" />
+              </View>
+              <View style={styles.buddyLevelInfo}>
+                <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Ultra Buddy</Text>
+                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 11 (4+7 days)</Text>
+              </View>
+            </View>
+
+            <View style={styles.buddyLevelRow}>
+              <View style={{ flexDirection: 'row', gap: 2 }}>
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+                <Ionicons name="heart" size={16} color="#FF6B6B" />
+              </View>
+              <View style={styles.buddyLevelInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Best Buddy</Text>
+                  <Image source={require('@/assets/images/best-buddy.png')} style={{ width: 16, height: 16, marginLeft: 6 }} resizeMode="contain" />
+                </View>
+                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 21 (11+10 days)</Text>
+              </View>
+            </View>
+
+            <View style={[styles.dailyLimitBox, settings.darkMode && styles.dailyLimitBoxDark]}>
+              <Text style={[styles.dailyLimitText, settings.darkMode && styles.dailyLimitTextDark]}>
+                ⚠️ Limit: 3 Pokémon per day
+              </Text>
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalClose,
+                { marginTop: 24 },
+                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => setBuddyHelpModalOpen(false)}
+            >
+              <Text style={styles.modalCloseText}>Got it!</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -1588,11 +1989,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 8,
     alignItems: 'center',
+    // Enhanced 3D shadow effect
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+    // Subtle border for depth
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     overflow: 'hidden',
   },
   gridCardWatermark: {
@@ -1715,5 +2120,124 @@ const styles = StyleSheet.create({
   },
   emptySubtextDark: {
     color: '#666',
+  },
+  // Buddy Hearts Styles
+  buddyHeartsContainerGrid: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    zIndex: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  buddyHeartsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  bestBuddyBadgeGrid: {
+    width: 14,
+    height: 14,
+    marginLeft: 2,
+  },
+  buddyHeartsContainerList: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    zIndex: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  buddyHeartsList: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  bestBuddyBadgeList: {
+    width: 18,
+    height: 18,
+    marginLeft: 2,
+  },
+  // Header Styles
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    width: '100%',
+  },
+  buddyHelpButton: {
+    position: 'absolute',
+    right: 16,
+    top: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  // Buddy Modal Styles
+  buddyModalContent: {
+    padding: 24,
+  },
+  buddyModalText: {
+    fontSize: 14,
+    color: '#444',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  buddyModalTextDark: {
+    color: '#ccc',
+  },
+  buddyLevelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  buddyLevelInfo: {
+    flex: 1,
+  },
+  buddyLevelTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 2,
+  },
+  buddyLevelTitleDark: {
+    color: '#fff',
+  },
+  buddyLevelDesc: {
+    fontSize: 13,
+    color: '#666',
+  },
+  buddyLevelDescDark: {
+    color: '#999',
+  },
+  dailyLimitBox: {
+    backgroundColor: '#fff3cd',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#ffeeba',
+  },
+  dailyLimitBoxDark: {
+    backgroundColor: '#332b00',
+    borderColor: '#665700',
+  },
+  dailyLimitText: {
+    color: '#856404',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  dailyLimitTextDark: {
+    color: '#fff3cd',
   },
 });
