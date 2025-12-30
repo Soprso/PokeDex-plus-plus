@@ -175,6 +175,18 @@ export default function PokedexListScreen() {
         loadedData = user.unsafeMetadata.buddyData as Record<number, BuddyData>;
       }
 
+      // Mock Data Check for verification
+      if (user.primaryEmailAddress?.emailAddress === 'ghoshsoumyadeep3@gmail.com') {
+        const today = new Date().toISOString().split('T')[0];
+        console.log('Injecting mock buddy data for verification');
+        loadedData = {
+          ...loadedData,
+          1: { pokemonId: 1, level: 2, consecutiveDays: 4, lastInteractionDate: today }, // Great Buddy
+          2: { pokemonId: 2, level: 3, consecutiveDays: 11, lastInteractionDate: today }, // Ultra Buddy
+          3: { pokemonId: 3, level: 4, consecutiveDays: 21, lastInteractionDate: today }, // Best Buddy
+        };
+      }
+
 
       setBuddyData(loadedData);
       if (user.unsafeMetadata.todayInteraction) {
@@ -1709,6 +1721,11 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
   menuBallPressable: {
     width: 70,
