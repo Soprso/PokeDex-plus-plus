@@ -1368,8 +1368,17 @@ export default function PokedexListScreen() {
             <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark]}>❤️ Buddy System</Text>
 
             <Text style={[styles.buddyModalText, settings.darkMode && styles.buddyModalTextDark]}>
-              Build a bond with your Pokémon by giving them hearts! Progress through 4 levels to become Best Buddies.
+              Build a bond with your Pokémon by giving them hearts! Progress through 4 levels to unlock premium visual effects.
             </Text>
+
+            {!isSignedIn && (
+              <Pressable
+                style={[styles.signInPrompt, settings.darkMode && styles.signInPromptDark]}
+                onPress={() => { setBuddyHelpModalOpen(false); setAuthModalOpen(true); }}
+              >
+                <Text style={styles.signInPromptText}>Sign in to start your journey! 🔐</Text>
+              </Pressable>
+            )}
 
             <View style={styles.buddyLevelRow}>
               <View style={{ flexDirection: 'row', gap: 2 }}>
@@ -1393,7 +1402,7 @@ export default function PokedexListScreen() {
               </View>
               <View style={styles.buddyLevelInfo}>
                 <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Great Buddy</Text>
-                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 4 (1+3 days)</Text>
+                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 4 • Blue Neon Glow</Text>
               </View>
             </View>
 
@@ -1406,7 +1415,7 @@ export default function PokedexListScreen() {
               </View>
               <View style={styles.buddyLevelInfo}>
                 <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Ultra Buddy</Text>
-                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 11 (4+7 days)</Text>
+                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 11 • Platinum Shine</Text>
               </View>
             </View>
 
@@ -1422,7 +1431,7 @@ export default function PokedexListScreen() {
                   <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Best Buddy</Text>
                   <Image source={require('@/assets/images/best-buddy.png')} style={{ width: 16, height: 16, marginLeft: 6 }} resizeMode="contain" />
                 </View>
-                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 21 (11+10 days)</Text>
+                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 21 • Gold Shine + Badge</Text>
               </View>
             </View>
 
@@ -2210,6 +2219,27 @@ const styles = StyleSheet.create({
   },
   buddyModalTextDark: {
     color: '#ccc',
+  },
+  signInPrompt: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  signInPromptDark: {
+    backgroundColor: '#0A84FF',
+    elevation: 0,
+  },
+  signInPromptText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   buddyLevelRow: {
     flexDirection: 'row',
