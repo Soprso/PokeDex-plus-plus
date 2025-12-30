@@ -1,4 +1,6 @@
 import SkeletonPokemonDetails from "@/components/SkeletonPokemonDetails";
+import TypeEffectOverlay from "@/components/TypeEffectOverlay";
+import ShinyEffect from "@/components/type-effects/ShinyEffect";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from "react";
@@ -7,12 +9,14 @@ import {
     Dimensions,
     FlatList,
     Image,
+    ImageBackground,
     StyleSheet,
     Text,
-    View,
+    View
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
+
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +32,32 @@ interface PokemonDetails {
     moves: { move: { name: string; url: string } }[];
     sprites: any;
     types: { type: { name: string } }[];
+    abilities: { ability: { name: string; url: string }; is_hidden: boolean }[];
+}
+
+interface Ability {
+    name: string;
+    description: string;
+    isHidden: boolean;
+}
+
+interface SpeciesInfo {
+    genderRatio: number; // -1 for genderless, 0-8 for female ratio (8 = 100% female)
+    captureRate: number; // 0-255
+    eggGroups: string[];
+    isLegendary: boolean;
+    isMythical: boolean;
+}
+
+interface EnhancedMove {
+    name: string;
+    power: number | null;
+    accuracy: number | null;
+    pp: number | null;
+    damageClass: string; // physical, special, status
+    type: string;
+    effectDescription: string;
+    elite: boolean;
 }
 
 interface PokemonRole {
@@ -92,6 +122,32 @@ const typeIcons: Record<string, any> = {
     fairy: require("@/assets/type-icons/fairy.png"),
     normal: require("@/assets/type-icons/normal.png"),
 };
+
+/* =======================
+   Type Backgrounds
+======================= */
+const TYPE_BACKGROUNDS: Record<string, any> = {
+    normal: require("@/assets/type-backgrounds/bg_normal.png"),
+    fire: require("@/assets/type-backgrounds/bg_fire.png"),
+    water: require("@/assets/type-backgrounds/bg_water.png"),
+    electric: require("@/assets/type-backgrounds/bg_electric.png"),
+    grass: require("@/assets/type-backgrounds/bg_grass.png"),
+    ice: require("@/assets/type-backgrounds/bg_ice.png"),
+    fighting: require("@/assets/type-backgrounds/bg_fighting.png"),
+    poison: require("@/assets/type-backgrounds/bg_poison.png"),
+    ground: require("@/assets/type-backgrounds/bg_ground.png"),
+    flying: require("@/assets/type-backgrounds/bg_flying.png"),
+    psychic: require("@/assets/type-backgrounds/bg_psychic.png"),
+    bug: require("@/assets/type-backgrounds/bg_bug.png"),
+    rock: require("@/assets/type-backgrounds/bg_rock.png"),
+    ghost: require("@/assets/type-backgrounds/bg_ghost.png"),
+    dragon: require("@/assets/type-backgrounds/bg_dragon.png"),
+    dark: require("@/assets/type-backgrounds/bg_dark.png"),
+    steel: require("@/assets/type-backgrounds/bg_steel.png"),
+    fairy: require("@/assets/type-backgrounds/bg_fairy.png"),
+    default: require("@/assets/type-backgrounds/bg_default.png"),
+};
+
 
 /* =======================
    Role Analysis Constants
@@ -376,14 +432,16 @@ export default function Details() {
     const { name } = useLocalSearchParams<{ name: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [pokemon, setPokemon] = useState<PokemonDetails | null>(null);
-    const [fastMoves, setFastMoves] = useState<any[]>([]);
-    const [chargedMoves, setChargedMoves] = useState<any[]>([]);
+    const [fastMoves, setFastMoves] = useState<EnhancedMove[]>([]);
+    const [chargedMoves, setChargedMoves] = useState<EnhancedMove[]>([]);
     const [description, setDescription] = useState<string>("");
     const [damageMap, setDamageMap] = useState<Record<string, number>>({});
     const [evolutionChain, setEvolutionChain] = useState<any[]>([]);
     const [role, setRole] = useState<PokemonRole | null>(null);
     const [battleStats, setBattleStats] = useState<BattleStats | null>(null);
     const [hasEvolution, setHasEvolution] = useState(true);
+    const [abilities, setAbilities] = useState<Ability[]>([]);
+    const [speciesInfo, setSpeciesInfo] = useState<SpeciesInfo | null>(null);
 
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -420,8 +478,9 @@ export default function Details() {
             await Promise.all([
                 fetchTypeRelationsDual(data.types.map(t => t.type.name)),
                 fetchMoveDetails(data.moves),
-                fetchDescription(data.id),
+                fetchSpeciesData(data.id),
                 fetchEvolutionChain(data.id),
+                fetchAbilityDetails(data.abilities),
             ]);
 
             // Set loading to false immediately when data is ready
@@ -452,9 +511,9 @@ export default function Details() {
     }
 
     /* =======================
-       Fetch Descriptions
+       Fetch Species Data
     ======================= */
-    async function fetchDescription(id: number) {
+    async function fetchSpeciesData(id: number) {
         try {
             const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
             const data = await res.json();
@@ -467,8 +526,49 @@ export default function Details() {
             if (englishEntry) {
                 setDescription(englishEntry.flavor_text.replace(/\n|\f/g, " "));
             }
+
+            // Extract species info
+            const speciesData: SpeciesInfo = {
+                genderRatio: data.gender_rate, // -1 for genderless, 0-8 for female ratio
+                captureRate: data.capture_rate,
+                eggGroups: data.egg_groups.map((eg: any) => eg.name),
+                isLegendary: data.is_legendary,
+                isMythical: data.is_mythical,
+            };
+
+            setSpeciesInfo(speciesData);
         } catch (error) {
-            console.error("Error fetching description:", error);
+            console.error("Error fetching species data:", error);
+        }
+    }
+
+    /* =======================
+       Fetch Ability Details
+    ======================= */
+    async function fetchAbilityDetails(
+        abilities: { ability: { name: string; url: string }; is_hidden: boolean }[]
+    ) {
+        try {
+            const abilityPromises = abilities.map(async (abilityData) => {
+                const res = await fetch(abilityData.ability.url);
+                const data = await res.json();
+
+                // Get English effect description
+                const englishEffect = data.effect_entries.find(
+                    (entry: any) => entry.language.name === "en"
+                );
+
+                return {
+                    name: abilityData.ability.name,
+                    description: englishEffect?.short_effect || englishEffect?.effect || "No description available",
+                    isHidden: abilityData.is_hidden,
+                };
+            });
+
+            const fetchedAbilities = await Promise.all(abilityPromises);
+            setAbilities(fetchedAbilities);
+        } catch (error) {
+            console.error("Error fetching ability details:", error);
         }
     }
 
@@ -579,8 +679,8 @@ export default function Details() {
         moves: { move: { name: string; url: string } }[]
     ) {
         try {
-            const fast: any[] = [];
-            const charged: any[] = [];
+            const fast: EnhancedMove[] = [];
+            const charged: EnhancedMove[] = [];
 
             const limitedMoves = moves.slice(0, 24); // Limit for performance
 
@@ -592,9 +692,19 @@ export default function Details() {
                     const isFast = data.power && data.power <= 50;
                     const isElite = data.meta?.is_elite_tm || false;
 
-                    const moveObj = {
+                    // Get English effect description
+                    const englishEffect = data.effect_entries.find(
+                        (entry: any) => entry.language.name === "en"
+                    );
+
+                    const moveObj: EnhancedMove = {
                         name: m.move.name,
                         power: data.power,
+                        accuracy: data.accuracy,
+                        pp: data.pp,
+                        damageClass: data.damage_class?.name || "status",
+                        type: data.type?.name || "normal",
+                        effectDescription: englishEffect?.short_effect || englishEffect?.effect || "No effect description",
                         elite: isElite,
                     };
 
@@ -622,7 +732,12 @@ export default function Details() {
 
     // Loading state check
     if (isLoading) {
-        return <SkeletonPokemonDetails />;
+        return (
+            <>
+                <Stack.Screen options={{ headerShown: false }} />
+                <SkeletonPokemonDetails />
+            </>
+        );
     }
     if (!pokemon) return null;
 
@@ -647,10 +762,64 @@ export default function Details() {
                 showsVerticalScrollIndicator={false}
             >
                 {/* HERO SECTION */}
-                <LinearGradient
-                    colors={[colorsByType[mainType] + "DD", "#fff"]}
+                <ImageBackground
+                    source={TYPE_BACKGROUNDS[mainType] || TYPE_BACKGROUNDS.default}
                     style={styles.hero}
+                    resizeMode="cover"
                 >
+                    {/* Quality enhancement gradient overlay */}
+                    <LinearGradient
+                        colors={[
+                            colorsByType[mainType] + '60',
+                            colorsByType[mainType] + '40',
+                            'transparent'
+                        ]}
+                        style={StyleSheet.absoluteFill}
+                    />
+
+                    {/* Dark overlay for readability */}
+                    <View style={styles.heroOverlay} />
+
+                    {/* Type-specific animated effects */}
+                    <TypeEffectOverlay type={mainType} />
+
+                    {/* Shiny sparkle effect - shows when viewing shiny Pokemon */}
+                    <Animated.View
+                        style={{
+                            ...StyleSheet.absoluteFillObject,
+                            opacity: scrollX.interpolate({
+                                inputRange: [0, width * 0.5, width],
+                                outputRange: [0, 0.5, 1],
+                                extrapolate: 'clamp',
+                            }),
+                        }}
+                    >
+                        <ShinyEffect />
+                    </Animated.View>
+
+                    {/* Legendary/Mythical Badges */}
+                    {speciesInfo?.isLegendary && (
+                        <View style={styles.legendaryBadge}>
+                            <Text style={styles.legendaryIcon}>👑</Text>
+                            <Text style={styles.legendaryText}>Legendary</Text>
+                        </View>
+                    )}
+                    {speciesInfo?.isMythical && (
+                        <View style={[styles.legendaryBadge, { top: speciesInfo?.isLegendary ? 70 : 20 }]}>
+                            <Text style={styles.legendaryIcon}>⭐</Text>
+                            <Text style={styles.legendaryText}>Mythical</Text>
+                        </View>
+                    )}
+
+                    {/* Gradient overlay for dual-type Pokemon */}
+                    {pokemon.types.length > 1 && (
+                        <LinearGradient
+                            colors={['transparent', colorsByType[pokemon.types[1].type.name] + '50']}
+                            style={StyleSheet.absoluteFill}
+                        />
+                    )}
+
+
                     <FlatList
                         data={images}
                         horizontal
@@ -661,7 +830,7 @@ export default function Details() {
                             [{ nativeEvent: { contentOffset: { x: scrollX } } }],
                             { useNativeDriver: false }
                         )}
-                        renderItem={({ item }) => (
+                        renderItem={({ item, index }) => (
                             <View style={{ width, alignItems: "center" }}>
                                 <Image
                                     source={{ uri: item }}
@@ -707,7 +876,7 @@ export default function Details() {
                             </View>
                         ))}
                     </View>
-                </LinearGradient>
+                </ImageBackground>
 
                 {/* ABOUT SECTION */}
                 <View style={styles.section}>
@@ -722,6 +891,118 @@ export default function Details() {
                         <Text>{pokemon.weight / 10} kg</Text>
                     </View>
                 </View>
+
+                {/* ABILITIES SECTION */}
+                {abilities.length > 0 && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Abilities</Text>
+                        {abilities.map((ability, index) => (
+                            <View key={index} style={styles.abilityItem}>
+                                <View style={styles.abilityHeader}>
+                                    <Text style={styles.abilityName}>
+                                        {ability.name.replace('-', ' ')}
+                                    </Text>
+                                    {ability.isHidden && (
+                                        <View style={styles.hiddenBadge}>
+                                            <Text style={styles.hiddenBadgeText}>Hidden</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.abilityDescription}>{ability.description}</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* BREEDING INFO SECTION */}
+                {speciesInfo && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Breeding</Text>
+
+                        {/* Gender Ratio */}
+                        <View style={styles.breedingRow}>
+                            <Text style={styles.breedingLabel}>Gender Ratio</Text>
+                            {speciesInfo.genderRatio === -1 ? (
+                                <Text style={styles.breedingValue}>Genderless</Text>
+                            ) : (
+                                <View style={styles.genderContainer}>
+                                    <View style={styles.genderBar}>
+                                        <View
+                                            style={[
+                                                styles.genderMale,
+                                                { width: `${((8 - speciesInfo.genderRatio) / 8) * 100}%` }
+                                            ]}
+                                        />
+                                        <View
+                                            style={[
+                                                styles.genderFemale,
+                                                { width: `${(speciesInfo.genderRatio / 8) * 100}%` }
+                                            ]}
+                                        />
+                                    </View>
+                                    <View style={styles.genderLabels}>
+                                        <Text style={styles.genderText}>
+                                            ♂ {((8 - speciesInfo.genderRatio) / 8 * 100).toFixed(1)}%
+                                        </Text>
+                                        <Text style={styles.genderText}>
+                                            ♀ {(speciesInfo.genderRatio / 8 * 100).toFixed(1)}%
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Egg Groups */}
+                        <View style={styles.breedingRow}>
+                            <Text style={styles.breedingLabel}>Egg Groups</Text>
+                            <View style={styles.eggGroupsContainer}>
+                                {speciesInfo.eggGroups.map((group, index) => (
+                                    <View key={index} style={styles.eggGroupBadge}>
+                                        <Text style={styles.eggGroupText}>
+                                            {group.replace('-', ' ')}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    </View>
+                )}
+
+                {/* CAPTURE INFO SECTION */}
+                {speciesInfo && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Capture Info</Text>
+                        <View style={styles.captureRow}>
+                            <Text style={styles.captureLabel}>Capture Rate</Text>
+                            <View style={styles.captureRateContainer}>
+                                <View style={styles.captureBar}>
+                                    <View
+                                        style={[
+                                            styles.captureBarFill,
+                                            {
+                                                width: `${(speciesInfo.captureRate / 255) * 100}%`,
+                                                backgroundColor:
+                                                    speciesInfo.captureRate > 200 ? '#4CAF50' :
+                                                        speciesInfo.captureRate > 100 ? '#FF9800' :
+                                                            speciesInfo.captureRate > 50 ? '#FF5722' : '#F44336'
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                                <Text style={styles.captureValue}>
+                                    {((speciesInfo.captureRate / 255) * 100).toFixed(1)}%
+                                    {' '}
+                                    ({
+                                        speciesInfo.captureRate > 200 ? 'Very Easy' :
+                                            speciesInfo.captureRate > 100 ? 'Easy' :
+                                                speciesInfo.captureRate > 50 ? 'Medium' :
+                                                    speciesInfo.captureRate > 25 ? 'Hard' : 'Very Hard'
+                                    })
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
 
                 {/* STATS SECTION */}
                 <View style={styles.section}>
@@ -851,9 +1132,49 @@ export default function Details() {
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={m => m.name}
                         renderItem={({ item }) => (
-                            <View style={styles.moveCard}>
-                                <Text style={styles.moveText}>{item.name}</Text>
-                                {item.elite && <Text style={styles.elite}>Elite</Text>}
+                            <View style={styles.enhancedMoveCard}>
+                                <View style={styles.moveHeader}>
+                                    <Text style={styles.moveName}>{item.name.replace('-', ' ')}</Text>
+                                    {item.elite && <Text style={styles.eliteBadge}>Elite</Text>}
+                                </View>
+
+                                <View style={styles.moveStatsRow}>
+                                    <View style={styles.moveStat}>
+                                        <Text style={styles.moveStatLabel}>Power</Text>
+                                        <Text style={styles.moveStatValue}>{item.power || '—'}</Text>
+                                    </View>
+                                    <View style={styles.moveStat}>
+                                        <Text style={styles.moveStatLabel}>Acc</Text>
+                                        <Text style={styles.moveStatValue}>{item.accuracy ? `${item.accuracy}%` : '—'}</Text>
+                                    </View>
+                                    <View style={styles.moveStat}>
+                                        <Text style={styles.moveStatLabel}>PP</Text>
+                                        <Text style={styles.moveStatValue}>{item.pp || '—'}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.moveTypeRow}>
+                                    <View style={[styles.moveTypeBadge, { backgroundColor: colorsByType[item.type] || '#A8A77A' }]}>
+                                        <Text style={styles.moveTypeText}>{item.type}</Text>
+                                    </View>
+                                    <View style={[
+                                        styles.damageClassBadge,
+                                        {
+                                            backgroundColor:
+                                                item.damageClass === 'physical' ? '#C92112' :
+                                                    item.damageClass === 'special' ? '#4A90E2' : '#68A090'
+                                        }
+                                    ]}>
+                                        <Text style={styles.damageClassText}>
+                                            {item.damageClass === 'physical' ? 'PHY' :
+                                                item.damageClass === 'special' ? 'SPC' : 'STA'}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.moveEffect} numberOfLines={3}>
+                                    {item.effectDescription}
+                                </Text>
                             </View>
                         )}
                     />
@@ -865,9 +1186,49 @@ export default function Details() {
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={m => m.name}
                         renderItem={({ item }) => (
-                            <View style={styles.moveCard}>
-                                <Text style={styles.moveText}>{item.name}</Text>
-                                {item.elite && <Text style={styles.elite}>Elite</Text>}
+                            <View style={styles.enhancedMoveCard}>
+                                <View style={styles.moveHeader}>
+                                    <Text style={styles.moveName}>{item.name.replace('-', ' ')}</Text>
+                                    {item.elite && <Text style={styles.eliteBadge}>Elite</Text>}
+                                </View>
+
+                                <View style={styles.moveStatsRow}>
+                                    <View style={styles.moveStat}>
+                                        <Text style={styles.moveStatLabel}>Power</Text>
+                                        <Text style={styles.moveStatValue}>{item.power || '—'}</Text>
+                                    </View>
+                                    <View style={styles.moveStat}>
+                                        <Text style={styles.moveStatLabel}>Acc</Text>
+                                        <Text style={styles.moveStatValue}>{item.accuracy ? `${item.accuracy}%` : '—'}</Text>
+                                    </View>
+                                    <View style={styles.moveStat}>
+                                        <Text style={styles.moveStatLabel}>PP</Text>
+                                        <Text style={styles.moveStatValue}>{item.pp || '—'}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.moveTypeRow}>
+                                    <View style={[styles.moveTypeBadge, { backgroundColor: colorsByType[item.type] || '#A8A77A' }]}>
+                                        <Text style={styles.moveTypeText}>{item.type}</Text>
+                                    </View>
+                                    <View style={[
+                                        styles.damageClassBadge,
+                                        {
+                                            backgroundColor:
+                                                item.damageClass === 'physical' ? '#C92112' :
+                                                    item.damageClass === 'special' ? '#4A90E2' : '#68A090'
+                                        }
+                                    ]}>
+                                        <Text style={styles.damageClassText}>
+                                            {item.damageClass === 'physical' ? 'PHY' :
+                                                item.damageClass === 'special' ? 'SPC' : 'STA'}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.moveEffect} numberOfLines={3}>
+                                    {item.effectDescription}
+                                </Text>
                             </View>
                         )}
                     />
@@ -973,9 +1334,161 @@ const styles = StyleSheet.create({
         paddingBottom: 24,
         alignItems: "center",
     },
+    heroOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
     heroImage: {
         width: width * 0.9,
         height: 260,
+    },
+    // Legendary/Mythical Badge Styles
+    legendaryBadge: {
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 215, 0, 0.95)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    legendaryIcon: {
+        fontSize: 18,
+        marginRight: 4,
+    },
+    legendaryText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#000',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    // Abilities Section Styles
+    abilityItem: {
+        marginBottom: 16,
+    },
+    abilityHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    abilityName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#000',
+        textTransform: 'capitalize',
+        marginRight: 8,
+    },
+    hiddenBadge: {
+        backgroundColor: '#9C27B0',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 12,
+    },
+    hiddenBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#fff',
+        textTransform: 'uppercase',
+    },
+    abilityDescription: {
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 20,
+    },
+    // Breeding Section Styles
+    breedingRow: {
+        marginBottom: 16,
+    },
+    breedingLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 8,
+    },
+    breedingValue: {
+        fontSize: 14,
+        color: '#000',
+    },
+    genderContainer: {
+        flex: 1,
+    },
+    genderBar: {
+        flexDirection: 'row',
+        height: 24,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 8,
+    },
+    genderMale: {
+        backgroundColor: '#4A90E2',
+    },
+    genderFemale: {
+        backgroundColor: '#FF69B4',
+    },
+    genderLabels: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    genderText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#666',
+    },
+    eggGroupsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    eggGroupBadge: {
+        backgroundColor: '#E3F2FD',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#2196F3',
+    },
+    eggGroupText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#2196F3',
+        textTransform: 'capitalize',
+    },
+    // Capture Info Styles
+    captureRow: {
+        marginBottom: 8,
+    },
+    captureLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 8,
+    },
+    captureRateContainer: {
+        flex: 1,
+    },
+    captureBar: {
+        height: 24,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginBottom: 8,
+    },
+    captureBarFill: {
+        height: '100%',
+        borderRadius: 12,
+    },
+    captureValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#000',
     },
     dots: {
         flexDirection: "row",
@@ -1073,6 +1586,104 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: "#C9A000",
         fontWeight: "700",
+    },
+    // Enhanced Move Card Styles
+    enhancedMoveCard: {
+        backgroundColor: "#fff",
+        padding: 16,
+        borderRadius: 16,
+        marginRight: 12,
+        minWidth: 220,
+        maxWidth: 240,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    moveHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    moveName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#000',
+        textTransform: 'capitalize',
+        flex: 1,
+    },
+    eliteBadge: {
+        backgroundColor: '#FFD700',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#000',
+        textTransform: 'uppercase',
+    },
+    moveStatsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginBottom: 12,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
+    },
+    moveStat: {
+        alignItems: 'center',
+    },
+    moveStatLabel: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#999',
+        marginBottom: 4,
+        textTransform: 'uppercase',
+    },
+    moveStatValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#000',
+    },
+    moveTypeRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 12,
+    },
+    moveTypeBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        flex: 1,
+        alignItems: 'center',
+    },
+    moveTypeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#fff',
+        textTransform: 'uppercase',
+    },
+    damageClassBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        flex: 1,
+        alignItems: 'center',
+    },
+    damageClassText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#fff',
+        textTransform: 'uppercase',
+    },
+    moveEffect: {
+        fontSize: 12,
+        color: '#666',
+        lineHeight: 16,
     },
     evolutionRow: {
         flexDirection: "row",

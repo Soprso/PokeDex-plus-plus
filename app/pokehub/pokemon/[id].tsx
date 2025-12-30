@@ -64,12 +64,13 @@ export default function PokemonDetailScreen() {
     }
 
     // Convert ScannedPokemon to PokemonDisplayData
+    // Convert ScannedPokemon to PokemonDisplayData
     const displayData: PokemonDisplayData = {
         name: pokemon.name,
         cp: pokemon.cp,
         hp: pokemon.hp,
         level: pokemon.level,
-        iv: null, // IV breakdown not available yet (only percent stored)
+        iv: pokemon.iv && typeof pokemon.iv === 'object' ? pokemon.iv : null,
         imageUri: pokemon.imageUri || '',
         scannedAt: pokemon.scannedAt,
     };

@@ -5,10 +5,11 @@ import { fetchPokemonBatch, fetchPokemonList, Pokemon } from '@/services/pokeapi
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthModal from './modals/auth';
 
@@ -62,6 +63,7 @@ export default function PokedexListScreen() {
     shinySprites: false,
     nicknames: true,
     cacheImages: true,
+    gridLayout: false,
   });
 
   // Nicknames storage
@@ -71,6 +73,14 @@ export default function PokedexListScreen() {
   const { isSignedIn } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
+  // UI enhancement states
+  const [refreshing, setRefreshing] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showLeftTabIndicator, setShowLeftTabIndicator] = useState(false);
+  const [showRightTabIndicator, setShowRightTabIndicator] = useState(true);
+
+  const flatListRef = useRef<any>(null);
+  const tabScrollRef = useRef<any>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -275,7 +285,7 @@ export default function PokedexListScreen() {
           setSortOpen(true);
           break;
         case 'pokehub':
-          router.push('/pokehub');
+          router.push('/coming-soon');
           break;
         case 'profile':
           // Check if user is signed in
@@ -338,6 +348,35 @@ export default function PokedexListScreen() {
     setSelectedTypes([]);
   };
 
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // Simulate refresh - in real app would reload data
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setRefreshing(false);
+  };
+
+  // Scroll to top handler
+  const scrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  // Handle scroll position for scroll-to-top button
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollTop(offsetY > 200);
+  };
+
+  // Handle tab scroll for indicators
+  const handleTabScroll = (event: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const scrollX = contentOffset.x;
+    const maxScrollX = contentSize.width - layoutMeasurement.width;
+
+    setShowLeftTabIndicator(scrollX > 10);
+    setShowRightTabIndicator(scrollX < maxScrollX - 10);
+  };
+
   const toggleTypeFilter = (type: PokemonType) => {
     setSelectedTypes(prev =>
       prev.includes(type)
@@ -351,22 +390,86 @@ export default function PokedexListScreen() {
     const backgroundColor = TYPE_COLORS[primaryType] || '#A8A878';
     const displayName = settings.nicknames && item.nickname ? item.nickname : item.name;
     const imageUrl = settings.shinySprites ? item.shinyImageUrl : item.imageUrl;
+    const isDualType = item.types.length > 1;
 
+    // Grid Layout Card
+    if (settings.gridLayout) {
+      return (
+        <Pressable
+          onPress={() => handlePokemonPress(item)}
+          onLongPress={() => handlePokemonLongPress(item)}
+          style={({ pressed }) => [
+            styles.gridCard,
+            { backgroundColor: isDualType ? 'transparent' : backgroundColor },
+            settings.darkMode && styles.cardDark,
+            pressed && styles.cardPressed,
+          ]}
+        >
+          {isDualType && (
+            <LinearGradient
+              colors={[TYPE_COLORS[item.types[0]], TYPE_COLORS[item.types[1]]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <Image
+            source={require('@/assets/images/pokeball.png')}
+            style={styles.gridCardWatermark}
+          />
+          {settings.shinySprites && (
+            <View style={styles.shinyIndicatorGridRight}>
+              <Ionicons name="sparkles" size={14} color="#FFD700" />
+            </View>
+          )}
+          <Text style={styles.gridCardId}>#{item.id.toString().padStart(3, '0')}</Text>
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.gridCardImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.gridCardName} numberOfLines={1}>{displayName}</Text>
+          <View style={styles.gridTypesContainer}>
+            {item.types.map((type, index) => {
+              const typeIcon = TYPE_ICONS[type];
+              return typeIcon && (
+                <Image key={index} source={typeIcon} style={styles.gridCardTypeIcon} resizeMode="contain" />
+              );
+            })}
+          </View>
+        </Pressable>
+      );
+    }
+
+    // List Layout Card (original)
     return (
       <Pressable
         onPress={() => handlePokemonPress(item)}
         onLongPress={() => handlePokemonLongPress(item)}
         style={({ pressed }) => [
           styles.card,
-          { backgroundColor },
+          { backgroundColor: isDualType ? 'transparent' : backgroundColor },
           settings.darkMode && styles.cardDark,
           pressed && styles.cardPressed,
         ]}
       >
+        {isDualType && (
+          <LinearGradient
+            colors={[TYPE_COLORS[item.types[0]], TYPE_COLORS[item.types[1]]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
         <Image
           source={require('@/assets/images/pokeball.png')}
           style={styles.cardWatermark}
         />
+        {settings.shinySprites && (
+          <View style={styles.shinyIndicatorRight}>
+            <Ionicons name="sparkles" size={20} color="#FFD700" />
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.cardId}>#{item.id.toString().padStart(3, '0')}</Text>
           <Text style={styles.cardName}>{displayName}</Text>
@@ -374,11 +477,12 @@ export default function PokedexListScreen() {
             <Text style={styles.cardRealName}>({item.name})</Text>
           )}
           <View style={styles.typesContainer}>
-            {item.types.map((type, index) => (
-              <View key={index} style={styles.typeBadge}>
-                <Text style={styles.typeText}>{type}</Text>
-              </View>
-            ))}
+            {item.types.map((type, index) => {
+              const typeIcon = TYPE_ICONS[type];
+              return typeIcon && (
+                <Image key={index} source={typeIcon} style={styles.cardTypeIcon} resizeMode="contain" />
+              );
+            })}
           </View>
           <Text style={styles.cardFootnote}>Long press to add nickname</Text>
         </View>
@@ -398,9 +502,9 @@ export default function PokedexListScreen() {
 
     return (
       <ImageBackground
-        source={require('@/assets/images/splash21.jpg')}
+        source={require('@/assets/images/splash21.png')}
         style={styles.loadingBackground}
-        resizeMode="cover"
+        resizeMode="stretch"
       >
         <StatusBar style="light" />
         <View style={styles.loadingOverlay}>
@@ -453,7 +557,11 @@ export default function PokedexListScreen() {
       <SafeAreaView edges={['top']} style={[styles.container, settings.darkMode && styles.containerDark]}>
         <StatusBar style={settings.darkMode ? 'light' : 'auto'} />
 
-        <Text style={[styles.title, settings.darkMode && styles.titleDark]}>Pokédex</Text>
+        <Image
+          source={require('@/assets/images/pokedex.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
 
         <View style={styles.searchContainer}>
           <TextInput
@@ -472,18 +580,31 @@ export default function PokedexListScreen() {
 
         {!searchQuery.trim() && (
           <View style={styles.tabsContainer}>
+            {showLeftTabIndicator && (
+              <LinearGradient
+                colors={settings.darkMode ? ['rgba(26,26,26,0.9)', 'transparent'] : ['rgba(240,240,245,0.9)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.tabScrollIndicatorLeft}
+                pointerEvents="none"
+              />
+            )}
             <FlatList
+              ref={tabScrollRef}
               horizontal
               data={REGIONS}
               keyExtractor={(item) => item.name}
               showsHorizontalScrollIndicator={false}
+              onScroll={handleTabScroll}
+              scrollEventThrottle={16}
               renderItem={({ item, index }) => (
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.tab,
                     index === selectedRegionIndex && styles.tabActive,
                     settings.darkMode && styles.tabDark,
                     settings.darkMode && index === selectedRegionIndex && styles.tabActiveDark,
+                    pressed && { opacity: 0.7 }
                   ]}
                   onPress={() => handleRegionChange(index)}
                 >
@@ -497,23 +618,62 @@ export default function PokedexListScreen() {
                 </Pressable>
               )}
             />
+            {showRightTabIndicator && (
+              <LinearGradient
+                colors={settings.darkMode ? ['transparent', 'rgba(26,26,26,0.9)'] : ['transparent', 'rgba(240,240,245,0.9)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.tabScrollIndicatorRight}
+                pointerEvents="none"
+              />
+            )}
           </View>
         )}
 
         <FlatList
+          ref={flatListRef}
           data={filteredPokemon}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderPokemonCard}
-          numColumns={1}
+          numColumns={settings.gridLayout ? 3 : 1}
+          key={settings.gridLayout ? 'grid' : 'list'}
           contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={settings.darkMode ? '#fff' : '#6366f1'}
+              colors={['#6366f1']}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
+              <Ionicons
+                name={searchQuery.trim() ? 'search-outline' : 'location-outline'}
+                size={64}
+                color={settings.darkMode ? '#666' : '#ccc'}
+              />
               <Text style={[styles.emptyText, settings.darkMode && styles.emptyTextDark]}>
                 {searchQuery.trim() ? 'No Pokémon found' : 'No Pokémon in this region'}
+              </Text>
+              <Text style={[styles.emptySubtext, settings.darkMode && styles.emptySubtextDark]}>
+                {searchQuery.trim() ? 'Try a different search term' : 'Select another region to explore'}
               </Text>
             </View>
           }
         />
+
+        {/* Scroll to Top FAB */}
+        {showScrollTop && (
+          <Pressable
+            style={[styles.scrollTopFab, settings.darkMode && styles.scrollTopFabDark]}
+            onPress={scrollToTop}
+          >
+            <Ionicons name="arrow-up" size={24} color={settings.darkMode ? '#fff' : '#6366f1'} />
+          </Pressable>
+        )}
 
         {menuOpen && (
           <Pressable style={styles.menuOverlay} onPress={closeMenu}>
@@ -562,8 +722,12 @@ export default function PokedexListScreen() {
                 ]}
               >
                 <Pressable
-                  style={styles.submenuButtonInner}
+                  style={({ pressed }) => [
+                    styles.submenuButtonInner,
+                    pressed && { transform: [{ scale: 0.9 }] }
+                  ]}
                   onPress={() => handleSubmenuPress(item.id)}
+                  android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
                 >
                   <Ionicons name={item.icon} size={26} color="#fff" />
                   <Text style={styles.submenuLabel}>{item.label}</Text>
@@ -591,7 +755,11 @@ export default function PokedexListScreen() {
             <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark]}>Sort Pokémon</Text>
             <View style={styles.sortOptions}>
               <Pressable
-                style={[styles.sortOption, sortOption === 'id-asc' && styles.sortOptionActive]}
+                style={({ pressed }) => [
+                  styles.sortOption,
+                  sortOption === 'id-asc' && styles.sortOptionActive,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
                 onPress={() => handleSortSelect('id-asc')}
               >
                 <Ionicons name="arrow-up" size={20} color={sortOption === 'id-asc' ? '#007AFF' : '#666'} />
@@ -600,7 +768,11 @@ export default function PokedexListScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.sortOption, sortOption === 'id-desc' && styles.sortOptionActive]}
+                style={({ pressed }) => [
+                  styles.sortOption,
+                  sortOption === 'id-desc' && styles.sortOptionActive,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
                 onPress={() => handleSortSelect('id-desc')}
               >
                 <Ionicons name="arrow-down" size={20} color={sortOption === 'id-desc' ? '#007AFF' : '#666'} />
@@ -609,7 +781,11 @@ export default function PokedexListScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.sortOption, sortOption === 'name-asc' && styles.sortOptionActive]}
+                style={({ pressed }) => [
+                  styles.sortOption,
+                  sortOption === 'name-asc' && styles.sortOptionActive,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
                 onPress={() => handleSortSelect('name-asc')}
               >
                 <Ionicons name="text" size={20} color={sortOption === 'name-asc' ? '#007AFF' : '#666'} />
@@ -618,7 +794,11 @@ export default function PokedexListScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                style={[styles.sortOption, sortOption === 'name-desc' && styles.sortOptionActive]}
+                style={({ pressed }) => [
+                  styles.sortOption,
+                  sortOption === 'name-desc' && styles.sortOptionActive,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
                 onPress={() => handleSortSelect('name-desc')}
               >
                 <Ionicons name="text" size={20} color={sortOption === 'name-desc' ? '#007AFF' : '#666'} />
@@ -627,7 +807,13 @@ export default function PokedexListScreen() {
                 </Text>
               </Pressable>
             </View>
-            <Pressable style={styles.modalClose} onPress={() => { setSortOpen(false); closeMenu(); }}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalClose,
+                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => { setSortOpen(false); closeMenu(); }}
+            >
               <Text style={styles.modalCloseText}>Close</Text>
             </Pressable>
           </View>
@@ -644,10 +830,11 @@ export default function PokedexListScreen() {
                 {POKEMON_TYPES.map((type) => (
                   <Pressable
                     key={type}
-                    style={[
+                    style={({ pressed }) => [
                       styles.typeFilterButton,
                       { backgroundColor: TYPE_COLORS[type] },
                       selectedTypes.includes(type) && styles.typeFilterButtonActive,
+                      pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] }
                     ]}
                     onPress={() => toggleTypeFilter(type)}
                   >
@@ -664,14 +851,32 @@ export default function PokedexListScreen() {
               </View>
             </ScrollView>
             <View style={styles.filterActions}>
-              <Pressable style={styles.filterClearButton} onPress={handleFilterClear}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.filterClearButton,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={handleFilterClear}
+              >
                 <Text style={styles.filterClearText}>Clear All</Text>
               </Pressable>
-              <Pressable style={styles.filterApplyButton} onPress={handleFilterApply}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.filterApplyButton,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={handleFilterApply}
+              >
                 <Text style={styles.filterApplyText}>Apply</Text>
               </Pressable>
             </View>
-            <Pressable style={styles.modalClose} onPress={() => { setFilterOpen(false); closeMenu(); }}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalClose,
+                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => { setFilterOpen(false); closeMenu(); }}
+            >
               <Text style={styles.modalCloseText}>Cancel</Text>
             </Pressable>
           </View>
@@ -726,24 +931,49 @@ export default function PokedexListScreen() {
                   onValueChange={(val) => setSettings({ ...settings, cacheImages: val })}
                 />
               </View>
-              <Pressable style={styles.settingButton} onPress={() => Alert.alert('Cache Cleared')}>
+              <View style={[styles.settingRow, settings.darkMode && styles.settingRowDark]}>
+                <Text style={[styles.settingLabel, settings.darkMode && styles.settingLabelDark]}>Grid Layout</Text>
+                <Switch
+                  value={settings.gridLayout}
+                  onValueChange={(val) => setSettings({ ...settings, gridLayout: val })}
+                />
+              </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.settingButton,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={() => Alert.alert('Cache Cleared')}
+              >
                 <Text style={styles.settingButtonText}>Clear Cache</Text>
               </Pressable>
-              <Pressable style={styles.settingButton} onPress={() => {
-                setSettings({
-                  darkMode: false,
-                  sound: true,
-                  vibration: true,
-                  shinySprites: false,
-                  nicknames: true,
-                  cacheImages: true,
-                });
-                Alert.alert('Settings Reset');
-              }}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.settingButton,
+                  pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={() => {
+                  setSettings({
+                    darkMode: false,
+                    sound: true,
+                    vibration: true,
+                    shinySprites: false,
+                    nicknames: true,
+                    cacheImages: true,
+                    gridLayout: false,
+                  });
+                  Alert.alert('Settings Reset');
+                }}>
                 <Text style={styles.settingButtonText}>Reset Settings</Text>
               </Pressable>
             </ScrollView>
-            <Pressable style={styles.modalClose} onPress={() => { setSettingsOpen(false); closeMenu(); }}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.modalClose,
+                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+              ]}
+              onPress={() => { setSettingsOpen(false); closeMenu(); }}
+            >
               <Text style={styles.modalCloseText}>Close</Text>
             </Pressable>
           </View>
@@ -777,12 +1007,23 @@ export default function PokedexListScreen() {
                 />
                 <View style={styles.nicknameActions}>
                   <Pressable
-                    style={[styles.nicknameButton, styles.nicknameCancel]}
+                    style={({ pressed }) => [
+                      styles.nicknameButton,
+                      styles.nicknameCancel,
+                      pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                    ]}
                     onPress={() => { setNicknameModalOpen(false); closeMenu(); }}
                   >
                     <Text style={styles.nicknameCancelText}>Cancel</Text>
                   </Pressable>
-                  <Pressable style={[styles.nicknameButton, styles.nicknameSave]} onPress={saveNickname}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.nicknameButton,
+                      styles.nicknameSave,
+                      pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                    ]}
+                    onPress={saveNickname}
+                  >
                     <Text style={styles.nicknameSaveText}>Save</Text>
                   </Pressable>
                 </View>
@@ -930,35 +1171,31 @@ const styles = StyleSheet.create({
   },
   tab: {
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginLeft: 16,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    paddingVertical: 12,
+    marginHorizontal: 4,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
   },
   tabDark: {
-    backgroundColor: '#2a2a2a',
-    borderColor: '#444',
+    borderBottomColor: 'transparent',
   },
   tabActive: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    borderBottomColor: '#14b8a6', // Soothing teal color
   },
   tabActiveDark: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    borderBottomColor: '#2dd4bf', // Lighter teal for dark mode
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#666',
+    color: '#999',
   },
   tabTextDark: {
-    color: '#ccc',
+    color: '#888',
   },
   tabTextActive: {
-    color: '#fff',
+    color: '#14b8a6',
+    fontWeight: '700',
   },
   listContent: {
     padding: 16,
@@ -1334,5 +1571,149 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Logo
+  logoImage: {
+    width: width * 0.5,
+    height: 60,
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 16,
+    alignSelf: 'center',
+  },
+  // Grid Layout Styles
+  gridCard: {
+    width: (width - 48) / 3,
+    margin: 4,
+    borderRadius: 16,
+    padding: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  gridCardWatermark: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    opacity: 0.1,
+    top: -10,
+    right: -10,
+  },
+  gridCardId: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+    opacity: 0.8,
+    alignSelf: 'flex-start',
+  },
+  gridCardImage: {
+    width: 85,
+    height: 85,
+    marginVertical: 4,
+  },
+  gridCardName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    textTransform: 'capitalize',
+    marginTop: 4,
+  },
+  gridTypesContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 4,
+  },
+  gridTypeBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  gridTypeIcon: {
+    width: 16,
+    height: 16,
+  },
+  // Shiny Indicators
+  shinyIndicatorRight: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+  },
+  shinyIndicatorGridRight: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    zIndex: 10,
+  },
+  // Card Type Icons (no backgrounds)
+  cardTypeIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 4,
+  },
+  gridCardTypeIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 2,
+  },
+  // Tab Scroll Indicators
+  tabScrollIndicatorLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 40,
+    zIndex: 1,
+  },
+  tabScrollIndicatorRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 40,
+    zIndex: 1,
+  },
+  // Scroll to Top FAB
+  scrollTopFab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 100,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 5,
+  },
+  scrollTopFabDark: {
+    backgroundColor: '#4f46e5',
+  },
+  // Empty State
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  emptySubtextDark: {
+    color: '#666',
   },
 });

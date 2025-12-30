@@ -39,6 +39,16 @@ export default function ScanResultScreen() {
     // Save state
     const [saving, setSaving] = useState(false);
 
+    // Level calc state - DISABLED
+    const [calculatedLevel, setCalculatedLevel] = useState<number | null>(null);
+
+    // Update calculated level when OCR result changes
+    useEffect(() => {
+        if (ocrResult.level) {
+            setCalculatedLevel(ocrResult.level);
+        }
+    }, [ocrResult.level]);
+
     // Run OCR on mount
     useEffect(() => {
         runOCR();
@@ -60,13 +70,12 @@ export default function ScanResultScreen() {
             if (result.cp) setManualCP(result.cp.toString());
             if (result.hp) setManualHP(result.hp.toString());
         } catch (error) {
-            console.error('OCR error:', error);
+            // console.error('OCR error:', error);
         } finally {
             setOcrLoading(false);
         }
     };
 
-    // Get final values (OCR or manual)
     const getFinalValues = () => {
         return {
             name: manualName.trim() || ocrResult.name,
@@ -75,13 +84,24 @@ export default function ScanResultScreen() {
         };
     };
 
+    // Attempt to recalculate level - DISABLED
+    // We strictly use whatever OCR gave us (which is now null for level)
+    useEffect(() => {
+        // No-op
+    }, []);
+
     // Build display data for preview
     const displayData: PokemonDisplayData = {
         name: getFinalValues().name,
         cp: getFinalValues().cp,
         hp: getFinalValues().hp,
-        level: null,
-        iv: null,
+        level: calculatedLevel,
+        iv: ocrResult.iv ? {
+            atk: ocrResult.iv.atk || 0,
+            def: ocrResult.iv.def || 0,
+            sta: ocrResult.iv.sta || 0,
+            percent: Math.round(((ocrResult.iv.atk || 0) + (ocrResult.iv.def || 0) + (ocrResult.iv.sta || 0)) / 45 * 100)
+        } : null,
         imageUri: imageUri || '',
         barPositions: ocrResult.barPositions,
     };
@@ -103,13 +123,27 @@ export default function ScanResultScreen() {
             const status: 'complete' | 'needs_review' = hasAllOCR ? 'complete' : 'needs_review';
 
             // Create Pokémon with OCR data
+            // Create Pokémon with OCR data
+            const cleanIVs = ocrResult.iv && typeof ocrResult.iv === 'object' ? {
+                atk: ocrResult.iv.atk || 0,
+                def: ocrResult.iv.def || 0,
+                sta: ocrResult.iv.sta || 0,
+                percent: Math.round(((ocrResult.iv.atk || 0) + (ocrResult.iv.def || 0) + (ocrResult.iv.sta || 0)) / 45 * 100)
+            } : null;
+
+            console.log('[ScanResult] Saving Pokemon:', {
+                name: finalValues.name,
+                level: calculatedLevel,
+                iv: cleanIVs
+            });
+
             const pokemon: ScannedPokemon = {
                 id: Date.now().toString(),
                 name: finalValues.name!,
                 cp: finalValues.cp,
                 hp: finalValues.hp,
-                level: null,
-                iv: null,
+                level: calculatedLevel,
+                iv: cleanIVs,
                 imageUri,
                 scannedAt: Date.now(),
                 ocr: ocrResult,
@@ -156,6 +190,11 @@ export default function ScanResultScreen() {
                         {ocrLoading && <Text style={styles.headerSubtitle}>Analyzing screenshot...</Text>}
                         {!ocrLoading && (!ocrResult.name || !ocrResult.cp || !ocrResult.hp) && (
                             <Text style={styles.headerSubtitle}>Enter missing details below</Text>
+                        )}
+                        {!ocrLoading && ocrResult.name && !calculatedLevel && (
+                            <Text style={[styles.headerSubtitle, { color: '#FF3B30', marginTop: 4 }]}>
+                                <Ionicons name="alert-circle" size={14} /> Check name to calculate Level
+                            </Text>
                         )}
                     </View>
 

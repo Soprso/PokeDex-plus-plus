@@ -37,6 +37,12 @@ export default function MyPokemonScreen() {
         ]);
     };
 
+    const getIVColor = (percent: number) => {
+        if (percent >= 90) return '#4CAF50'; // Green
+        if (percent >= 70) return '#FF9800'; // Orange
+        return '#FF3B30'; // Red
+    };
+
     const renderPokemon = ({ item }: { item: ScannedPokemon }) => (
         <Pressable
             style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -54,10 +60,26 @@ export default function MyPokemonScreen() {
             {/* Info */}
             <View style={styles.info}>
                 <Text style={styles.name}>{item.name}</Text>
-                <View style={styles.stats}>
-                    <Text style={styles.stat}>CP: {item.cp ?? '—'}</Text>
-                    <Text style={styles.stat}>IV: {item.iv ?? '—'}%</Text>
+                <View style={styles.statRow}>
+                    <Text style={styles.statBadges}>CP {item.cp ?? '—'}</Text>
+                    {item.level && <Text style={styles.statBadges}>Lv. {item.level}</Text>}
                 </View>
+
+                {item.iv ? (
+                    typeof item.iv === 'object' ? (
+                        <View style={styles.ivContainer}>
+                            <View style={[styles.ivDot, { backgroundColor: getIVColor(item.iv.percent) }]} />
+                            <Text style={styles.ivText}>
+                                {item.iv.atk}/{item.iv.def}/{item.iv.sta} ({item.iv.percent}%)
+                            </Text>
+                        </View>
+                    ) : (
+                        // Fallback for old numeric IVs (shouldn't happen with new logic, but safe)
+                        <Text style={styles.stat}>IV: {item.iv}%</Text>
+                    )
+                ) : (
+                    <Text style={styles.noIvText}>No IV data</Text>
+                )}
                 <Text style={styles.date}>
                     {new Date(item.scannedAt).toLocaleDateString()}
                 </Text>
@@ -175,10 +197,40 @@ const styles = StyleSheet.create({
         color: '#000',
         marginBottom: 4,
     },
-    stats: {
+    statRow: {
         flexDirection: 'row',
-        gap: 12,
-        marginBottom: 4,
+        gap: 8,
+        marginBottom: 6,
+    },
+    statBadges: {
+        fontSize: 12,
+        color: '#444',
+        backgroundColor: '#f0f0f0',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        overflow: 'hidden',
+        fontWeight: '500',
+    },
+    ivContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    ivDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    ivText: {
+        fontSize: 12,
+        color: '#666',
+        fontWeight: '600',
+    },
+    noIvText: {
+        fontSize: 12,
+        color: '#999',
+        fontStyle: 'italic',
     },
     stat: {
         fontSize: 14,

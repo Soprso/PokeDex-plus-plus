@@ -1,7 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import ImageDebugOverlay from '../debug/ImageDebugOverlay';
+import IVBar from './IVBar';
 
+// Helper to get color for Total IV%
+const getIVColor = (percent: number) => {
+    if (percent >= 90) return '#4CAF50'; // Green
+    if (percent >= 70) return '#FF9800'; // Orange/Yellow
+    return '#FF3B30'; // Red
+};
 export type PokemonDisplayData = {
     name: string | null;
     cp: number | null;
@@ -57,47 +64,40 @@ export default function PokemonDetailView({ data, children }: PokemonDetailViewP
                 <View style={styles.statDivider} />
 
                 <View style={styles.statColumn}>
-                    <Text style={styles.statLabel}>HP</Text>
-                    <Text style={data.hp ? styles.statValue : styles.statPlaceholder}>
-                        {data.hp ?? '—'}
+                    <Text style={styles.statLabel}>Level</Text>
+                    <Text style={data.level ? styles.statValue : styles.statPlaceholder}>
+                        {data.level ? `Lv. ${data.level}` : '—'}
                     </Text>
                 </View>
 
                 <View style={styles.statDivider} />
 
                 <View style={styles.statColumn}>
-                    <Text style={styles.statLabel}>Level</Text>
-                    <Text style={data.level ? styles.statValue : styles.statPlaceholder}>
-                        {data.level ?? '—'}
+                    <Text style={styles.statLabel}>HP</Text>
+                    <Text style={data.hp ? styles.statValue : styles.statPlaceholder}>
+                        {data.hp ?? '—'}
                     </Text>
                 </View>
             </View>
 
             {/* IV Section */}
             <View style={styles.ivCard}>
-                <Text style={styles.ivCardTitle}>Individual Values</Text>
+                <View style={styles.ivHeader}>
+                    <Text style={styles.ivCardTitle}>Individual Values</Text>
+                    {data.iv && (
+                        <View style={[styles.ivTotalBadge, { backgroundColor: getIVColor(data.iv.percent) }]}>
+                            <Text style={styles.ivTotalText}>{data.iv.percent}%</Text>
+                        </View>
+                    )}
+                </View>
 
                 {data.iv ? (
                     <>
-                        <View style={styles.ivRow}>
-                            <Text style={styles.ivLabel}>Attack</Text>
-                            <Text style={styles.ivValue}>{data.iv.atk}/15</Text>
-                        </View>
-
-                        <View style={styles.ivRow}>
-                            <Text style={styles.ivLabel}>Defense</Text>
-                            <Text style={styles.ivValue}>{data.iv.def}/15</Text>
-                        </View>
-
-                        <View style={styles.ivRow}>
-                            <Text style={styles.ivLabel}>Stamina</Text>
-                            <Text style={styles.ivValue}>{data.iv.sta}/15</Text>
-                        </View>
-
-                        <View style={styles.ivPercentContainer}>
-                            <Text style={styles.ivPercentLabel}>Total IV</Text>
-                            <Text style={styles.ivPercentValue}>{data.iv.percent}%</Text>
-                        </View>
+                        <IVBar value={data.iv.atk} label="Attack" />
+                        <View style={styles.spacer} />
+                        <IVBar value={data.iv.def} label="Defense" />
+                        <View style={styles.spacer} />
+                        <IVBar value={data.iv.sta} label="HP" />
                     </>
                 ) : (
                     <View style={styles.ivPlaceholder}>
@@ -228,42 +228,24 @@ const styles = StyleSheet.create({
         color: '#000',
         marginBottom: 16,
     },
-    ivRow: {
+    ivHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        marginBottom: 16,
     },
-    ivLabel: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: '#666',
+    ivTotalBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
-    ivValue: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#000',
-    },
-    ivPercentContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 2,
-        borderTopColor: '#e0e0e0',
-    },
-    ivPercentLabel: {
-        fontSize: 16,
+    ivTotalText: {
+        color: '#fff',
         fontWeight: '700',
-        color: '#000',
+        fontSize: 14,
     },
-    ivPercentValue: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#4CAF50',
+    spacer: {
+        height: 12,
     },
     ivPlaceholder: {
         alignItems: 'center',

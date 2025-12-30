@@ -145,6 +145,71 @@ function ratioToIV(ratio: number): number {
 }
 
 /**
+ * Sample pixels along a horizontal scan band (multiple lines) and compute consensus
+ * Phase 8A - Vertical Band Expansion
+ */
+async function sampleScanBand(
+    imageUri: string,
+    centerY: number,
+    startX: number,
+    endX: number,
+    imageHeight: number,
+    sampleCount: number = 200
+): Promise<number[][]> {
+    if (!DEBUG_VISION || Platform.OS !== 'android' || !PixelSamplerModule) {
+        return [];
+    }
+
+    try {
+        // Bandwidth: ~1% of image height (e.g., 20px on 2000px height)
+        const BAND_HEIGHT_PCT = 0.01;
+        const halfBand = Math.max(1, Math.round(imageHeight * BAND_HEIGHT_PCT / 2));
+
+        const lines: number[][][] = [];
+
+        // Sample 3-5 lines centered on centerY
+        // Optimization: Just 3 lines (Center, Top, Bottom)
+        const offsets = [-halfBand, 0, halfBand];
+
+        for (const offset of offsets) {
+            const y = Math.round(centerY + offset);
+            const pixels = await PixelSamplerModule.sampleScanLine(
+                imageUri,
+                y,
+                Math.round(startX),
+                Math.round(endX),
+                sampleCount
+            );
+            if (pixels && pixels.length > 0) {
+                lines.push(pixels);
+            }
+        }
+
+        if (lines.length === 0) return [];
+        if (lines.length === 1) return lines[0];
+
+        // Compute Median Consensus Pixel-by-Pixel
+        const length = lines[0].length;
+        const consensus: number[][] = [];
+
+        for (let i = 0; i < length; i++) {
+            const rValues = lines.map(line => line[i] ? line[i][0] : 0).sort((a, b) => a - b);
+            const gValues = lines.map(line => line[i] ? line[i][1] : 0).sort((a, b) => a - b);
+            const bValues = lines.map(line => line[i] ? line[i][2] : 0).sort((a, b) => a - b);
+
+            const mid = Math.floor(rValues.length / 2);
+            consensus.push([rValues[mid], gValues[mid], bValues[mid]]);
+        }
+
+        return consensus;
+
+    } catch (error) {
+        console.error('[VISION DEBUG] Pixel band sampling error:', error);
+        return [];
+    }
+}
+
+/**
  * Sample pixels along a horizontal scan line
  */
 export async function sampleScanLine(
@@ -400,37 +465,24 @@ export async function sampleIVBars(
         return null;
     }
 
-    // If no bar positions provided, fall back to percentage-based (legacy)
+    // If no bar positions provided, fall back to percentage-based (legacy result will be partial)
     if (!barPositions || !barPositions.attack || !barPositions.defense || !barPositions.hp) {
-        console.log('[IV DEBUG] No OCR bar positions available, using fallback percentages');
-        const regions = calculateBarRegions(dimensions);
-        const attackScanY = getScanLineY(regions.attack);
-        const defenseScanY = getScanLineY(regions.defense);
-        const hpScanY = getScanLineY(regions.hp);
-
-        const attackPixels = await sampleScanLine(imageUri, attackScanY, 0, dimensions.width, 200);
-        const defensePixels = await sampleScanLine(imageUri, defenseScanY, 0, dimensions.width, 200);
-        const hpPixels = await sampleScanLine(imageUri, hpScanY, 0, dimensions.width, 200);
-
-        const attackIV = detectSegmentedIV(attackPixels, 'Attack');
-        const defenseIV = detectSegmentedIV(defensePixels, 'Defense');
-        const hpIV = detectSegmentedIV(hpPixels, 'HP');
-
-        logIVResults(attackIV, defenseIV, hpIV, attackPixels, defensePixels, hpPixels);
-        return { atk: attackIV, def: defenseIV, sta: hpIV };
+        console.warn('[IV DEBUG] Missing OCR bar positions. Cannot perform robust detection.');
+        return null;
     }
 
     // Use OCR-anchored bar positions
-    console.log('[IV DEBUG] Using OCR-anchored bar positions:');
+    console.log('[IV DEBUG] Using OCR-anchored bar positions (Phase 8A - Robust):');
     console.log(`  Attack bar at Y: ${barPositions.attack}`);
     console.log(`  Defense bar at Y: ${barPositions.defense}`);
     console.log(`  HP bar at Y: ${barPositions.hp}`);
     console.log('');
 
-    // Sample full width first to detect bar boundaries
-    const attackPixelsFull = await sampleScanLine(imageUri, barPositions.attack, 0, dimensions.width, 400);
-    const defensePixelsFull = await sampleScanLine(imageUri, barPositions.defense, 0, dimensions.width, 400);
-    const hpPixelsFull = await sampleScanLine(imageUri, barPositions.hp, 0, dimensions.width, 400);
+    // Sample bands to detect bar boundaries
+    // Phase 8A: Use sampleScanBand for consensus
+    const attackPixelsFull = await sampleScanBand(imageUri, barPositions.attack, 0, dimensions.width, dimensions.height, 400);
+    const defensePixelsFull = await sampleScanBand(imageUri, barPositions.defense, 0, dimensions.width, dimensions.height, 400);
+    const hpPixelsFull = await sampleScanBand(imageUri, barPositions.hp, 0, dimensions.width, dimensions.height, 400);
 
     // Detect bar boundaries
     const attackBounds = detectBarBounds(attackPixelsFull);
@@ -460,10 +512,10 @@ export async function sampleIVBars(
     const defensePixels = defenseBounds ? defensePixelsFull.slice(defenseBounds.startX, defenseBounds.endX) : [];
     const hpPixels = hpBounds ? hpPixelsFull.slice(hpBounds.startX, hpBounds.endX) : [];
 
-    // Calculate IVs using segmented detection
-    const attackIV = detectSegmentedIV(attackPixels, 'Attack');
-    const defenseIV = detectSegmentedIV(defensePixels, 'Defense');
-    const hpIV = detectSegmentedIV(hpPixels, 'HP');
+    // Calculate IVs using segmented detection with ADAPTIVE inputs
+    const attackIV = detectSegmentedIV(attackPixels, 'Attack', dimensions.width);
+    const defenseIV = detectSegmentedIV(defensePixels, 'Defense', dimensions.width);
+    const hpIV = detectSegmentedIV(hpPixels, 'HP', dimensions.width);
 
     logIVResults(attackIV, defenseIV, hpIV, attackPixels, defensePixels, hpPixels);
 
@@ -519,76 +571,82 @@ function logIVResults(
 /**
  * Detect IV by finding the right-most filled (orange) pixel
  * Scans right-to-left to handle segment gaps correctly
-/**
- * Detect IV by finding the right-most filled (orange) pixel
- * Scans right-to-left to handle segment gaps correctly
+ * Phase 8A - Adaptive Normalization
  */
-function detectSegmentedIV(pixels: number[][], statName: string): number {
+function detectSegmentedIV(pixels: number[][], statName: string, imageWidth: number): number {
     if (pixels.length < 30) return 0;
 
     // Sample last 10 pixels to see what we're looking at
     const lastPixels = pixels.slice(-10);
-    console.log(`[IV CALC DEBUG] Last 10 pixels: ${lastPixels.map(([r, g, b]) => `rgb(${r},${g},${b})`).join(', ')}`);
+    // Adaptive Parameters
+    // 1. Adaptive Left Trim (RESOLUTION DEPENDENT)
+    // Phones (~350px bar) need ~12.5% trim (Icon + Padding)
+    // Tablets (~800px+ bar) need ~7% trim (Icon is relatively smaller)
+    // We interpolate based on bar length.
 
-    // Sample middle pixels
-    const midStart = Math.floor(pixels.length / 2) - 5;
-    const midPixels = pixels.slice(midStart, midStart + 10);
-    console.log(`[IV CALC DEBUG] Middle 10 pixels: ${midPixels.map(([r, g, b]) => `rgb(${r},${g},${b})`).join(', ')}`);
+    const len = pixels.length;
+    let trimRatio = 0.125; // Default to Phone (High Trim)
+
+    if (len > 600) {
+        trimRatio = 0.07; // Tablet (Low Trim)
+    } else if (len > 400) {
+        // Interpolate between 400 (12.5%) and 600 (7%)
+        const t = (len - 400) / 200;
+        trimRatio = 0.125 - (t * (0.125 - 0.07));
+    }
+
+    const ADAPTIVE_LEFT_TRIM = Math.round(len * trimRatio);
+
+    // 2. Adaptive Threshold Control
+    const diffs = pixels.map(([r, g, b]) => Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b)));
+    const avgDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+    const variance = diffs.reduce((a, b) => a + Math.pow(b - avgDiff, 2), 0) / diffs.length;
+    const stdDev = Math.sqrt(variance);
+
+    // If image is "noisy" (high StdDev in what should be flat areas), raise threshold
+    // Base threshold = 25 (Relaxed from 40 to catch filled bars on low contrast backgrounds)
+    // Dynamic = Base + (StdDev * Factor)
+    const BASE_THRESHOLD = 25;
+    const ADAPTIVE_THRESHOLD = Math.max(BASE_THRESHOLD, Math.min(80, BASE_THRESHOLD + (stdDev * 1.5)));
 
     // Scan from RIGHT to LEFT to find the end of the filled bar
-    // This avoids getting tricked by segment gaps (white spaces) which happen early in the bar
     let lastFilledIndex = 0;
 
     for (let i = pixels.length - 1; i >= 0; i--) {
         const [r, g, b] = pixels[i];
 
-        // Strict Check: High Saturation (>60) AND Red Dominant (>Blue+50)
-        // This filters out the faint glow at the end of the bar
         const maxDiff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
-        const isRedDominant = r > b + 50;
+        // Relaxed Red Dominance: Orange vs Pink/Dark background
+        const isRedDominant = r > b + 30; // Was 50
 
-        if (maxDiff > 60 && isRedDominant) {
+        if (maxDiff > ADAPTIVE_THRESHOLD && isRedDominant) {
             lastFilledIndex = i;
-            console.log(`[IV CALC DEBUG] Found last filled pixel at ${i}, color: rgb(${r},${g},${b}), maxDiff: ${maxDiff}, R-B: ${r - b}`);
             break;
         }
     }
 
-    // ADJUSTMENT: The detected bar bounds consistently include ~44px of "pre-bar" content (icons/padding) on the left.
-    // We trim this effectively by subtracting it from both the filled index and total length.
-    const LEFT_TRIM = 44;
+    const LEFT_TRIM = ADAPTIVE_LEFT_TRIM;
 
     // Calculate effective total length first
     const effectiveTotalLength = Math.max(1, pixels.length - LEFT_TRIM);
 
     // DYNAMIC EDGE BUFFER (Resolution Independent)
-    // 2.5% is the sweet spot:
-    // - ~7-8px for High Res (Fixes Yamper Def glow)
-    // - ~3px for Low Res (Preserves Cubchoo)
-    const calculatedBuffer = Math.floor(effectiveTotalLength * 0.025);
-    const EDGE_BUFFER = Math.max(2, calculatedBuffer);
+    // Reduced from 2.5% to 1.5% to prevent shaving off valid 15/15 pixels
+    const calculatedBuffer = Math.floor(effectiveTotalLength * 0.015);
+    const EDGE_BUFFER = Math.max(1, calculatedBuffer);
 
     const effectiveFilledLength = Math.max(0, lastFilledIndex - LEFT_TRIM - EDGE_BUFFER);
 
     const fillRatio = effectiveFilledLength / effectiveTotalLength;
 
-    console.log(`[IV CALC DEBUG] Len: ${effectiveTotalLength}px | Buffer: ${EDGE_BUFFER}px | Filled: ${effectiveFilledLength}px | Ratio: ${fillRatio.toFixed(3)}`);
-
     // ----------- ADAPTIVE RATIO ROUNDING (PHASE 7F) -----------
-    // "Surgical Accuracy": Variable Bias
-    // Low IVs have disproportionate glow/noise -> Strict Bias (0.05)
-    // High IVs lose valid pixels to buffer -> Generous Bias (0.35)
-
     let bias: number;
     let iv: number;
-    let method: string;
 
     if (fillRatio < 0.03) {
         iv = 0;
-        method = 'force_zero (ratio < 0.03)';
     } else if (fillRatio > 0.97) {
         iv = 15;
-        method = 'force_max (ratio > 0.97)';
     } else {
         // Variable Bias Threshold
         if (fillRatio < 0.40) {
@@ -599,14 +657,10 @@ function detectSegmentedIV(pixels: number[][], statName: string): number {
 
         const raw = (fillRatio * 15) + bias;
         iv = Math.floor(raw);
-        method = `floor(ratio*15 + ${bias})`;
     }
 
     // Safety clamp (0-15)
     iv = Math.max(0, Math.min(15, iv));
-
-    // REQUIRED VERIFICATION LOG
-    console.log(`[IV TUNE] stat=${statName} ratio=${fillRatio.toFixed(3)} rawIV=${(fillRatio * 15).toFixed(2)} roundedIV=${iv} method=${method}`);
 
     return iv;
 }

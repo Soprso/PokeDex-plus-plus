@@ -6,23 +6,38 @@ export interface ScannedPokemon {
     cp: number | null;
     hp: number | null;
     level: number | null;
-    iv: number | null;
+    iv: {
+        atk: number;
+        def: number;
+        sta: number;
+        percent: number;
+    } | null;
     imageUri?: string;
     scannedAt: number;
-    // OCR data (Phase 5F)
+    // OCR data
     ocr?: {
         name: string | null;
         cp: number | null;
         hp: number | null;
+        levelMethod?: 'vision' | 'formula' | 'native' | null;
     };
-    // Status flag (Phase 5F)
+    // Status flag
     status?: 'complete' | 'needs_review';
+}
+
+export interface UserProfile {
+    trainerId: string;
+    trainerName: string;
+    trainerLevel: string;
+    team: 'Mystic' | 'Valor' | 'Instinct' | null;
+    updatedAt: number;
 }
 
 // Storage keys
 const KEYS = {
     OVERLAY_PERMISSION: 'overlay_permission_granted',
     MY_POKEMON: 'my_pokemon_list',
+    USER_PROFILE: 'user_profile_data',
 };
 
 // Overlay Permission
@@ -90,5 +105,39 @@ export async function deletePokemon(id: string): Promise<void> {
         await saveMyPokemon(filtered);
     } catch (error) {
         console.error('Error deleting Pokémon:', error);
+    }
+}
+
+// User Profile
+// User Profile
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+    if (!userId) {
+        console.log('[Storage] getUserProfile: No userId provided');
+        return null;
+    }
+    try {
+        const key = `${KEYS.USER_PROFILE}_${userId}`;
+        console.log(`[Storage] Getting profile for key: ${key}`);
+        const value = await AsyncStorage.getItem(key);
+        console.log(`[Storage] Retrieved value: ${value ? 'FOUND' : 'NULL'}`);
+        return value ? JSON.parse(value) : null;
+    } catch (error) {
+        console.error('Error getting user profile:', error);
+        return null;
+    }
+}
+
+export async function saveUserProfile(userId: string, profile: UserProfile): Promise<void> {
+    if (!userId) {
+        console.log('[Storage] saveUserProfile: No userId provided');
+        return;
+    }
+    try {
+        const key = `${KEYS.USER_PROFILE}_${userId}`;
+        console.log(`[Storage] Saving profile for key: ${key}`, JSON.stringify(profile));
+        await AsyncStorage.setItem(key, JSON.stringify(profile));
+        console.log('[Storage] Profile saved successfully');
+    } catch (error) {
+        console.error('Error saving user profile:', error);
     }
 }
