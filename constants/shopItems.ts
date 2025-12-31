@@ -23,7 +23,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         id: 'effect_neon_cyber',
         name: 'Neon Cyber',
         description: 'A futuristic glitch effect for your card.',
-        price: 500,
+        price: 200,
         category: 'legendary',
         type: 'effect',
     },

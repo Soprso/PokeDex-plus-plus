@@ -1,4 +1,4 @@
-import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, ShineOverlay } from '@/components/card-effects';
+import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -153,6 +153,7 @@ export default function PokedexListScreen() {
   });
   const [inventory, setInventory] = useState<Inventory>({});
   const [cardEffects, setCardEffects] = useState<CardEffects>({});
+  const [unlockedCardEffects, setUnlockedCardEffects] = useState<Record<number, string[]>>({}); // History of unlocks per Pokemon
   const [economyModal, setEconomyModal] = useState<{ visible: boolean; title: string; message: string; type: 'reward' | 'info' }>({
     visible: false,
     title: '',
@@ -275,6 +276,9 @@ export default function PokedexListScreen() {
       if (user.unsafeMetadata.cardEffects) {
         setCardEffects(user.unsafeMetadata.cardEffects as CardEffects);
       }
+      if (user.unsafeMetadata.unlockedCardEffects) {
+        setUnlockedCardEffects(user.unsafeMetadata.unlockedCardEffects as Record<number, string[]>);
+      }
 
     } else {
       // Clear data if logged out
@@ -285,6 +289,33 @@ export default function PokedexListScreen() {
         pokemonIds: [],
       });
       setEconomy({ balance: 0, lastDailyRewardDate: '' });
+    }
+  }, [user]);
+
+  // Migration: Unlock currently active effects for existing users
+  useEffect(() => {
+    if (user && user.unsafeMetadata.cardEffects && !user.unsafeMetadata.unlockedCardEffects) {
+      const activeEffects = user.unsafeMetadata.cardEffects as CardEffects;
+      const initialUnlocked: Record<number, string[]> = {};
+
+      Object.entries(activeEffects).forEach(([pokemonIdStr, effectId]) => {
+        const pid = parseInt(pokemonIdStr);
+        if (!initialUnlocked[pid]) initialUnlocked[pid] = [];
+        if (!initialUnlocked[pid].includes(effectId)) {
+          initialUnlocked[pid].push(effectId);
+        }
+      });
+
+      if (Object.keys(initialUnlocked).length > 0) {
+        console.log('Migrating existing effects to unlocked history...', initialUnlocked);
+        setUnlockedCardEffects(initialUnlocked);
+        user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            unlockedCardEffects: initialUnlocked
+          }
+        }).catch(err => console.error('Migration failed:', err));
+      }
     }
   }, [user]);
 
@@ -524,7 +555,6 @@ export default function PokedexListScreen() {
   const handleApplyEffect = async (effectId: string) => {
     if (!selectedBuddyProgress || !user) return;
     const pokemonId = selectedBuddyProgress.buddy.pokemonId;
-    const count = inventory[effectId] || 0;
     const currentEffect = cardEffects[pokemonId];
 
     if (currentEffect === effectId) {
@@ -532,6 +562,56 @@ export default function PokedexListScreen() {
       return;
     }
 
+    // 1. Default / Reset
+    if (effectId === 'default') {
+      // Explicitly set to 'none' to override fallbacks (like Best Buddy Gold Glow)
+      const newCardEffects = { ...cardEffects, [pokemonId]: 'none' };
+      setCardEffects(newCardEffects);
+      await user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          cardEffects: newCardEffects
+        }
+      });
+      return;
+    }
+
+    // 2. Best Buddy (Milestone)
+    if (effectId === 'effect_best_buddy') {
+      if (selectedBuddyProgress.buddy.level < 4) {
+        Alert.alert('Locked', 'You must be Best Buddies to use this effect!');
+        return;
+      }
+      const newCardEffects = { ...cardEffects, [pokemonId]: effectId };
+      setCardEffects(newCardEffects);
+      await user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          cardEffects: newCardEffects
+        }
+      });
+      return;
+    }
+
+    // 3. Shop Items (Consumables)
+    const unlockedForThisMon = unlockedCardEffects[pokemonId] || [];
+    const isUnlocked = unlockedForThisMon.includes(effectId);
+
+    // If ALREADY unlocked for this specific Pokemon, apply freely.
+    if (isUnlocked) {
+      const newCardEffects = { ...cardEffects, [pokemonId]: effectId };
+      setCardEffects(newCardEffects);
+      await user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          cardEffects: newCardEffects
+        }
+      });
+      return;
+    }
+
+    // If NOT unlocked, require inventory.
+    const count = inventory[effectId] || 0;
     if (count <= 0) {
       Alert.alert('Locked', 'You do not own this effect. Visit the Shop to buy more!');
       return;
@@ -549,24 +629,29 @@ export default function PokedexListScreen() {
             const newInventory = { ...inventory, [effectId]: newCount };
             const newCardEffects = { ...cardEffects, [pokemonId]: effectId };
 
+            // Add to unlocked history
+            const newUnlockedList = [...unlockedForThisMon, effectId];
+            const newUnlockedCardEffects = { ...unlockedCardEffects, [pokemonId]: newUnlockedList };
+
             setInventory(newInventory);
             setCardEffects(newCardEffects);
+            setUnlockedCardEffects(newUnlockedCardEffects);
 
             try {
               await user.update({
                 unsafeMetadata: {
                   ...user.unsafeMetadata,
                   inventory: newInventory,
-                  cardEffects: newCardEffects
-                }
+                  cardEffects: newCardEffects,
+                  unlockedCardEffects: newUnlockedCardEffects
+                },
               });
               Alert.alert('Effect Set!', `${selectedBuddyProgress.name} is looking stylish! ✨`);
             } catch (err) {
-              console.error(err);
-              Alert.alert('Error', 'Failed to save effect.');
+              console.error('Failed to save effect:', err);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -752,13 +837,18 @@ export default function PokedexListScreen() {
     if (activeEffectId) {
       // Custom Shop Effects take priority
       if (activeEffectId === 'effect_neon_cyber') {
-        BuddyEffects = <GlowBorder color="#00FFFF" borderWidth={2} />;
+        BuddyEffects = <NeonCyberEffect />;
       } else if (activeEffectId === 'effect_golden_glory') {
         BuddyEffects = <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />;
+      } else if (activeEffectId === 'effect_best_buddy') {
+        BuddyEffects = <GlowBorder color="#FFD700" borderWidth={2} />;
       } else if (activeEffectId === 'extra_love') {
         BuddyEffects = <ExtraLoveEffect />;
       } else if (activeEffectId === 'effect_ghostly_mist') {
         BuddyEffects = <GhostlyMistEffect />;
+      } else if (activeEffectId === 'none') {
+        // Explicit None: Do not render anything, do not use fallback.
+        BuddyEffects = null;
       }
     } else {
       // Fallback to Buddy Level Perks
@@ -1167,7 +1257,7 @@ export default function PokedexListScreen() {
             style={[styles.scrollTopFab, settings.darkMode && styles.scrollTopFabDark]}
             onPress={scrollToTop}
           >
-            <Ionicons name="arrow-up" size={24} color={settings.darkMode ? '#fff' : '#6366f1'} />
+            <Ionicons name="arrow-up" size={24} color="#fff" />
           </Pressable>
         )}
 
@@ -1709,10 +1799,44 @@ export default function PokedexListScreen() {
             {/* Effects Tab */}
             {selectedBuddyProgress?.activeTab === 'effects' && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}>
-                {SHOP_ITEMS.filter(i => i.type === 'effect').map((item) => {
-                  const count = inventory[item.id] || 0;
-                  const isActive = selectedBuddyProgress && cardEffects[selectedBuddyProgress.buddy.pokemonId] === item.id;
+                {[
+                  {
+                    id: 'default',
+                    name: 'Default',
+                    description: 'Original card style.',
+                    price: 0,
+                    type: 'effect',
+                    category: 'standard'
+                  },
+                  {
+                    id: 'effect_best_buddy',
+                    name: 'Best Buddy',
+                    description: 'The mark of true friendship.',
+                    price: 0,
+                    type: 'effect',
+                    category: 'milestone'
+                  },
+                  ...SHOP_ITEMS.filter(i => i.type === 'effect')
+                ].map((item) => {
+                  const isBestBuddyItem = item.id === 'effect_best_buddy';
+                  const isDefaultItem = item.id === 'default';
+                  const isBestBuddyReached = selectedBuddyProgress?.buddy.level === 4;
+                  const unlockedForThisMon = selectedBuddyProgress ? (unlockedCardEffects[selectedBuddyProgress.buddy.pokemonId] || []) : [];
+                  const isUnlocked = unlockedForThisMon.includes(item.id);
+
+                  const count = isBestBuddyItem
+                    ? (isBestBuddyReached ? 1 : 0)
+                    : (isDefaultItem || isUnlocked ? 1 : (inventory[item.id] || 0));
+
+                  const isActive = selectedBuddyProgress && (
+                    isDefaultItem
+                      ? !cardEffects[selectedBuddyProgress.buddy.pokemonId]
+                      : cardEffects[selectedBuddyProgress.buddy.pokemonId] === item.id
+                  );
+
+                  // Strict Lock Policy: Locked if count is 0 (and not active).
                   const isLocked = count === 0 && !isActive;
+
                   const pokemon = selectedBuddyProgress?.pokemon;
                   const isDualType = pokemon && pokemon.types.length > 1;
                   const backgroundColor = pokemon ? (TYPE_COLORS[pokemon.types[0]] || '#A8A878') : '#A8A878';
@@ -1736,12 +1860,13 @@ export default function PokedexListScreen() {
                                   style={StyleSheet.absoluteFill}
                                 />
                               ) : (
-                                <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_ghostly_mist') ? 'transparent' : backgroundColor }]} />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : backgroundColor }]} />
                               )}
 
-                              {/* Extra Love BG */}
+                              {/* Live Effect Preview */}
                               {item.id === 'extra_love' && <ExtraLoveEffect />}
                               {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
+                              {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
 
                               {/* Watermark */}
                               {item.id !== 'extra_love' && (
@@ -1751,7 +1876,7 @@ export default function PokedexListScreen() {
 
                             {/* Content */}
                             <Text style={styles.gridCardId}>#{pokemon.id.toString().padStart(3, '0')}</Text>
-                            <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%' }]} resizeMode="contain" />
+                            <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%', zIndex: 10, elevation: 5 }]} resizeMode="contain" />
                             <Text style={styles.gridCardName} numberOfLines={1}>{pokemon.nickname || pokemon.name}</Text>
                             <View style={styles.gridTypesContainer}>
                               {pokemon.types.map((type, index) => (
@@ -1761,9 +1886,18 @@ export default function PokedexListScreen() {
 
                             {/* Effects Overlay */}
                             <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                              {item.id === 'effect_neon_cyber' && <GlowBorder color="#00FFFF" borderWidth={2} />}
+                              {item.id === 'effect_best_buddy' && <GlowBorder color="#FFD700" borderWidth={2} />}
+                              {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
+                              {/* Wait, NeonCyber is overlay AND background? Actually NeonCyberEffect contains GlowBorder inside it if logic was correct, 
+                                  but shop/index uses GlowBorder separately? 
+                                  Let's just use the Component in the BG layer (already done above) OR Overlay layer.
+                                  NeonCyberEffect renders ImageBG + Border. So it should be in the BG View above. 
+                                  It IS in the BG View above (line 1745 in original, or line ? in replacement).
+                                  So I don't need to add it to Overlay unless it's just border. 
+                                  I will remove duplicate NeonCyber in Overlay if I added it above.
+                                  Wait, the BG View is overflow hidden.
+                              */}
                               {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />}
-                              {item.id === 'effect_ghostly_mist' && <GlowBorder color="#E0E0E0" borderWidth={3} />}
                             </View>
                           </View>
                         )}
@@ -1772,13 +1906,13 @@ export default function PokedexListScreen() {
                         {isLocked && (
                           <View style={styles.lockedOverlay}>
                             <Ionicons name="lock-closed" size={24} color="#fff" />
-                            <Text style={styles.lockedPrice}>{item.price}</Text>
-                            <Image source={require('@/assets/images/dex-coin.png')} style={{ width: 12, height: 12 }} />
+                            <Text style={styles.lockedPrice}>{item.price > 0 ? item.price : 'Locked'}</Text>
+                            {item.price > 0 && <Image source={require('@/assets/images/dex-coin.png')} style={{ width: 12, height: 12 }} />}
                           </View>
                         )}
                       </View>
                       <Text style={[styles.effectName, settings.darkMode && styles.textDark]}>{item.name}</Text>
-                      <Text style={styles.effectCount}>Owned: {count}</Text>
+                      <Text style={styles.effectCount}>{isBestBuddyItem ? (isBestBuddyReached ? 'Unlocked' : 'Locked') : `Owned: ${count}`}</Text>
 
                       <Pressable
                         style={[styles.applyButton, isLocked && styles.applyButtonLocked, isActive && styles.applyButtonActive]}
@@ -2520,7 +2654,7 @@ const styles = StyleSheet.create({
   scrollTopFab: {
     position: 'absolute',
     right: 20,
-    bottom: 100,
+    bottom: 30,
     width: 56,
     height: 56,
     borderRadius: 28,

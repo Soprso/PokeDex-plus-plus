@@ -1,4 +1,4 @@
-import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, ShineOverlay } from '@/components/card-effects';
+import { ExtraLoveEffect, GhostlyMistEffect, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
 import { TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { SHOP_ITEMS, ShopItem, ShopItemCategory } from '@/constants/shopItems';
 import { useUser } from '@clerk/clerk-expo';
@@ -181,10 +181,11 @@ export default function ShopScreen() {
                         return (
                             <View key={item.id} style={[styles.itemCard, isDark && styles.itemCardDark]}>
                                 {/* Full Card Background */}
-                                <View style={[styles.cardBackground, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_ghostly_mist') ? 'transparent' : cardBackground }]}>
+                                <View style={[styles.cardBackground, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : cardBackground }]}>
                                     {/* Live Effect Preview */}
                                     {item.id === 'extra_love' && <ExtraLoveEffect />}
                                     {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
+                                    {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
 
                                     {/* Pokemon Preview Card Content */}
                                     {count > 0 && <View style={[styles.ownedBadge, { top: 12, right: 12 }]}><Text style={styles.ownedText}>x{count}</Text></View>}
@@ -200,7 +201,6 @@ export default function ShopScreen() {
 
                                     {/* Effects Overlay */}
                                     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                                        {item.id === 'effect_neon_cyber' && <GlowBorder color="#00FFFF" borderWidth={2} />}
                                         {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />}
                                         {!['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist'].includes(item.id) && (
                                             <View style={styles.effectIconOverlay}>
