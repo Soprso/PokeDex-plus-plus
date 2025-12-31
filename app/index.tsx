@@ -1,4 +1,4 @@
-import { ExtraLoveEffect, GlowBorder, ShineOverlay } from '@/components/card-effects';
+import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -755,10 +755,10 @@ export default function PokedexListScreen() {
         BuddyEffects = <GlowBorder color="#00FFFF" borderWidth={2} />;
       } else if (activeEffectId === 'effect_golden_glory') {
         BuddyEffects = <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />;
-      } else if (activeEffectId === 'effect_ghostly_mist') {
-        BuddyEffects = <GlowBorder color="#E0E0E0" borderWidth={3} />; // Mist placeholder as silver glow
       } else if (activeEffectId === 'extra_love') {
         BuddyEffects = <ExtraLoveEffect />;
+      } else if (activeEffectId === 'effect_ghostly_mist') {
+        BuddyEffects = <GhostlyMistEffect />;
       }
     } else {
       // Fallback to Buddy Level Perks
@@ -1736,11 +1736,12 @@ export default function PokedexListScreen() {
                                   style={StyleSheet.absoluteFill}
                                 />
                               ) : (
-                                <View style={[StyleSheet.absoluteFill, { backgroundColor: item.id === 'extra_love' ? 'transparent' : backgroundColor }]} />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_ghostly_mist') ? 'transparent' : backgroundColor }]} />
                               )}
 
                               {/* Extra Love BG */}
                               {item.id === 'extra_love' && <ExtraLoveEffect />}
+                              {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
 
                               {/* Watermark */}
                               {item.id !== 'extra_love' && (

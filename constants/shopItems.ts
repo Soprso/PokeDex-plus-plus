@@ -31,7 +31,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         id: 'effect_ghostly_mist',
         name: 'Ghostly Mist',
         description: 'Spooky fog that swirls around your Pokemon.',
-        price: 750,
+        price: 200,
         category: 'legendary',
         type: 'effect',
     },
