@@ -563,8 +563,9 @@ export default function PokedexListScreen() {
     }
 
     // 1. Default / Reset
+    // 1. Default / Reset
     if (effectId === 'default') {
-      // Explicitly set to 'none' to override fallbacks (like Best Buddy Gold Glow)
+      // Set to 'none' to explicitly turn off automatic effects
       const newCardEffects = { ...cardEffects, [pokemonId]: 'none' };
       setCardEffects(newCardEffects);
       await user.update({
@@ -841,7 +842,12 @@ export default function PokedexListScreen() {
       } else if (activeEffectId === 'effect_golden_glory') {
         BuddyEffects = <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />;
       } else if (activeEffectId === 'effect_best_buddy') {
-        BuddyEffects = <GlowBorder color="#FFD700" borderWidth={2} />;
+        BuddyEffects = (
+          <>
+            <GlowBorder color="#FFD700" borderWidth={2} />
+            <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
+          </>
+        );
       } else if (activeEffectId === 'extra_love') {
         BuddyEffects = <ExtraLoveEffect />;
       } else if (activeEffectId === 'effect_ghostly_mist') {
@@ -850,24 +856,25 @@ export default function PokedexListScreen() {
         // Explicit None: Do not render anything, do not use fallback.
         BuddyEffects = null;
       }
+
     } else {
-      // Fallback to Buddy Level Perks
-      if (buddyLevel === 4) { // Best Buddy
+      // Fallback: Automatic Buddy Perks (if no effect selected)
+      if (buddyLevel === 4) { // Best Buddy - Gold
         BuddyEffects = (
           <>
-            <GlowBorder color="#FFD700" borderWidth={3} />
+            <GlowBorder color="#FFD700" borderWidth={2} />
             <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
           </>
         );
-      } else if (buddyLevel === 3) { // Ultra Buddy
+      } else if (buddyLevel === 3) { // Ultra Buddy - Silver
         BuddyEffects = (
           <>
             <GlowBorder color="#E5E4E2" borderWidth={2} />
             <ShineOverlay color="rgba(229, 228, 226, 0.3)" duration={3000} />
           </>
         );
-      } else if (buddyLevel === 2) { // Great Buddy
-        BuddyEffects = <GlowBorder color="#CD7F32" borderWidth={3} />; // Bronze
+      } else if (buddyLevel === 2) { // Great Buddy - Bronze
+        BuddyEffects = <GlowBorder color="#CD7F32" borderWidth={2} />;
       }
     }
 
@@ -881,7 +888,7 @@ export default function PokedexListScreen() {
           style={({ pressed }) => [
             styles.gridCard,
             { width: cardWidth },
-            { backgroundColor: isDualType ? 'transparent' : backgroundColor },
+            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
             settings.darkMode && styles.cardDark,
             pressed && styles.cardPressed,
             { borderWidth: 0 } // Reset default border
@@ -1927,6 +1934,7 @@ export default function PokedexListScreen() {
                 })}
               </ScrollView>
             )}
+
 
             <Pressable
               style={({ pressed }) => [
