@@ -1,6 +1,7 @@
-import { GlowBorder, ShineOverlay } from '@/components/BuddyCardEffects';
+import { GlowBorder, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
+import { SHOP_ITEMS } from '@/constants/shopItems';
 import { getRandomTip } from '@/constants/tips';
 import { fetchPokemonBatch, fetchPokemonList, Pokemon } from '@/services/pokeapi';
 import { useUser } from '@clerk/clerk-expo';
@@ -10,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthModal from './modals/auth';
 
@@ -41,15 +42,23 @@ interface BuddyData {
   achievedBestBuddyDate?: string;
 }
 
-interface DailyInteraction {
+export interface DailyInteraction {
   date: string; // YYYY-MM-DD
   heartsGiven: number; // 0-3
   pokemonIds: number[];
 }
 
-interface EconomyData {
+export interface EconomyData {
   balance: number;
   lastDailyRewardDate: string; // YYYY-MM-DD
+}
+
+export interface Inventory {
+  [effectId: string]: number;
+}
+
+export interface CardEffects {
+  [pokemonId: number]: string; // pokemonId -> effectId
 }
 
 const ParticleOverlay = ({ color, intensity }: { color: string; intensity: 'low' | 'high' }) => {
@@ -85,6 +94,14 @@ const ParticleOverlay = ({ color, intensity }: { color: string; intensity: 'low'
 };
 
 export default function PokedexListScreen() {
+  const { width } = useWindowDimensions();
+  const numColumns = width > 768 ? 4 : 2;
+  // Calculate exact card width to fill screen
+  // Gap = 8 (margin 4 * 2)
+  // Padding = 32 (listContent padding 16 * 2)
+  const cardGap = 8;
+  const listPadding = 32;
+  const cardWidth = (width - listPadding - (numColumns * cardGap)) / numColumns;
   const [allPokemon, setAllPokemon] = useState<PokemonWithNickname[]>([]);
   const [filteredPokemon, setFilteredPokemon] = useState<PokemonWithNickname[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,13 +151,15 @@ export default function PokedexListScreen() {
     balance: 0,
     lastDailyRewardDate: '',
   });
+  const [inventory, setInventory] = useState<Inventory>({});
+  const [cardEffects, setCardEffects] = useState<CardEffects>({});
   const [economyModal, setEconomyModal] = useState<{ visible: boolean; title: string; message: string; type: 'reward' | 'info' }>({
     visible: false,
     title: '',
     message: '',
     type: 'info',
   });
-  const [selectedBuddyProgress, setSelectedBuddyProgress] = useState<{ name: string; buddy: BuddyData } | null>(null);
+  const [selectedBuddyProgress, setSelectedBuddyProgress] = useState<{ name: string; buddy: BuddyData; activeTab?: 'progress' | 'effects' } | null>(null);
   const [buddyHelpModalOpen, setBuddyHelpModalOpen] = useState(false);
 
   // Auth state
@@ -246,6 +265,14 @@ export default function PokedexListScreen() {
         }).catch(console.error);
       }
       setEconomy(currentEconomy);
+
+      // Load Inventory & Card Effects
+      if (user.unsafeMetadata.inventory) {
+        setInventory(user.unsafeMetadata.inventory as Inventory);
+      }
+      if (user.unsafeMetadata.cardEffects) {
+        setCardEffects(user.unsafeMetadata.cardEffects as CardEffects);
+      }
 
     } else {
       // Clear data if logged out
@@ -492,6 +519,56 @@ export default function PokedexListScreen() {
     setNicknameInput('');
   };
 
+  const handleApplyEffect = async (effectId: string) => {
+    if (!selectedBuddyProgress || !user) return;
+    const pokemonId = selectedBuddyProgress.buddy.pokemonId;
+    const count = inventory[effectId] || 0;
+    const currentEffect = cardEffects[pokemonId];
+
+    if (currentEffect === effectId) {
+      Alert.alert('Already Active', 'This effect is already applied to this Pokémon.');
+      return;
+    }
+
+    if (count <= 0) {
+      Alert.alert('Locked', 'You do not own this effect. Visit the Shop to buy more!');
+      return;
+    }
+
+    Alert.alert(
+      'Apply Effect?',
+      'This will consume 1 copy of the effect from your inventory. Proceed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Apply',
+          onPress: async () => {
+            const newCount = count - 1;
+            const newInventory = { ...inventory, [effectId]: newCount };
+            const newCardEffects = { ...cardEffects, [pokemonId]: effectId };
+
+            setInventory(newInventory);
+            setCardEffects(newCardEffects);
+
+            try {
+              await user.update({
+                unsafeMetadata: {
+                  ...user.unsafeMetadata,
+                  inventory: newInventory,
+                  cardEffects: newCardEffects
+                }
+              });
+              Alert.alert('Effect Set!', `${selectedBuddyProgress.name} is looking stylish! ✨`);
+            } catch (err) {
+              console.error(err);
+              Alert.alert('Error', 'Failed to save effect.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleLongPressHearts = (pokemon: PokemonWithNickname) => {
     const buddy = buddyData[pokemon.id] || {
       pokemonId: pokemon.id,
@@ -499,7 +576,7 @@ export default function PokedexListScreen() {
       consecutiveDays: 0,
       lastInteractionDate: '',
     };
-    setSelectedBuddyProgress({ name: pokemon.nickname || pokemon.name, buddy });
+    setSelectedBuddyProgress({ name: pokemon.nickname || pokemon.name, buddy, activeTab: 'progress' });
   };
 
   const handleSortSelect = (option: SortOption) => {
@@ -662,32 +739,44 @@ export default function PokedexListScreen() {
 
 
 
-    // Buddy Perks Logic
+    // Buddy Perks & Card Effects Logic
     const buddy = buddyData[item.id];
     const buddyLevel = buddy?.level || 0;
+    const activeEffectId = cardEffects[item.id];
 
     // We render effects as children, not style props
     let BuddyEffects = null;
 
-    if (buddyLevel === 4) { // Best Buddy
-      BuddyEffects = (
-        <>
-          <GlowBorder color="#FFD700" borderWidth={3} />
-          <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
-        </>
-      );
-    } else if (buddyLevel === 3) { // Ultra Buddy
-      BuddyEffects = (
-        <>
-          <GlowBorder color="#E5E4E2" borderWidth={2} />
-          <ShineOverlay color="rgba(255, 223, 0, 0.2)" duration={3000} />
-        </>
-      );
-    } else if (buddyLevel === 2) { // Great Buddy
-      BuddyEffects = (
-        <GlowBorder color="#00FFFF" borderWidth={2} />
-      );
+    if (activeEffectId) {
+      // Custom Shop Effects take priority
+      if (activeEffectId === 'effect_neon_cyber') {
+        BuddyEffects = <GlowBorder color="#00FFFF" borderWidth={2} />;
+      } else if (activeEffectId === 'effect_golden_glory') {
+        BuddyEffects = <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />;
+      } else if (activeEffectId === 'effect_ghostly_mist') {
+        BuddyEffects = <GlowBorder color="#E0E0E0" borderWidth={3} />; // Mist placeholder as silver glow
+      }
+    } else {
+      // Fallback to Buddy Level Perks
+      if (buddyLevel === 4) { // Best Buddy
+        BuddyEffects = (
+          <>
+            <GlowBorder color="#FFD700" borderWidth={3} />
+            <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
+          </>
+        );
+      } else if (buddyLevel === 3) { // Ultra Buddy
+        BuddyEffects = (
+          <>
+            <GlowBorder color="#E5E4E2" borderWidth={2} />
+            <ShineOverlay color="rgba(229, 228, 226, 0.3)" duration={3000} />
+          </>
+        );
+      } else if (buddyLevel === 2) { // Great Buddy
+        BuddyEffects = <GlowBorder color="#CD7F32" borderWidth={3} />; // Bronze
+      }
     }
+
 
     // Grid Layout Card
     if (settings.gridLayout) {
@@ -697,6 +786,7 @@ export default function PokedexListScreen() {
           onLongPress={() => handlePokemonLongPress(item)}
           style={({ pressed }) => [
             styles.gridCard,
+            { width: cardWidth },
             { backgroundColor: isDualType ? 'transparent' : backgroundColor },
             settings.darkMode && styles.cardDark,
             pressed && styles.cardPressed,
@@ -1037,8 +1127,8 @@ export default function PokedexListScreen() {
           data={filteredPokemon}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderPokemonCard}
-          numColumns={settings.gridLayout ? 3 : 1}
-          key={settings.gridLayout ? 'grid' : 'list'}
+          numColumns={settings.gridLayout ? numColumns : 1}
+          key={settings.gridLayout ? 'grid-' + numColumns : 'list'}
           contentContainerStyle={styles.listContent}
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -1543,45 +1633,110 @@ export default function PokedexListScreen() {
         </View>
       </Modal>
 
-      {/* Buddy Progress Modal */}
+      {/* Buddy Progress / Effects Modal */}
       <Modal visible={!!selectedBuddyProgress} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => setSelectedBuddyProgress(null)}>
         <View style={styles.centeredModalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedBuddyProgress(null)} />
           <View style={[styles.modalContent, styles.buddyProgressModal, { borderRadius: 20 }, settings.darkMode && styles.modalContentDark]}>
-            <Ionicons name="heart-circle" size={60} color="#e11d48" style={{ alignSelf: 'center', marginBottom: 16 }} />
-            <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark, { textAlign: 'center' }]}>
-              {selectedBuddyProgress?.name}'s Friendship
-            </Text>
 
-            <View style={styles.progressList}>
-              {[
-                { level: 1, name: 'Good Buddy', days: 1 },
-                { level: 2, name: 'Great Buddy', days: 4 },
-                { level: 3, name: 'Ultra Buddy', days: 11 },
-                { level: 4, name: 'Best Buddy', days: 21 },
-              ].map((tier) => {
-                const daysLeft = Math.max(0, tier.days - (selectedBuddyProgress?.buddy.consecutiveDays || 0));
-                const isReached = daysLeft === 0;
-                return (
-                  <View key={tier.level} style={[styles.progressRow, settings.darkMode && styles.progressRowDark]}>
-                    <View style={styles.progressRowLeft}>
-                      <Ionicons name={isReached ? "checkmark-circle" : "time-outline"} size={24} color={isReached ? "#4ade80" : "#9ca3af"} />
+            {/* Header */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark, { textAlign: 'center', marginBottom: 4 }]}>
+                {selectedBuddyProgress?.name}
+              </Text>
+              <View style={styles.tabContainer}>
+                <Pressable
+                  style={[styles.modalTab, selectedBuddyProgress?.activeTab === 'progress' && styles.modalTabActive]}
+                  onPress={() => setSelectedBuddyProgress(curr => curr ? ({ ...curr, activeTab: 'progress' }) : null)}
+                >
+                  <Text style={[styles.modalTabText, selectedBuddyProgress?.activeTab === 'progress' && styles.modalTabTextActive, settings.darkMode && styles.textDark]}>Friendship</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalTab, selectedBuddyProgress?.activeTab === 'effects' && styles.modalTabActive]}
+                  onPress={() => setSelectedBuddyProgress(curr => curr ? ({ ...curr, activeTab: 'effects' }) : null)}
+                >
+                  <Text style={[styles.modalTabText, selectedBuddyProgress?.activeTab === 'effects' && styles.modalTabTextActive, settings.darkMode && styles.textDark]}>Card Style</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Progress Tab */}
+            {selectedBuddyProgress?.activeTab === 'progress' && (
+              <View style={styles.progressList}>
+                <Ionicons name="heart-circle" size={50} color="#e11d48" style={{ alignSelf: 'center', marginBottom: 16 }} />
+                {[
+                  { level: 1, name: 'Good Buddy', days: 1 },
+                  { level: 2, name: 'Great Buddy', days: 4 },
+                  { level: 3, name: 'Ultra Buddy', days: 11 },
+                  { level: 4, name: 'Best Buddy', days: 21 },
+                ].map((tier) => {
+                  const daysLeft = Math.max(0, tier.days - (selectedBuddyProgress?.buddy.consecutiveDays || 0));
+                  const isReached = daysLeft === 0;
+                  return (
+                    <View key={tier.level} style={[styles.progressRow, settings.darkMode && styles.progressRowDark]}>
+                      <View style={styles.progressRowLeft}>
+                        <Ionicons name={isReached ? "checkmark-circle" : "time-outline"} size={24} color={isReached ? "#4ade80" : "#9ca3af"} />
+                        <View>
+                          <Text style={[styles.progressTierName, settings.darkMode && styles.tierNameDark]}>{tier.name}</Text>
+                          <Text style={styles.progressTierDays}>{tier.days} Days Streak</Text>
+                        </View>
+                      </View>
                       <View>
-                        <Text style={[styles.progressTierName, settings.darkMode && styles.tierNameDark]}>{tier.name}</Text>
-                        <Text style={styles.progressTierDays}>{tier.days} Days Streak</Text>
+                        {isReached ? (
+                          <Text style={styles.progressReachedText}>Reached!</Text>
+                        ) : (
+                          <Text style={styles.progressLeftText}>{daysLeft} days left</Text>
+                        )}
                       </View>
                     </View>
-                    <View>
-                      {isReached ? (
-                        <Text style={styles.progressReachedText}>Reached!</Text>
-                      ) : (
-                        <Text style={styles.progressLeftText}>{daysLeft} days left</Text>
-                      )}
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Effects Tab */}
+            {selectedBuddyProgress?.activeTab === 'effects' && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}>
+                {SHOP_ITEMS.filter(i => i.type === 'effect').map((item) => {
+                  const count = inventory[item.id] || 0;
+                  const isActive = selectedBuddyProgress && cardEffects[selectedBuddyProgress.buddy.pokemonId] === item.id;
+                  const isLocked = count === 0 && !isActive;
+
+                  return (
+                    <View key={item.id} style={[styles.effectCard, settings.darkMode && styles.effectCardDark, isActive && styles.effectCardActive]}>
+                      <View style={styles.effectPreview}>
+                        {/* Dummy Preview with Dynamic Effect */}
+                        <View style={[styles.dummyCard, { backgroundColor: '#A8A878', overflow: 'hidden' }]}>
+                          {item.id === 'effect_neon_cyber' && <GlowBorder color="#00FFFF" borderWidth={2} />}
+                          {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2000} />}
+                          {item.id === 'effect_ghostly_mist' && <GlowBorder color="#E0E0E0" borderWidth={2} />}
+                          <Ionicons name="sparkles" size={24} color="#fff" style={{ opacity: 0.5 }} />
+                        </View>
+                        {isLocked && (
+                          <View style={styles.lockedOverlay}>
+                            <Ionicons name="lock-closed" size={24} color="#fff" />
+                            <Text style={styles.lockedPrice}>{item.price}</Text>
+                            <Image source={require('@/assets/images/dex-coin.png')} style={{ width: 12, height: 12 }} />
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.effectName, settings.darkMode && styles.textDark]}>{item.name}</Text>
+                      <Text style={styles.effectCount}>Owned: {count}</Text>
+
+                      <Pressable
+                        style={[styles.applyButton, isLocked && styles.applyButtonLocked, isActive && styles.applyButtonActive]}
+                        onPress={() => !isLocked && !isActive && handleApplyEffect(item.id)}
+                      >
+                        <Text style={styles.applyButtonText}>
+                          {isActive ? 'Active' : isLocked ? 'Locked' : 'Apply'}
+                        </Text>
+                      </Pressable>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+
             <Pressable
               style={({ pressed }) => [
                 styles.modalClose,
@@ -2199,6 +2354,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 8,
     alignItems: 'center',
+    aspectRatio: 0.72, // Fixed Card Aspect Ratio
     // Enhanced 3D shadow effect
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -2227,8 +2383,9 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   gridCardImage: {
-    width: 85,
-    height: 85,
+    width: '80%',
+    height: undefined,
+    aspectRatio: 1,
     marginVertical: 4,
   },
   gridCardName: {
@@ -2494,6 +2651,117 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     marginTop: 0,
   },
+  // Buddy Progress / Management Styles
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    width: '100%',
+  },
+  modalTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  modalTabActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  modalTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modalTabTextActive: {
+    color: '#333',
+  },
+
+  // Effect Card Styles
+  effectCard: {
+    width: 140,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 8,
+    marginRight: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  effectCardDark: {
+    backgroundColor: '#374151',
+  },
+  effectCardActive: {
+    borderColor: '#4ade80',
+    backgroundColor: '#ecfdf5',
+  },
+  effectPreview: {
+    width: 120,
+    height: 120,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  dummyCard: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockedPrice: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  effectName: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  effectCount: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 8,
+  },
+  applyButton: {
+    backgroundColor: '#3b82f6',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    width: '100%',
+    alignItems: 'center',
+  },
+  applyButtonLocked: {
+    backgroundColor: '#9ca3af',
+  },
+  applyButtonActive: {
+    backgroundColor: '#4ade80',
+  },
+  applyButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
   // Buddy Progress Modal Styles
   buddyProgressModal: {
     padding: 24,
@@ -2621,5 +2889,8 @@ const styles = StyleSheet.create({
   },
   dailyLimitTextDark: {
     color: '#fff3cd',
+  },
+  textDark: {
+    color: '#fff',
   },
 });
