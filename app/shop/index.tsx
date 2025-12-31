@@ -33,7 +33,10 @@ export default function ShopScreen() {
     }, [user]);
 
     const handleBuyItem = async (item: ShopItem) => {
-        if (!user) return;
+        if (!user) {
+            Alert.alert('Sign In Required', 'You must be signed in to purchase items.');
+            return;
+        }
         if (balance < item.price) {
             Alert.alert('Insufficient Funds', 'You need more Dex Coins to buy this!');
             return;

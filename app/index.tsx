@@ -159,7 +159,7 @@ export default function PokedexListScreen() {
     message: '',
     type: 'info',
   });
-  const [selectedBuddyProgress, setSelectedBuddyProgress] = useState<{ name: string; buddy: BuddyData; activeTab?: 'progress' | 'effects' } | null>(null);
+  const [selectedBuddyProgress, setSelectedBuddyProgress] = useState<{ name: string; buddy: BuddyData; activeTab?: 'progress' | 'effects'; pokemon: PokemonWithNickname } | null>(null);
   const [buddyHelpModalOpen, setBuddyHelpModalOpen] = useState(false);
 
   // Auth state
@@ -242,12 +242,14 @@ export default function PokedexListScreen() {
         currentEconomy = user.unsafeMetadata.economy as EconomyData;
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      if (currentEconomy.lastDailyRewardDate !== today) {
+
+
+      const currentDate = new Date().toISOString().split('T')[0];
+      if (currentEconomy.lastDailyRewardDate !== currentDate) {
         // Grant Daily Reward
         const rewardAmount = 50;
         currentEconomy.balance += rewardAmount;
-        currentEconomy.lastDailyRewardDate = today;
+        currentEconomy.lastDailyRewardDate = currentDate;
 
         setEconomyModal({
           visible: true,
@@ -576,7 +578,7 @@ export default function PokedexListScreen() {
       consecutiveDays: 0,
       lastInteractionDate: '',
     };
-    setSelectedBuddyProgress({ name: pokemon.nickname || pokemon.name, buddy, activeTab: 'progress' });
+    setSelectedBuddyProgress({ name: pokemon.nickname || pokemon.name, buddy, activeTab: 'progress', pokemon });
   };
 
   const handleSortSelect = (option: SortOption) => {
@@ -1651,13 +1653,21 @@ export default function PokedexListScreen() {
                   style={[styles.modalTab, selectedBuddyProgress?.activeTab === 'progress' && styles.modalTabActive]}
                   onPress={() => setSelectedBuddyProgress(curr => curr ? ({ ...curr, activeTab: 'progress' }) : null)}
                 >
-                  <Text style={[styles.modalTabText, selectedBuddyProgress?.activeTab === 'progress' && styles.modalTabTextActive, settings.darkMode && styles.textDark]}>Friendship</Text>
+                  <Text style={[
+                    styles.modalTabText,
+                    selectedBuddyProgress?.activeTab === 'progress' && styles.modalTabTextActive,
+                    settings.darkMode && selectedBuddyProgress?.activeTab !== 'progress' && styles.textDark
+                  ]}>Friendship</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.modalTab, selectedBuddyProgress?.activeTab === 'effects' && styles.modalTabActive]}
                   onPress={() => setSelectedBuddyProgress(curr => curr ? ({ ...curr, activeTab: 'effects' }) : null)}
                 >
-                  <Text style={[styles.modalTabText, selectedBuddyProgress?.activeTab === 'effects' && styles.modalTabTextActive, settings.darkMode && styles.textDark]}>Card Style</Text>
+                  <Text style={[
+                    styles.modalTabText,
+                    selectedBuddyProgress?.activeTab === 'effects' && styles.modalTabTextActive,
+                    settings.darkMode && selectedBuddyProgress?.activeTab !== 'effects' && styles.textDark
+                  ]}>Card Style</Text>
                 </Pressable>
               </View>
             </View>
@@ -1703,17 +1713,61 @@ export default function PokedexListScreen() {
                   const count = inventory[item.id] || 0;
                   const isActive = selectedBuddyProgress && cardEffects[selectedBuddyProgress.buddy.pokemonId] === item.id;
                   const isLocked = count === 0 && !isActive;
+                  const pokemon = selectedBuddyProgress?.pokemon;
+                  const isDualType = pokemon && pokemon.types.length > 1;
+                  const backgroundColor = pokemon ? (TYPE_COLORS[pokemon.types[0]] || '#A8A878') : '#A8A878';
 
                   return (
                     <View key={item.id} style={[styles.effectCard, settings.darkMode && styles.effectCardDark, isActive && styles.effectCardActive]}>
                       <View style={styles.effectPreview}>
-                        {/* Dummy Preview with Dynamic Effect */}
-                        <View style={[styles.dummyCard, { backgroundColor: '#A8A878', overflow: 'hidden' }]}>
-                          {item.id === 'effect_neon_cyber' && <GlowBorder color="#00FFFF" borderWidth={2} />}
-                          {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2000} />}
-                          {item.id === 'effect_ghostly_mist' && <GlowBorder color="#E0E0E0" borderWidth={2} />}
-                          <Ionicons name="sparkles" size={24} color="#fff" style={{ opacity: 0.5 }} />
-                        </View>
+                        {/* Real Card Preview */}
+                        {pokemon && (
+                          <View style={[
+                            styles.gridCard,
+                            { width: 140, height: undefined, aspectRatio: 0.72, margin: 0, padding: 8, borderWidth: 0 }
+                          ]}>
+                            {/* Background */}
+                            <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
+                              {isDualType ? (
+                                <LinearGradient
+                                  colors={[TYPE_COLORS[pokemon.types[0]], TYPE_COLORS[pokemon.types[1]]]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 1 }}
+                                  style={StyleSheet.absoluteFill}
+                                />
+                              ) : (
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: item.id === 'extra_love' ? 'transparent' : backgroundColor }]} />
+                              )}
+
+                              {/* Extra Love BG */}
+                              {item.id === 'extra_love' && <ExtraLoveEffect />}
+
+                              {/* Watermark */}
+                              {item.id !== 'extra_love' && (
+                                <Image source={require('@/assets/images/pokeball.png')} style={styles.gridCardWatermark} />
+                              )}
+                            </View>
+
+                            {/* Content */}
+                            <Text style={styles.gridCardId}>#{pokemon.id.toString().padStart(3, '0')}</Text>
+                            <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%' }]} resizeMode="contain" />
+                            <Text style={styles.gridCardName} numberOfLines={1}>{pokemon.nickname || pokemon.name}</Text>
+                            <View style={styles.gridTypesContainer}>
+                              {pokemon.types.map((type, index) => (
+                                <Image key={index} source={TYPE_ICONS[type]} style={{ width: 14, height: 14, resizeMode: 'contain' }} />
+                              ))}
+                            </View>
+
+                            {/* Effects Overlay */}
+                            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                              {item.id === 'effect_neon_cyber' && <GlowBorder color="#00FFFF" borderWidth={2} />}
+                              {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />}
+                              {item.id === 'effect_ghostly_mist' && <GlowBorder color="#E0E0E0" borderWidth={3} />}
+                            </View>
+                          </View>
+                        )}
+                        {!pokemon && <Text>Loading...</Text>}
+
                         {isLocked && (
                           <View style={styles.lockedOverlay}>
                             <Ionicons name="lock-closed" size={24} color="#fff" />
@@ -2138,6 +2192,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     color: '#000',
+    textTransform: 'capitalize',
   },
   modalTitleDark: {
     color: '#fff',
@@ -2687,7 +2742,7 @@ const styles = StyleSheet.create({
 
   // Effect Card Styles
   effectCard: {
-    width: 140,
+    width: 160,
     backgroundColor: '#f9fafb',
     borderRadius: 12,
     padding: 8,
@@ -2704,8 +2759,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ecfdf5',
   },
   effectPreview: {
-    width: 120,
-    height: 120,
+    width: 140,
+    height: 200,
     marginBottom: 8,
     alignItems: 'center',
     justifyContent: 'center',
