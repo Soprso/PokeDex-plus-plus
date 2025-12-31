@@ -14,10 +14,10 @@ export const SHOP_ITEMS: ShopItem[] = [
     {
         id: 'extra_love',
         name: 'Extra Love',
-        description: 'Grant one extra heart interaction today!',
+        description: 'Pink glow and floating hearts background.',
         price: 200,
-        category: 'normal',
-        type: 'consumable',
+        category: 'legendary',
+        type: 'effect',
     },
     {
         id: 'effect_neon_cyber',

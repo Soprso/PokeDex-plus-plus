@@ -109,3 +109,4 @@ export const ShineOverlay: React.FC<ShineOverlayProps> = ({ color = 'rgba(255, 2
         </View>
     );
 };
+export * from './ExtraLoveEffect';

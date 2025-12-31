@@ -1,3 +1,4 @@
+import { ExtraLoveEffect, GlowBorder, ShineOverlay } from '@/components/card-effects';
 import { TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { SHOP_ITEMS, ShopItem, ShopItemCategory } from '@/constants/shopItems';
 import { useUser } from '@clerk/clerk-expo';
@@ -176,7 +177,10 @@ export default function ShopScreen() {
                         return (
                             <View key={item.id} style={[styles.itemCard, isDark && styles.itemCardDark]}>
                                 {/* Full Card Background */}
-                                <View style={[styles.cardBackground, { backgroundColor: TYPE_COLORS['electric'] }]}>
+                                <View style={[styles.cardBackground, { backgroundColor: item.id === 'extra_love' ? 'transparent' : TYPE_COLORS['electric'] }]}>
+                                    {/* Effect Backgrounds */}
+                                    {item.id === 'extra_love' && <ExtraLoveEffect />}
+
                                     {/* Pokemon Preview Card Content */}
                                     {count > 0 && <View style={[styles.ownedBadge, { top: 12, right: 12 }]}><Text style={styles.ownedText}>x{count}</Text></View>}
                                     <Text style={styles.cardId}>#025</Text>
@@ -186,14 +190,20 @@ export default function ShopScreen() {
                                     />
                                     <Text style={styles.cardName}>Pikachu</Text>
                                     <View style={styles.cardTypeContainer}>
-                                        <View style={styles.cardTypeBadge}>
-                                            <Image source={TYPE_ICONS['electric']} style={styles.cardTypeIcon} />
-                                        </View>
+                                        <Image source={TYPE_ICONS['electric']} style={styles.cardTypeIcon} />
                                     </View>
 
                                     {/* Overlay Effect Preview */}
-                                    <View style={styles.effectIconOverlay}>
-                                        <Ionicons name="sparkles" size={24} color={item.category === 'mythical' ? '#FFD700' : '#fff'} />
+                                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                                        {item.id === 'effect_neon_cyber' && <GlowBorder color="#00FFFF" borderWidth={2} />}
+                                        {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />}
+                                        {item.id === 'effect_ghostly_mist' && <GlowBorder color="#E0E0E0" borderWidth={3} />}
+
+                                        {!['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist'].includes(item.id) && (
+                                            <View style={styles.effectIconOverlay}>
+                                                <Ionicons name="sparkles" size={24} color={item.category === 'mythical' ? '#FFD700' : '#fff'} />
+                                            </View>
+                                        )}
                                     </View>
                                 </View>
 
@@ -244,23 +254,42 @@ const styles = StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     itemCard: { width: '48%', height: 260, borderRadius: 16, overflow: 'hidden', marginBottom: 12, elevation: 3, position: 'relative' },
     itemCardDark: { backgroundColor: '#1e1e1e' },
-    cardBackground: { flex: 1, alignItems: 'center', paddingTop: 20 },
-    cardId: { position: 'absolute', top: 12, left: 12, fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: 'bold' },
-    cardName: { fontSize: 16, fontWeight: 'bold', color: '#fff', marginTop: 4, marginBottom: 4 },
-    cardTypeContainer: { flexDirection: 'row' },
-    cardTypeBadge: { backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 4 },
-    cardTypeIcon: { width: 16, height: 16 },
-    previewImage: { width: 100, height: 100, resizeMode: 'contain' },
+    cardBackground: { flex: 1, alignItems: 'center', paddingTop: 0 },
+    cardId: {
+        fontSize: 10,
+        color: '#fff',
+        opacity: 0.8,
+        alignSelf: 'flex-start',
+        marginTop: 16,
+        marginLeft: 8,
+    },
+    cardName: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#fff',
+        textAlign: 'center',
+        textTransform: 'capitalize',
+        marginTop: 4,
+    },
+    cardTypeContainer: { flexDirection: 'row', gap: 4, marginTop: 4 },
+    cardTypeBadge: { display: 'none' }, // Removed
+    cardTypeIcon: { width: 14, height: 14, resizeMode: 'contain' },
+    previewImage: {
+        width: '80%',
+        height: undefined,
+        aspectRatio: 1,
+        marginVertical: 4,
+    },
     effectIconOverlay: { position: 'absolute', top: 12, right: 12, opacity: 0.8 },
 
     itemInfoOverlay: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
         padding: 12,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16
     },
-    itemInfoOverlayDark: { backgroundColor: 'rgba(30, 30, 30, 0.95)' },
+    itemInfoOverlayDark: { backgroundColor: 'rgba(30, 30, 30, 0.6)' },
     itemName: { fontSize: 14, fontWeight: 'bold', marginBottom: 4, color: '#333' },
     itemDesc: { fontSize: 11, color: '#666', marginBottom: 8, height: 28 },
     buyButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start' },

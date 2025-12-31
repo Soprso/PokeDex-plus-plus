@@ -1,4 +1,4 @@
-import { GlowBorder, ShineOverlay } from '@/components/card-effects';
+import { ExtraLoveEffect, GlowBorder, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -755,6 +755,8 @@ export default function PokedexListScreen() {
         BuddyEffects = <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />;
       } else if (activeEffectId === 'effect_ghostly_mist') {
         BuddyEffects = <GlowBorder color="#E0E0E0" borderWidth={3} />; // Mist placeholder as silver glow
+      } else if (activeEffectId === 'extra_love') {
+        BuddyEffects = <ExtraLoveEffect />;
       }
     } else {
       // Fallback to Buddy Level Perks
