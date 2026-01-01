@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo } from 'react';
 import { DimensionValue, Image, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -15,43 +14,43 @@ import { GlowBorder } from './index';
 const BACKGROUND_IMAGE = require('@/assets/card-effects/magma-storm.jpg');
 
 const FireFlake = ({ delay, xPos, scale, duration }: { delay: number; xPos: DimensionValue; scale: number; duration: number }) => {
-    const translateY = useSharedValue(20); // Start slightly below
+    const translateY = useSharedValue(20); // Start slightly below visual area if bottom is 0
     const opacity = useSharedValue(0);
     const rotate = useSharedValue(0);
 
     useEffect(() => {
         // Rise up
-        translateY.value = withRepeat(
-            withDelay(
-                delay,
-                withTiming(-300, { duration: duration, easing: Easing.linear })
-            ),
-            -1,
-            false
+        translateY.value = withDelay(
+            delay,
+            withRepeat(
+                withTiming(-400, { duration: duration, easing: Easing.linear }),
+                -1,
+                false
+            )
         );
 
-        // Fade in/out - Subtle
-        opacity.value = withRepeat(
-            withDelay(
-                delay,
+        // Fade in/out
+        opacity.value = withDelay(
+            delay,
+            withRepeat(
                 withSequence(
-                    withTiming(0.6, { duration: 300 }), // Lower max opacity
-                    withTiming(0.3, { duration: duration - 600 }),
+                    withTiming(1, { duration: 200 }), // Fast fade to full opacity
+                    withTiming(0.6, { duration: duration - 500 }),
                     withTiming(0, { duration: 300 })
-                )
-            ),
-            -1,
-            false
+                ),
+                -1,
+                false
+            )
         );
 
         // Rotate
-        rotate.value = withRepeat(
-            withDelay(
-                delay,
-                withTiming(360, { duration: duration * 0.8, easing: Easing.linear })
-            ),
-            -1,
-            false
+        rotate.value = withDelay(
+            delay,
+            withRepeat(
+                withTiming(360, { duration: duration * 0.8, easing: Easing.linear }),
+                -1,
+                false
+            )
         );
     }, []);
 
@@ -66,26 +65,25 @@ const FireFlake = ({ delay, xPos, scale, duration }: { delay: number; xPos: Dime
 
     return (
         <Animated.View style={[styles.particle, { left: xPos }, style]}>
-            {/* Smaller flakes, Reddish-Yellow color (DarkOrange/Amber) */}
-            <Ionicons name="ellipse" size={4} color="#FFAB00" />
+            {/* Thinner, flake-like shape using a custom View */}
+            <View style={{ width: 3, height: 7, backgroundColor: '#FFD700', borderRadius: 1 }} />
         </Animated.View>
     );
 };
 
 const FireParticles = () => {
     const particles = useMemo(() => {
-        // Reduced amount of particles (8 feels subtle enough)
-        return Array.from({ length: 8 }).map((_, i) => ({
+        return Array.from({ length: 12 }).map((_, i) => ({
             id: i,
-            delay: Math.random() * 2000,
+            delay: Math.random() * 1500,
             xPos: `${5 + Math.random() * 90}%` as DimensionValue,
-            scale: 0.3 + Math.random() * 0.4, // Much smaller scale (0.3 - 0.7)
-            duration: 2500 + Math.random() * 2000, // Slower, more flowing
+            scale: 0.4 + Math.random() * 0.5,
+            duration: 2000 + Math.random() * 1500,
         }));
     }, []);
 
     return (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <View style={[StyleSheet.absoluteFill, { zIndex: 10 }]} pointerEvents="none">
             {particles.map((p) => (
                 <FireFlake key={p.id} {...p} />
             ))}
@@ -109,8 +107,8 @@ export const MagmaStormEffect = () => {
             {/* Rising Fire Particles */}
             <FireParticles />
 
-            {/* Red Glowing Animated Border - "Red Glowing Animated Border" */}
-            <GlowBorder color="#FF2200" borderWidth={3} cornerRadius={16} />
+            {/* Red Glowing Animated Border */}
+            <GlowBorder color="#FF4500" borderWidth={3} cornerRadius={16} />
         </View>
     );
 };
@@ -118,6 +116,6 @@ export const MagmaStormEffect = () => {
 const styles = StyleSheet.create({
     particle: {
         position: 'absolute',
-        bottom: -20, // Start slightly below
+        bottom: -10, // Start just below the bottom edge
     },
 });

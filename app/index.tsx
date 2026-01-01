@@ -1,4 +1,4 @@
-import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
+import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -840,7 +840,7 @@ export default function PokedexListScreen() {
       if (activeEffectId === 'effect_neon_cyber') {
         BuddyEffects = <NeonCyberEffect />;
       } else if (activeEffectId === 'effect_golden_glory') {
-        BuddyEffects = <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />;
+        BuddyEffects = <GoldenGloryEffect />;
       } else if (activeEffectId === 'effect_best_buddy') {
         BuddyEffects = (
           <>
@@ -892,9 +892,10 @@ export default function PokedexListScreen() {
           style={({ pressed }) => [
             styles.gridCard,
             { width: cardWidth },
-            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
             settings.darkMode && styles.cardDark,
             pressed && styles.cardPressed,
+            activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
             { borderWidth: 0 } // Reset default border
           ]}
         >
@@ -979,9 +980,10 @@ export default function PokedexListScreen() {
         onLongPress={() => handlePokemonLongPress(item)}
         style={({ pressed }) => [
           styles.card,
-          { backgroundColor: isDualType ? 'transparent' : backgroundColor },
+          { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
           settings.darkMode && styles.cardDark,
           pressed && styles.cardPressed,
+          activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
           { borderWidth: 0 } // Reset default border
         ]}
       >
@@ -1876,6 +1878,7 @@ export default function PokedexListScreen() {
 
                               {/* Live Effect Preview */}
                               {item.id === 'extra_love' && <ExtraLoveEffect />}
+                              {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
                               {item.id === 'effect_icy_wind' && <IcyWindEffect />}
                               {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
                               {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
@@ -2183,6 +2186,17 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.7,
+  },
+  cardGoldenGlory: {
+    elevation: 10,
+    shadowColor: '#FFD700',
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    borderColor: '#FFD700',
+    borderWidth: 0,
+    overflow: 'visible', // Critical for shadow
+    backgroundColor: 'transparent',
   },
   cardWatermark: {
     position: 'absolute',
