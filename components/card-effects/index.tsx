@@ -1,3 +1,4 @@
+export { AirSlashEffect } from './AirSlashEffect';
 export { BubbleBeamEffect } from './BubbleBeamEffect';
 export { ExtraLoveEffect } from './ExtraLoveEffect';
 export { FrenzyPlantEffect } from './FrenzyPlantEffect';

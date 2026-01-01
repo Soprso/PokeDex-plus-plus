@@ -75,4 +75,12 @@ export const SHOP_ITEMS: ShopItem[] = [
         category: 'legendary',
         type: 'effect',
     },
+    {
+        id: 'effect_air_slash',
+        name: 'Air Slash',
+        description: 'Soar through the skies with a blue glow.',
+        price: 200,
+        category: 'legendary',
+        type: 'effect',
+    },
 ];
