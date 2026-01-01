@@ -1,4 +1,4 @@
-import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
+import { ExtraLoveEffect, GhostlyMistEffect, GlowBorder, IcyWindEffect, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -850,6 +850,8 @@ export default function PokedexListScreen() {
         );
       } else if (activeEffectId === 'extra_love') {
         BuddyEffects = <ExtraLoveEffect />;
+      } else if (activeEffectId === 'effect_icy_wind') {
+        BuddyEffects = <IcyWindEffect />;
       } else if (activeEffectId === 'effect_ghostly_mist') {
         BuddyEffects = <GhostlyMistEffect />;
       } else if (activeEffectId === 'none') {
@@ -888,7 +890,7 @@ export default function PokedexListScreen() {
           style={({ pressed }) => [
             styles.gridCard,
             { width: cardWidth },
-            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
             settings.darkMode && styles.cardDark,
             pressed && styles.cardPressed,
             { borderWidth: 0 } // Reset default border
@@ -1867,11 +1869,12 @@ export default function PokedexListScreen() {
                                   style={StyleSheet.absoluteFill}
                                 />
                               ) : (
-                                <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : backgroundColor }]} />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_icy_wind' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : backgroundColor }]} />
                               )}
 
                               {/* Live Effect Preview */}
                               {item.id === 'extra_love' && <ExtraLoveEffect />}
+                              {item.id === 'effect_icy_wind' && <IcyWindEffect />}
                               {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
                               {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
 
@@ -1883,7 +1886,7 @@ export default function PokedexListScreen() {
 
                             {/* Content */}
                             <Text style={styles.gridCardId}>#{pokemon.id.toString().padStart(3, '0')}</Text>
-                            <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%', zIndex: 10, elevation: 5 }]} resizeMode="contain" />
+                            <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%', zIndex: 10, elevation: 5 } as any]} resizeMode="contain" />
                             <Text style={styles.gridCardName} numberOfLines={1}>{pokemon.nickname || pokemon.name}</Text>
                             <View style={styles.gridTypesContainer}>
                               {pokemon.types.map((type, index) => (

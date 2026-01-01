@@ -43,4 +43,12 @@ export const SHOP_ITEMS: ShopItem[] = [
         category: 'mythical',
         type: 'effect',
     },
+    {
+        id: 'effect_icy_wind',
+        name: 'Icy Wind',
+        description: 'Chilling winds and falling snow.',
+        price: 200,
+        category: 'legendary',
+        type: 'effect',
+    },
 ];

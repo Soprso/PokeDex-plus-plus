@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { DimensionValue, Image, StyleSheet, View } from 'react-native';
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -14,7 +14,7 @@ import { GlowBorder } from './index';
 
 const BACKGROUND_IMAGE = require('@/assets/card-effects/extra-love.jpg');
 
-const HeartParticle = ({ delay, xPos, scale }: { delay: number; xPos: string; scale: number }) => {
+const HeartParticle = ({ delay, xPos, scale }: { delay: number; xPos: DimensionValue; scale: number }) => {
     const translateY = useSharedValue(0);
     const opacity = useSharedValue(0);
 
@@ -59,7 +59,7 @@ const HeartParticles = () => {
         return Array.from({ length: 8 }).map((_, i) => ({
             id: i,
             delay: Math.random() * 2000,
-            xPos: `${10 + Math.random() * 80}%`, // 10% to 90%
+            xPos: `${10 + Math.random() * 80}%` as DimensionValue, // 10% to 90%
             scale: 0.5 + Math.random() * 0.5, // 0.5 to 1.0
         }));
     }, []);

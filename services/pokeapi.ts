@@ -173,7 +173,8 @@ export async function fetchPokemonBatch(
 
         try {
             const batchResults = await Promise.all(batchPromises);
-            results.push(...batchResults);
+            const validResults = batchResults.filter((p): p is Pokemon => p !== null);
+            results.push(...validResults);
 
             // Report progress
             if (onProgress) {
