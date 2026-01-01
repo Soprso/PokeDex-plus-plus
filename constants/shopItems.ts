@@ -51,4 +51,12 @@ export const SHOP_ITEMS: ShopItem[] = [
         category: 'legendary',
         type: 'effect',
     },
+    {
+        id: 'effect_magma_storm',
+        name: 'Magma Storm',
+        description: 'Raging fire and molten lava border.',
+        price: 200,
+        category: 'legendary',
+        type: 'effect',
+    },
 ];
