@@ -59,4 +59,12 @@ export const SHOP_ITEMS: ShopItem[] = [
         category: 'legendary',
         type: 'effect',
     },
+    {
+        id: 'effect_frenzy_plant',
+        name: 'Frenzy Plant',
+        description: 'Unleash the power of nature!',
+        price: 200,
+        category: 'legendary',
+        type: 'effect',
+    },
 ];

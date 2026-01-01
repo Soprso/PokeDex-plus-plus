@@ -1,4 +1,4 @@
-import { ExtraLoveEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect } from '@/components/card-effects';
+import { ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect } from '@/components/card-effects';
 import { TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { SHOP_ITEMS, ShopItem, ShopItemCategory } from '@/constants/shopItems';
 import { useUser } from '@clerk/clerk-expo';
@@ -181,13 +181,14 @@ export default function ShopScreen() {
                         return (
                             <View key={item.id} style={[styles.itemCard, isDark && styles.itemCardDark]}>
                                 {/* Full Card Background */}
-                                <View style={[styles.cardBackground, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_golden_glory' || item.id === 'effect_icy_wind' || item.id === 'effect_magma_storm' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : cardBackground }]}>
+                                <View style={[styles.cardBackground, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_golden_glory' || item.id === 'effect_icy_wind' || item.id === 'effect_magma_storm' || item.id === 'effect_frenzy_plant' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : cardBackground }]}>
                                     {/* Live Effect Preview */}
                                     {item.id === 'extra_love' && <ExtraLoveEffect />}
                                     {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
                                     {item.id === 'effect_icy_wind' && <IcyWindEffect />}
                                     {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
                                     {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
+                                    {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
                                     {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
 
                                     {/* Pokemon Preview Card Content */}
@@ -204,7 +205,7 @@ export default function ShopScreen() {
 
                                     {/* Effects Overlay */}
                                     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                                        {!['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm'].includes(item.id) && (
+                                        {!['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant'].includes(item.id) && (
                                             <View style={styles.effectIconOverlay}>
                                                 <Ionicons name="sparkles" size={24} color={item.category === 'mythical' ? '#FFD700' : '#fff'} />
                                             </View>
