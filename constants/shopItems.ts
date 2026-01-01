@@ -67,4 +67,12 @@ export const SHOP_ITEMS: ShopItem[] = [
         category: 'legendary',
         type: 'effect',
     },
+    {
+        id: 'effect_bubble_beam',
+        name: 'Bubble Beam',
+        description: 'Surrounded by bubbles and an aqua glow.',
+        price: 200,
+        category: 'legendary',
+        type: 'effect',
+    },
 ];

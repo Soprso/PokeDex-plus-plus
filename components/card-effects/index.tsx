@@ -1,3 +1,4 @@
+export { BubbleBeamEffect } from './BubbleBeamEffect';
 export { ExtraLoveEffect } from './ExtraLoveEffect';
 export { FrenzyPlantEffect } from './FrenzyPlantEffect';
 export { GhostlyMistEffect } from './GhostlyMistEffect';

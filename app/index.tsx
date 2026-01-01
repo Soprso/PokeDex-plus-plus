@@ -1,4 +1,4 @@
-import { ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GlowBorder, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
+import { BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GlowBorder, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -856,6 +856,8 @@ export default function PokedexListScreen() {
         BuddyEffects = <MagmaStormEffect />;
       } else if (activeEffectId === 'effect_frenzy_plant') {
         BuddyEffects = <FrenzyPlantEffect />;
+      } else if (activeEffectId === 'effect_bubble_beam') {
+        BuddyEffects = <BubbleBeamEffect />;
       } else if (activeEffectId === 'effect_ghostly_mist') {
         BuddyEffects = <GhostlyMistEffect />;
       } else if (activeEffectId === 'none') {
@@ -894,7 +896,7 @@ export default function PokedexListScreen() {
           style={({ pressed }) => [
             styles.gridCard,
             { width: cardWidth },
-            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
             settings.darkMode && styles.cardDark,
             pressed && styles.cardPressed,
             activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
@@ -982,7 +984,7 @@ export default function PokedexListScreen() {
         onLongPress={() => handlePokemonLongPress(item)}
         style={({ pressed }) => [
           styles.card,
-          { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+          { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
           settings.darkMode && styles.cardDark,
           pressed && styles.cardPressed,
           activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
@@ -1884,6 +1886,7 @@ export default function PokedexListScreen() {
                               {item.id === 'effect_icy_wind' && <IcyWindEffect />}
                               {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
                               {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
+                              {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
                               {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
                               {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
 
