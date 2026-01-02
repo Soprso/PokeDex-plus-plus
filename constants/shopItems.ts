@@ -16,7 +16,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Extra Love',
         description: 'Pink glow and floating hearts background.',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
     {
@@ -24,7 +24,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Neon Cyber',
         description: 'A futuristic glitch effect for your card.',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
     {
@@ -32,7 +32,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Ghostly Mist',
         description: 'Spooky fog that swirls around your Pokemon.',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
     {
@@ -48,7 +48,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Icy Wind',
         description: 'Chilling winds and falling snow.',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
     {
@@ -56,7 +56,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Magma Storm',
         description: 'Raging fire and molten lava border.',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
     {
@@ -64,7 +64,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Frenzy Plant',
         description: 'Unleash the power of nature!',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
     {
@@ -72,7 +72,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Bubble Beam',
         description: 'Surrounded by bubbles and an aqua glow.',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
     {
@@ -80,7 +80,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         name: 'Air Slash',
         description: 'Soar through the skies with a blue glow.',
         price: 200,
-        category: 'legendary',
+        category: 'normal',
         type: 'effect',
     },
 ];
