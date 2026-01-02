@@ -3,6 +3,7 @@ import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
 import { getRandomTip } from '@/constants/tips';
+import { useThemedAlert } from '@/hooks/use-themed-alert';
 import { fetchPokemonBatch, fetchPokemonList, Pokemon } from '@/services/pokeapi';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,8 +11,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthModal from './modals/auth';
 
@@ -57,6 +58,10 @@ export interface EconomyData {
 
 export interface CardEffects {
   [pokemonId: number]: string; // pokemonId -> effectId
+}
+
+export interface Inventory {
+  [itemId: string]: number;
 }
 
 const ParticleOverlay = ({ color, intensity }: { color: string; intensity: 'low' | 'high' }) => {
@@ -166,6 +171,8 @@ export default function PokedexListScreen() {
   // Auth state
   const { isSignedIn, user } = useUser();
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const { showAlert, closeAlert, AlertModal } = useThemedAlert();
 
   // UI enhancement states
   const [refreshing, setRefreshing] = useState(false);
@@ -607,7 +614,7 @@ export default function PokedexListScreen() {
     const currentEffect = cardEffects[pokemonId];
 
     if (currentEffect === effectId) {
-      Alert.alert('Already Active', 'This effect is already applied to this Pokémon.');
+      showAlert('Already Active', 'This effect is already applied to this Pokémon.', undefined, 'checkmark-circle', '#4CAF50');
       return;
     }
 
@@ -629,7 +636,7 @@ export default function PokedexListScreen() {
     // 2. Best Buddy (Milestone)
     if (effectId === 'effect_best_buddy') {
       if (selectedBuddyProgress.buddy.level < 4) {
-        Alert.alert('Locked', 'You must be Best Buddies to use this effect!');
+        showAlert('Locked', 'You must be Best Buddies to use this effect!', undefined, 'lock-closed', '#FF6B6B');
         return;
       }
       const newCardEffects = { ...cardEffects, [pokemonId]: effectId };
@@ -663,11 +670,11 @@ export default function PokedexListScreen() {
     // If NOT unlocked, require inventory.
     const count = inventory[effectId] || 0;
     if (count <= 0) {
-      Alert.alert('Locked', 'You do not own this effect. Visit the Shop to buy more!');
+      showAlert('Locked', 'You do not own this effect. Visit the Shop to buy more!', undefined, 'cart', '#F59E0B');
       return;
     }
 
-    Alert.alert(
+    showAlert(
       'Apply Effect?',
       'This will consume 1 copy of the effect from your inventory. Proceed?',
       [
@@ -675,6 +682,8 @@ export default function PokedexListScreen() {
         {
           text: 'Apply',
           onPress: async () => {
+            closeAlert(); // Close immediately to prevent double stacking if we show another alert
+
             const newCount = count - 1;
             const newInventory = { ...inventory, [effectId]: newCount };
             const newCardEffects = { ...cardEffects, [pokemonId]: effectId };
@@ -696,13 +705,17 @@ export default function PokedexListScreen() {
                   unlockedCardEffects: newUnlockedCardEffects
                 },
               });
-              Alert.alert('Effect Set!', `${selectedBuddyProgress.name} is looking stylish! ✨`);
+              setTimeout(() => {
+                showAlert('Effect Set!', `${selectedBuddyProgress.name} is looking stylish! ✨`, undefined, 'sparkles', '#FFD700');
+              }, 300);
             } catch (err) {
               console.error('Failed to save effect:', err);
             }
           },
         },
-      ]
+      ],
+      'color-wand',
+      '#2196F3'
     );
   };
 
@@ -747,13 +760,13 @@ export default function PokedexListScreen() {
 
     // Check daily limit
     if (todayInteraction.heartsGiven >= 3) {
-      Alert.alert('Daily Limit Reached', 'You can only give hearts to 3 Pokémon per day. Come back tomorrow!');
+      showAlert('Daily Limit Reached', 'You can only give hearts to 3 Pokémon per day. Come back tomorrow!', undefined, 'time', '#FF6B6B');
       return;
     }
 
     // Check if already gave heart to this Pokémon today
     if (todayInteraction.pokemonIds.includes(pokemonId)) {
-      Alert.alert('Already Interacted', 'You already gave a heart to this Pokémon today!');
+      showAlert('Already Interacted', 'You already gave a heart to this Pokémon today!', undefined, 'heart', '#FF6B6B');
       return;
     }
 
@@ -787,7 +800,7 @@ export default function PokedexListScreen() {
       newLevel = 4; // Best Buddy
       if (!currentBuddy.achievedBestBuddyDate) {
         currentBuddy.achievedBestBuddyDate = today;
-        Alert.alert('🎉 Best Buddy!', `Congratulations! This Pokémon is now your Best Buddy!`);
+        showAlert('🎉 Best Buddy!', `Congratulations! This Pokémon is now your Best Buddy!`, undefined, 'ribbon', '#FFD700');
       }
     } else if (currentBuddy.consecutiveDays >= 11) {
       newLevel = 3; // Ultra Buddy
@@ -827,7 +840,7 @@ export default function PokedexListScreen() {
 
     // Show success message
     const levelNames = ['', 'Good Buddy', 'Great Buddy', 'Ultra Buddy', 'Best Buddy'];
-    Alert.alert('❤️ Heart Given!', `${levelNames[newLevel]} - ${currentBuddy.consecutiveDays} consecutive days!`);
+    showAlert('❤️ Heart Given!', `${levelNames[newLevel]} - ${currentBuddy.consecutiveDays} consecutive days!`, undefined, 'heart', '#E91E63');
   };
 
   // Pull to refresh handler
@@ -867,255 +880,26 @@ export default function PokedexListScreen() {
     );
   };
 
-  const renderPokemonCard = ({ item }: { item: PokemonWithNickname }) => {
-    const primaryType = item.types[0];
-    const backgroundColor = TYPE_COLORS[primaryType] || '#A8A878';
-    const displayName = settings.nicknames && item.nickname ? item.nickname : item.name;
-    const imageUrl = settings.shinySprites ? item.shinyImageUrl : item.imageUrl;
-    const isDualType = item.types.length > 1;
 
 
 
-    // Buddy Perks & Card Effects Logic
-    const buddy = buddyData[item.id];
-    const buddyLevel = buddy?.level || 0;
-    const activeEffectId = cardEffects[item.id];
-
-    // We render effects as children, not style props
-    let BuddyEffects = null;
-
-    if (activeEffectId) {
-      // Custom Shop Effects take priority
-      if (activeEffectId === 'effect_neon_cyber') {
-        BuddyEffects = <NeonCyberEffect />;
-      } else if (activeEffectId === 'effect_golden_glory') {
-        BuddyEffects = <GoldenGloryEffect />;
-      } else if (activeEffectId === 'effect_best_buddy') {
-        BuddyEffects = (
-          <>
-            <GlowBorder color="#FFD700" borderWidth={2} />
-            <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
-          </>
-        );
-      } else if (activeEffectId === 'extra_love') {
-        BuddyEffects = <ExtraLoveEffect />;
-      } else if (activeEffectId === 'effect_icy_wind') {
-        BuddyEffects = <IcyWindEffect />;
-      } else if (activeEffectId === 'effect_magma_storm') {
-        BuddyEffects = <MagmaStormEffect />;
-      } else if (activeEffectId === 'effect_frenzy_plant') {
-        BuddyEffects = <FrenzyPlantEffect />;
-      } else if (activeEffectId === 'effect_bubble_beam') {
-        BuddyEffects = <BubbleBeamEffect />;
-      } else if (activeEffectId === 'effect_air_slash') {
-        BuddyEffects = <AirSlashEffect />;
-      } else if (activeEffectId === 'effect_ghostly_mist') {
-        BuddyEffects = <GhostlyMistEffect />;
-      } else if (activeEffectId === 'none') {
-        // Explicit None: Do not render anything, do not use fallback.
-        BuddyEffects = null;
-      }
-
-    } else {
-      // Fallback: Automatic Buddy Perks (if no effect selected)
-      if (buddyLevel === 4) { // Best Buddy - Gold
-        BuddyEffects = (
-          <>
-            <GlowBorder color="#FFD700" borderWidth={2} />
-            <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
-          </>
-        );
-      } else if (buddyLevel === 3) { // Ultra Buddy - Silver
-        BuddyEffects = (
-          <>
-            <GlowBorder color="#E5E4E2" borderWidth={2} />
-            <ShineOverlay color="rgba(229, 228, 226, 0.3)" duration={3000} />
-          </>
-        );
-      } else if (buddyLevel === 2) { // Great Buddy - Bronze
-        BuddyEffects = <GlowBorder color="#CD7F32" borderWidth={2} />;
-      }
-    }
-
-
-    // Grid Layout Card
-    if (settings.gridLayout) {
-      return (
-        <Pressable
-          onPress={() => handlePokemonPress(item)}
-          onLongPress={() => handlePokemonLongPress(item)}
-          style={({ pressed }) => [
-            styles.gridCard,
-            { width: cardWidth },
-            { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
-            settings.darkMode && styles.cardDark,
-            pressed && styles.cardPressed,
-            activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
-            { borderWidth: 0 } // Reset default border
-          ]}
-        >
-          {isDualType && (
-            <LinearGradient
-              colors={[TYPE_COLORS[item.types[0]], TYPE_COLORS[item.types[1]]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          {BuddyEffects}
-          <Image
-            source={require('@/assets/images/pokeball.png')}
-            style={styles.gridCardWatermark}
-          />
-          {/* Buddy Hearts - Top Left */}
-          <Pressable
-            style={styles.buddyHeartsContainerGrid}
-            onPress={(e) => {
-              e.stopPropagation();
-              giveHeart(item.id);
-            }}
-            onLongPress={(e) => {
-              e.stopPropagation();
-              handleLongPressHearts(item);
-            }}
-            delayLongPress={500}
-          >
-            <View style={styles.buddyHeartsGrid}>
-              {[1, 2, 3, 4].map((heartNum) => {
-                const buddy = buddyData[item.id];
-                const isFilled = buddy && buddy.level >= heartNum;
-                return (
-                  <Ionicons
-                    key={heartNum}
-                    name={isFilled ? 'heart' : 'heart-outline'}
-                    size={8}
-                    color={isFilled ? '#FF6B6B' : 'rgba(255,255,255,0.4)'}
-                    style={{ marginRight: 1 }}
-                  />
-                );
-              })}
-            </View>
-            {/* Best Buddy Badge - Only at level 4 */}
-            {buddyData[item.id]?.level === 4 && (
-              <Image
-                source={require('@/assets/images/best-buddy.png')}
-                style={styles.bestBuddyBadgeGrid}
-                resizeMode="contain"
-              />
-            )}
-          </Pressable>
-          {settings.shinySprites && (
-            <View style={styles.shinyIndicatorGridRight}>
-              <Ionicons name="sparkles" size={14} color="#FFD700" />
-            </View>
-          )}
-          <Text style={styles.gridCardId}>#{item.id.toString().padStart(3, '0')}</Text>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.gridCardImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.gridCardName} numberOfLines={1}>{displayName}</Text>
-          <View style={styles.gridTypesContainer}>
-            {item.types.map((type, index) => {
-              const typeIcon = TYPE_ICONS[type];
-              return typeIcon && (
-                <Image key={index} source={typeIcon} style={styles.gridCardTypeIcon} resizeMode="contain" />
-              );
-            })}
-          </View>
-        </Pressable>
-      );
-    }
-
-    // List Layout Card (original)
+  const renderPokemonCard = useCallback(({ item }: { item: PokemonWithNickname }) => {
     return (
-      <Pressable
-        onPress={() => handlePokemonPress(item)}
-        onLongPress={() => handlePokemonLongPress(item)}
-        style={({ pressed }) => [
-          styles.card,
-          { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
-          settings.darkMode && styles.cardDark,
-          pressed && styles.cardPressed,
-          activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
-          { borderWidth: 0 } // Reset default border
-        ]}
-      >
-        {isDualType && (
-          <LinearGradient
-            colors={[TYPE_COLORS[item.types[0]], TYPE_COLORS[item.types[1]]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
-        {BuddyEffects}
-        <Image
-          source={require('@/assets/images/pokeball.png')}
-          style={styles.cardWatermark}
-        />
-        {/* Buddy Hearts - Top Left */}
-        <Pressable
-          style={styles.buddyHeartsContainerList}
-          onPress={(e) => {
-            e.stopPropagation();
-            giveHeart(item.id);
-          }}
-          onLongPress={(e) => {
-            e.stopPropagation();
-            handleLongPressHearts(item);
-          }}
-          delayLongPress={500}
-        >
-          <View style={styles.buddyHeartsList}>
-            {[1, 2, 3, 4].map((h) => (
-              <Ionicons
-                key={h}
-                name="heart"
-                size={10}
-                color={h <= buddyLevel ? '#e11d48' : 'rgba(255, 255, 255, 0.3)'}
-                style={{ marginRight: h < 4 ? 2 : 0 }}
-              />
-            ))}
-            {buddyLevel === 4 && (
-              <Image
-                source={require('@/assets/images/best-buddy.png')}
-                style={styles.bestBuddyBadgeList}
-                resizeMode="contain"
-              />
-            )}
-          </View>
-        </Pressable>
-        {settings.shinySprites && (
-          <View style={styles.shinyIndicatorRight}>
-            <Ionicons name="sparkles" size={20} color="#FFD700" />
-          </View>
-        )}
-        <View style={styles.cardContent}>
-          <Text style={styles.cardId}>#{item.id.toString().padStart(3, '0')}</Text>
-          <Text style={styles.cardName}>{displayName}</Text>
-          {settings.nicknames && item.nickname && (
-            <Text style={styles.cardRealName}>({item.name})</Text>
-          )}
-          <View style={styles.typesContainer}>
-            {item.types.map((type, index) => {
-              const typeIcon = TYPE_ICONS[type];
-              return typeIcon && (
-                <Image key={index} source={typeIcon} style={styles.cardTypeIcon} resizeMode="contain" />
-              );
-            })}
-          </View>
-          <Text style={styles.cardFootnote}>Long press to add nickname</Text>
-        </View>
-        <Image
-          source={{ uri: imageUrl }}
-          style={styles.cardImage}
-          resizeMode="contain"
-        />
-      </Pressable>
+      <MemoizedPokemonCard
+        item={item}
+        settings={settings}
+        buddy={buddyData[item.id]}
+        activeEffectId={cardEffects[item.id]}
+        cardWidth={cardWidth}
+        onPress={handlePokemonPress}
+        onLongPress={handlePokemonLongPress}
+        onHeart={giveHeart}
+        onLongHeart={handleLongPressHearts}
+      />
     );
-  };
+  }, [settings, buddyData, cardEffects, cardWidth, handlePokemonPress, handlePokemonLongPress, giveHeart, handleLongPressHearts]);
+
+
 
   // Loading screen
   if (loading) {
@@ -1294,6 +1078,15 @@ export default function PokedexListScreen() {
           contentContainerStyle={styles.listContent}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+          getItemLayout={(data, index) => ({
+            length: settings.gridLayout ? 280 : 136, // Approx heights including margin
+            offset: (settings.gridLayout ? 280 : 136) * index,
+            index,
+          })}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -1611,7 +1404,7 @@ export default function PokedexListScreen() {
                   styles.settingButton,
                   pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
                 ]}
-                onPress={() => Alert.alert('Cache Cleared')}
+                onPress={() => showAlert('Cache Cleared', 'Image cache has been cleared successfully.', undefined, 'trash', '#FF6B6B')}
               >
                 <Text style={styles.settingButtonText}>Clear Cache</Text>
               </Pressable>
@@ -1630,7 +1423,7 @@ export default function PokedexListScreen() {
                     cacheImages: true,
                     gridLayout: false,
                   });
-                  Alert.alert('Settings Reset');
+                  showAlert('Settings Reset', 'All settings have been reset to default.', undefined, 'refresh', '#4CAF50');
                 }}>
                 <Text style={styles.settingButtonText}>Reset Settings</Text>
               </Pressable>
@@ -2145,9 +1938,281 @@ export default function PokedexListScreen() {
         }
         darkMode={settings.darkMode}
       />
+
+      {/* Custom Alert Modal */}
+      <AlertModal />
     </>
   );
 }
+
+
+
+
+const PokemonCardComponent = ({
+  item,
+  settings,
+  buddy,
+  activeEffectId,
+  cardWidth,
+  onPress,
+  onLongPress,
+  onHeart,
+  onLongHeart
+}: {
+  item: PokemonWithNickname,
+  settings: any,
+  buddy: BuddyData | undefined,
+  activeEffectId: string | undefined,
+  cardWidth: number,
+  onPress: (item: PokemonWithNickname) => void,
+  onLongPress: (item: PokemonWithNickname) => void,
+  onHeart: (id: number) => void,
+  onLongHeart: (item: PokemonWithNickname) => void
+}) => {
+  const primaryType = item.types[0];
+  const backgroundColor = TYPE_COLORS[primaryType] || '#A8A878';
+  const displayName = settings.nicknames && item.nickname ? item.nickname : item.name;
+  const imageUrl = settings.shinySprites ? item.shinyImageUrl : item.imageUrl;
+  const isDualType = item.types.length > 1;
+
+  const buddyLevel = buddy?.level || 0;
+
+  // We render effects as children, not style props
+  let BuddyEffects = null;
+
+  if (activeEffectId) {
+    // Custom Shop Effects take priority
+    if (activeEffectId === 'effect_neon_cyber') {
+      BuddyEffects = <NeonCyberEffect />;
+    } else if (activeEffectId === 'effect_golden_glory') {
+      BuddyEffects = <GoldenGloryEffect />;
+    } else if (activeEffectId === 'effect_best_buddy') {
+      BuddyEffects = (
+        <>
+          <GlowBorder color="#FFD700" borderWidth={2} />
+          <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
+        </>
+      );
+    } else if (activeEffectId === 'extra_love') {
+      BuddyEffects = <ExtraLoveEffect />;
+    } else if (activeEffectId === 'effect_icy_wind') {
+      BuddyEffects = <IcyWindEffect />;
+    } else if (activeEffectId === 'effect_magma_storm') {
+      BuddyEffects = <MagmaStormEffect />;
+    } else if (activeEffectId === 'effect_frenzy_plant') {
+      BuddyEffects = <FrenzyPlantEffect />;
+    } else if (activeEffectId === 'effect_bubble_beam') {
+      BuddyEffects = <BubbleBeamEffect />;
+    } else if (activeEffectId === 'effect_air_slash') {
+      BuddyEffects = <AirSlashEffect />;
+    } else if (activeEffectId === 'effect_ghostly_mist') {
+      BuddyEffects = <GhostlyMistEffect />;
+    } else if (activeEffectId === 'none') {
+      // Explicit None: Do not render anything, do not use fallback.
+      BuddyEffects = null;
+    }
+
+  } else {
+    // Fallback: Automatic Buddy Perks (if no effect selected)
+    if (buddyLevel === 4) { // Best Buddy - Gold
+      BuddyEffects = (
+        <>
+          <GlowBorder color="#FFD700" borderWidth={2} />
+          <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2500} />
+        </>
+      );
+    } else if (buddyLevel === 3) { // Ultra Buddy - Silver
+      BuddyEffects = (
+        <>
+          <GlowBorder color="#E5E4E2" borderWidth={2} />
+          <ShineOverlay color="rgba(229, 228, 226, 0.3)" duration={3000} />
+        </>
+      );
+    } else if (buddyLevel === 2) { // Great Buddy - Bronze
+      BuddyEffects = <GlowBorder color="#CD7F32" borderWidth={2} />;
+    }
+  }
+
+
+  // Grid Layout Card
+  if (settings.gridLayout) {
+    return (
+      <Pressable
+        onPress={() => onPress(item)}
+        onLongPress={() => onLongPress(item)}
+        style={({ pressed }) => [
+          styles.gridCard,
+          { width: cardWidth },
+          { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+          settings.darkMode && styles.cardDark,
+          pressed && styles.cardPressed,
+          activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
+          { borderWidth: 0 } // Reset default border
+        ]}
+      >
+        {isDualType && (
+          <LinearGradient
+            colors={[TYPE_COLORS[item.types[0]], TYPE_COLORS[item.types[1]]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        {BuddyEffects}
+        <Image
+          source={require('@/assets/images/pokeball.png')}
+          style={styles.gridCardWatermark}
+        />
+        {/* Buddy Hearts - Top Left */}
+        <Pressable
+          style={styles.buddyHeartsContainerGrid}
+          onPress={(e) => {
+            e.stopPropagation();
+            onHeart(item.id);
+          }}
+          onLongPress={(e) => {
+            e.stopPropagation();
+            onLongHeart(item);
+          }}
+          delayLongPress={500}
+        >
+          <View style={styles.buddyHeartsGrid}>
+            {[1, 2, 3, 4].map((heartNum) => {
+              const isFilled = buddyLevel >= heartNum;
+              return (
+                <Ionicons
+                  key={heartNum}
+                  name={isFilled ? 'heart' : 'heart-outline'}
+                  size={8}
+                  color={isFilled ? '#FF6B6B' : 'rgba(255,255,255,0.4)'}
+                  style={{ marginRight: 1 }}
+                />
+              );
+            })}
+          </View>
+          {/* Best Buddy Badge - Only at level 4 */}
+          {buddyLevel === 4 && (
+            <Image
+              source={require('@/assets/images/best-buddy.png')}
+              style={styles.bestBuddyBadgeGrid}
+              resizeMode="contain"
+            />
+          )}
+        </Pressable>
+        {settings.shinySprites && (
+          <View style={styles.shinyIndicatorGridRight}>
+            <Ionicons name="sparkles" size={14} color="#FFD700" />
+          </View>
+        )}
+        <Text style={styles.gridCardId}>#{item.id.toString().padStart(3, '0')}</Text>
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.gridCardImage}
+          resizeMode="contain"
+        />
+        <Text style={styles.gridCardName} numberOfLines={1}>{displayName}</Text>
+        <View style={styles.gridTypesContainer}>
+          {item.types.map((type, index) => {
+            const typeIcon = TYPE_ICONS[type];
+            return typeIcon && (
+              <Image key={index} source={typeIcon} style={styles.gridCardTypeIcon} resizeMode="contain" />
+            );
+          })}
+        </View>
+      </Pressable>
+    );
+  }
+
+  // List Layout Card (original)
+  return (
+    <Pressable
+      onPress={() => onPress(item)}
+      onLongPress={() => onLongPress(item)}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+        settings.darkMode && styles.cardDark,
+        pressed && styles.cardPressed,
+        activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
+        { borderWidth: 0 } // Reset default border
+      ]}
+    >
+      {isDualType && (
+        <LinearGradient
+          colors={[TYPE_COLORS[item.types[0]], TYPE_COLORS[item.types[1]]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+      {BuddyEffects}
+      <Image
+        source={require('@/assets/images/pokeball.png')}
+        style={styles.cardWatermark}
+      />
+      {/* Buddy Hearts - Top Left */}
+      <Pressable
+        style={styles.buddyHeartsContainerList}
+        onPress={(e) => {
+          e.stopPropagation();
+          onHeart(item.id);
+        }}
+        onLongPress={(e) => {
+          e.stopPropagation();
+          onLongHeart(item);
+        }}
+        delayLongPress={500}
+      >
+        <View style={styles.buddyHeartsList}>
+          {[1, 2, 3, 4].map((h) => (
+            <Ionicons
+              key={h}
+              name="heart"
+              size={10}
+              color={h <= buddyLevel ? '#e11d48' : 'rgba(255, 255, 255, 0.3)'}
+              style={{ marginRight: h < 4 ? 2 : 0 }}
+            />
+          ))}
+          {buddyLevel === 4 && (
+            <Image
+              source={require('@/assets/images/best-buddy.png')}
+              style={styles.bestBuddyBadgeList}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Pressable>
+
+      <View style={styles.cardContent}>
+        <Text style={styles.cardId}>#{item.id.toString().padStart(3, '0')}</Text>
+        <Text style={styles.cardName}>{displayName}</Text>
+        {settings.nicknames && item.nickname && (
+          <Text style={styles.cardRealName}>({item.name})</Text>
+        )}
+        <View style={styles.typesContainer}>
+          {item.types.map((type) => (
+            <View key={type} style={styles.typeBadge}>
+              <Text style={styles.typeText}>{type}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <Image
+        source={{ uri: imageUrl }}
+        style={styles.cardImage}
+        resizeMode="contain"
+      />
+      {settings.shinySprites && (
+        <View style={{ position: 'absolute', bottom: 10, right: 10 }}>
+          <Ionicons name="sparkles" size={20} color="#FFD700" />
+        </View>
+      )}
+    </Pressable>
+  );
+};
+
+const MemoizedPokemonCard = React.memo(PokemonCardComponent);
 
 const styles = StyleSheet.create({
   container: {
@@ -3145,10 +3210,7 @@ const styles = StyleSheet.create({
   infoIconContainer: {
     marginBottom: 16,
   },
-  rewardCoinIcon: {
-    width: 60,
-    height: 60,
-  },
+
 
   // Buddy Progress / Management Styles
   tabContainer: {

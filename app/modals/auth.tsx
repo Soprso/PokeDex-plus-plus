@@ -1,8 +1,8 @@
+import { useThemedAlert } from '@/hooks/use-themed-alert';
 import { useOAuth, useSignIn, useSignUp } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
-    Alert,
     Dimensions,
     Image,
     Modal,
@@ -11,7 +11,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    View
+    View,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -34,10 +34,11 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
     const { signUp, setActive: setActiveSignUp } = useSignUp();
     const { startOAuthFlow: startGoogleOAuth } = useOAuth({ strategy: 'oauth_google' });
     const { startOAuthFlow: startFacebookOAuth } = useOAuth({ strategy: 'oauth_facebook' });
+    const { showAlert, AlertModal } = useThemedAlert();
 
     const handleEmailAuth = async () => {
         if (!email || !password) {
-            Alert.alert('Error', 'Please enter email and password');
+            showAlert('Error', 'Please enter email and password', undefined, 'warning', '#FF9800');
             return;
         }
 
@@ -55,7 +56,7 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
                     resetForm();
                     onClose();
                 } else {
-                    Alert.alert('Error', 'Sign in incomplete. Please try again.');
+                    showAlert('Error', 'Sign in incomplete. Please try again.', undefined, 'alert-circle', '#FF3B30');
                 }
             } else {
                 // Sign Up
@@ -73,11 +74,11 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
                     await signUp!.prepareEmailAddressVerification({ strategy: 'email_code' });
                     setPendingVerification(true);
                 } else {
-                    Alert.alert('Error', 'Sign up incomplete. Please try again.');
+                    showAlert('Error', 'Sign up incomplete. Please try again.', undefined, 'alert-circle', '#FF3B30');
                 }
             }
         } catch (err: any) {
-            Alert.alert('Error', err.errors?.[0]?.message || 'Authentication failed');
+            showAlert('Error', err.errors?.[0]?.message || 'Authentication failed', undefined, 'alert-circle', '#FF3B30');
         } finally {
             setLoading(false);
         }
@@ -85,7 +86,7 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
 
     const handleVerifyEmail = async () => {
         if (!code) {
-            Alert.alert('Error', 'Please enter the verification code');
+            showAlert('Error', 'Please enter the verification code', undefined, 'key', '#FF9800');
             return;
         }
 
@@ -100,10 +101,10 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
                 resetForm();
                 onClose();
             } else {
-                Alert.alert('Error', 'Verification failed. Please try again.');
+                showAlert('Error', 'Verification failed. Please try again.', undefined, 'alert-circle', '#FF3B30');
             }
         } catch (err: any) {
-            Alert.alert('Error', err.errors?.[0]?.message || 'Verification failed');
+            showAlert('Error', err.errors?.[0]?.message || 'Verification failed', undefined, 'alert-circle', '#FF3B30');
         } finally {
             setLoading(false);
         }
@@ -122,7 +123,7 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
         } catch (err: any) {
             // User cancelled or error occurred
             if (err.code !== 'user_cancelled') {
-                Alert.alert('Error', 'Google sign in failed');
+                showAlert('Error', 'Google sign in failed', undefined, 'logo-google', '#FF3B30');
             }
         } finally {
             setLoading(false);
@@ -142,7 +143,7 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
         } catch (err: any) {
             // User cancelled or error occurred
             if (err.code !== 'user_cancelled') {
-                Alert.alert('Error', 'Facebook sign in failed');
+                showAlert('Error', 'Facebook sign in failed', undefined, 'logo-facebook', '#FF3B30');
             }
         } finally {
             setLoading(false);
@@ -357,6 +358,7 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
                     </ScrollView>
                 </View>
             </View>
+            <AlertModal />
         </Modal>
     );
 }

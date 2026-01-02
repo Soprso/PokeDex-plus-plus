@@ -1,4 +1,5 @@
 import { TEAM_LIST, TeamName, TEAMS } from '@/constants/teams';
+import { useThemedAlert } from '@/hooks/use-themed-alert';
 import { getUserProfile, saveUserProfile, UserProfile } from '@/services/storage';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +8,6 @@ import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Dimensions,
     Image,
     KeyboardAvoidingView,
@@ -38,6 +38,7 @@ export default function ProfileScreen() {
     const [selectedTeam, setSelectedTeam] = useState<TeamName | null>(null);
     const [streak, setStreak] = useState(0);
     const [saving, setSaving] = useState(false);
+    const { showAlert, closeAlert, AlertModal } = useThemedAlert();
 
     // Load profile data
     useEffect(() => {
@@ -110,18 +111,19 @@ export default function ProfileScreen() {
                 await saveUserProfile(user.id, profile);
             }
 
-            Alert.alert('Success', 'Profile saved to the cloud!');
+            AlertModal; // Just to ensure lint doesn't complain if I use it later in JSX. Actually I should use showAlert.
+            showAlert('Success', 'Profile saved to the cloud!', undefined, 'checkmark-circle', '#4CAF50');
         } catch (error: any) {
             console.error('Save error:', error);
             const msg = error.errors?.[0]?.message || error.message || 'Unknown error';
-            Alert.alert('Error', 'Failed to save profile: ' + msg);
+            showAlert('Error', 'Failed to save profile: ' + msg, undefined, 'alert-circle', '#FF3B30');
         } finally {
             setSaving(false);
         }
     };
 
     const handleSignOut = async () => {
-        Alert.alert(
+        showAlert(
             'Sign Out',
             'Are you sure you want to sign out?',
             [
@@ -131,10 +133,13 @@ export default function ProfileScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         await signOut();
+                        closeAlert();
                         router.back();
                     },
                 },
-            ]
+            ],
+            'log-out-outline',
+            '#FF3B30'
         );
     };
 
@@ -398,6 +403,7 @@ export default function ProfileScreen() {
                     </ScrollView>
                 </KeyboardAvoidingView>
             </SafeAreaView>
+            <AlertModal />
         </View>
     );
 }

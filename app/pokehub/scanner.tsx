@@ -1,12 +1,14 @@
+import { useThemedAlert } from '@/hooks/use-themed-alert';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ScannerScreen() {
     const [loading, setLoading] = useState(false);
+    const { showAlert, AlertModal } = useThemedAlert();
 
     const handleUploadScreenshot = async () => {
         setLoading(true);
@@ -15,9 +17,12 @@ export default function ScannerScreen() {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
             if (status !== 'granted') {
-                Alert.alert(
+                showAlert(
                     'Permission Required',
-                    'Please grant photo library access to upload screenshots.'
+                    'Please grant photo library access to upload screenshots.',
+                    undefined,
+                    'key',
+                    '#FF9800'
                 );
                 setLoading(false);
                 return;
@@ -40,7 +45,7 @@ export default function ScannerScreen() {
             }
         } catch (error) {
             console.error('Error picking image:', error);
-            Alert.alert('Error', 'Failed to pick image. Please try again.');
+            showAlert('Error', 'Failed to pick image. Please try again.', undefined, 'alert-circle', '#FF3B30');
         } finally {
             setLoading(false);
         }
@@ -97,6 +102,7 @@ export default function ScannerScreen() {
                     </Pressable>
                 </View>
             </View>
+            <AlertModal />
         </SafeAreaView>
     );
 }

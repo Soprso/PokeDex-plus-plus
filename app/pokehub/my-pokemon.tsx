@@ -1,14 +1,16 @@
+import { useThemedAlert } from '@/hooks/use-themed-alert';
 import { deletePokemon, getMyPokemon, type ScannedPokemon } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MyPokemonScreen() {
     const [pokemon, setPokemon] = useState<ScannedPokemon[]>([]);
     const [loading, setLoading] = useState(true);
+    const { showAlert, closeAlert, AlertModal } = useThemedAlert();
 
     const loadPokemon = async () => {
         setLoading(true);
@@ -24,7 +26,7 @@ export default function MyPokemonScreen() {
     );
 
     const handleDelete = (id: string, name: string) => {
-        Alert.alert('Delete Pokémon?', `Remove ${name} from your list?`, [
+        showAlert('Delete Pokémon?', `Remove ${name} from your list?`, [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Delete',
@@ -32,9 +34,10 @@ export default function MyPokemonScreen() {
                 onPress: async () => {
                     await deletePokemon(id);
                     await loadPokemon();
+                    closeAlert();
                 },
             },
-        ]);
+        ], 'trash', '#FF3B30');
     };
 
     const getIVColor = (percent: number) => {
@@ -128,6 +131,7 @@ export default function MyPokemonScreen() {
                 ListEmptyComponent={!loading ? renderEmpty : null}
                 showsVerticalScrollIndicator={false}
             />
+            <AlertModal />
         </SafeAreaView>
     );
 }

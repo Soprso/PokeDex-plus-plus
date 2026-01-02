@@ -17,8 +17,6 @@ const CONFETTI_COLORS = ['#FFD700', '#C0C0C0', '#FF6B6B', '#4ECDC4', '#A8E6CF'];
 
 const ConfettiParticle = ({ delay, xPos, scale, duration, color }: { delay: number; xPos: DimensionValue; scale: number; duration: number; color: string }) => {
     const translateY = useSharedValue(-20);
-    const rotateX = useSharedValue(0);
-    const rotateY = useSharedValue(0);
     const rotateZ = useSharedValue(0);
 
     useEffect(() => {
@@ -32,23 +30,7 @@ const ConfettiParticle = ({ delay, xPos, scale, duration, color }: { delay: numb
             )
         );
 
-        // 3D Rotation (Tumble)
-        rotateX.value = withDelay(
-            delay,
-            withRepeat(
-                withTiming(360, { duration: duration * 0.8, easing: Easing.linear }),
-                -1,
-                false
-            )
-        );
-        rotateY.value = withDelay(
-            delay,
-            withRepeat(
-                withTiming(360, { duration: duration * 1.2, easing: Easing.linear }),
-                -1,
-                false
-            )
-        );
+
         rotateZ.value = withDelay(
             delay,
             withRepeat(
@@ -63,8 +45,6 @@ const ConfettiParticle = ({ delay, xPos, scale, duration, color }: { delay: numb
         transform: [
             { translateY: translateY.value },
             { scale },
-            { rotateX: `${rotateX.value}deg` },
-            { rotateY: `${rotateY.value}deg` },
             { rotateZ: `${rotateZ.value}deg` }
         ],
     }));
@@ -76,7 +56,7 @@ const ConfettiParticle = ({ delay, xPos, scale, duration, color }: { delay: numb
 
 const ConfettiParticles = () => {
     const particles = useMemo(() => {
-        return Array.from({ length: 35 }).map((_, i) => ({
+        return Array.from({ length: 12 }).map((_, i) => ({
             id: i,
             delay: Math.random() * 3000,
             xPos: `${Math.random() * 100}%` as DimensionValue,

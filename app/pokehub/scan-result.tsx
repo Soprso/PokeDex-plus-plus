@@ -1,11 +1,11 @@
 import PokemonDetailView, { type PokemonDisplayData } from '@/components/pokemon/PokemonDetailView';
+import { useThemedAlert } from '@/hooks/use-themed-alert';
 import { extractPokemonFromImage, validateOCRResult, type OCRResult } from '@/services/ocr';
 import { addPokemon, type ScannedPokemon } from '@/services/storage';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
     KeyboardAvoidingView,
     Platform,
     Pressable,
@@ -38,6 +38,7 @@ export default function ScanResultScreen() {
 
     // Save state
     const [saving, setSaving] = useState(false);
+    const { showAlert, closeAlert, AlertModal } = useThemedAlert();
 
     // Level calc state - DISABLED
     const [calculatedLevel, setCalculatedLevel] = useState<number | null>(null);
@@ -152,29 +153,35 @@ export default function ScanResultScreen() {
 
             await addPokemon(pokemon);
 
-            Alert.alert('Success', 'Pokémon saved to My Pokémon!', [
+            showAlert('Success', 'Pokémon saved to My Pokémon!', [
                 {
                     text: 'OK',
-                    onPress: () => router.push('/pokehub/my-pokemon'),
+                    onPress: () => {
+                        closeAlert();
+                        router.push('/pokehub/my-pokemon');
+                    },
                 },
-            ]);
+            ], 'checkmark-circle', '#4CAF50');
         } catch (error) {
             console.error('Error saving Pokémon:', error);
-            Alert.alert('Error', 'Failed to save Pokémon. Please try again.');
+            showAlert('Error', 'Failed to save Pokémon. Please try again.', undefined, 'alert-circle', '#FF3B30');
         } finally {
             setSaving(false);
         }
     };
 
     const handleDiscard = () => {
-        Alert.alert('Discard Scan?', 'Are you sure you want to discard this scan?', [
+        showAlert('Discard Scan?', 'Are you sure you want to discard this scan?', [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Discard',
                 style: 'destructive',
-                onPress: () => router.push('/pokehub'),
+                onPress: () => {
+                    closeAlert();
+                    router.push('/pokehub');
+                },
             },
-        ]);
+        ], 'trash', '#FF3B30');
     };
 
     return (
@@ -316,6 +323,7 @@ export default function ScanResultScreen() {
                     </PokemonDetailView>
                 </ScrollView>
             </KeyboardAvoidingView>
+            <AlertModal />
         </SafeAreaView>
     );
 }

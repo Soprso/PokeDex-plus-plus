@@ -5,7 +5,7 @@ import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DailyInteraction, EconomyData, Inventory } from '../index'; // Import from index
 
@@ -30,7 +30,7 @@ export default function ShopScreen() {
             setBalance(economy.balance || 0);
             setInventory(userInventory);
         }
-    }, [user]);
+    }, [user?.id]); // Only re-run if ID changes to prevent loops if object ref changes inappropriately
 
     const handleBuyItem = async (item: ShopItem) => {
         if (!user) {
@@ -133,105 +133,124 @@ export default function ShopScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Categories - Tab Style */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-                    <View style={styles.categories}>
-                        {(['all', 'normal', 'legendary', 'mythical'] as const).map(cat => (
-                            <Pressable
-                                key={cat}
-                                style={[
-                                    styles.categoryTab,
-                                    selectedCategory === cat && styles.categoryTabActive,
-                                ]}
-                                onPress={() => setSelectedCategory(cat)}
-                            >
-                                <Text style={[
-                                    styles.categoryText,
-                                    selectedCategory === cat && styles.categoryTextActive,
-                                    isDark && selectedCategory !== cat && styles.textDark
-                                ]}>
-                                    {cat.toUpperCase()}
-                                </Text>
-                            </Pressable>
-                        ))}
-                    </View>
-                </ScrollView>
-
-                {/* Buy Interaction Special */}
-                <View style={[styles.specialOffer, isDark && styles.specialOfferDark]}>
-                    <View style={styles.specialInfo}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={[styles.specialTitle, isDark && styles.textDark]}>Buddy Interaction +1</Text>
-                            <Ionicons name="heart" size={18} color="#e11d48" style={{ marginLeft: 6 }} />
-                        </View>
-                        <Text style={styles.specialSub}>Get +1 Buddy Interaction for today.</Text>
-                    </View>
-                    <Pressable style={styles.buyButtonSmall} onPress={handleBuyInteraction}>
-                        <Text style={styles.buyButtonText}>200</Text>
-                        <Image source={CoinIcon} style={styles.coinIconSmall} />
-                    </Pressable>
-                </View>
-
-                {/* Items Grid */}
-                <View style={styles.grid}>
-                    {filteredItems.map(item => {
-                        const count = inventory[item.id] || 0;
-                        const cardBackground = TYPE_COLORS['electric']; // Default background
-                        return (
-                            <View key={item.id} style={[styles.itemCard, isDark && styles.itemCardDark]}>
-                                {/* Full Card Background */}
-                                <View style={[styles.cardBackground, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_golden_glory' || item.id === 'effect_icy_wind' || item.id === 'effect_magma_storm' || item.id === 'effect_frenzy_plant' || item.id === 'effect_bubble_beam' || item.id === 'effect_air_slash' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : cardBackground }]}>
-                                    {/* Live Effect Preview */}
-                                    {item.id === 'extra_love' && <ExtraLoveEffect />}
-                                    {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
-                                    {item.id === 'effect_icy_wind' && <IcyWindEffect />}
-                                    {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
-                                    {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
-                                    {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
-                                    {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
-                                    {item.id === 'effect_air_slash' && <AirSlashEffect />}
-                                    {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
-
-                                    {/* Pokemon Preview Card Content */}
-                                    {count > 0 && <View style={[styles.ownedBadge, { top: 12, right: 12 }]}><Text style={styles.ownedText}>x{count}</Text></View>}
-                                    <Text style={styles.cardId}>#025</Text>
-                                    <Image
-                                        source={{ uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
-                                        style={styles.previewImage}
-                                    />
-                                    <Text style={styles.cardName}>Pikachu</Text>
-                                    <View style={styles.cardTypeContainer}>
-                                        <Image source={TYPE_ICONS['electric']} style={styles.cardTypeIcon} />
-                                    </View>
-
-                                    {/* Effects Overlay */}
-                                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                                        {!['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash'].includes(item.id) && (
-                                            <View style={styles.effectIconOverlay}>
-                                                <Ionicons name="sparkles" size={24} color={item.category === 'mythical' ? '#FFD700' : '#fff'} />
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-
-                                {/* Info Overlay */}
-                                <View style={[styles.itemInfoOverlay, isDark && styles.itemInfoOverlayDark]}>
-                                    <Text style={[styles.itemName, isDark && styles.textDark]}>{item.name}</Text>
-                                    <Text style={styles.itemDesc} numberOfLines={2}>{item.description}</Text>
-                                    <Pressable style={styles.buyButton} onPress={() => handleBuyItem(item)}>
-                                        <Text style={styles.buyButtonText}>{item.price}</Text>
-                                        <Image source={CoinIcon} style={styles.coinIconSmall} />
+            <FlatList
+                data={filteredItems}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                columnWrapperStyle={{ justifyContent: 'space-between' }}
+                contentContainerStyle={styles.scrollContent}
+                windowSize={5}
+                initialNumToRender={8}
+                maxToRenderPerBatch={8}
+                removeClippedSubviews={true}
+                ListHeaderComponent={
+                    <>
+                        {/* Categories - Tab Style */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+                            <View style={styles.categories}>
+                                {(['all', 'normal', 'legendary', 'mythical'] as const).map(cat => (
+                                    <Pressable
+                                        key={cat}
+                                        style={[
+                                            styles.categoryTab,
+                                            selectedCategory === cat && styles.categoryTabActive,
+                                        ]}
+                                        onPress={() => setSelectedCategory(cat)}
+                                    >
+                                        <Text style={[
+                                            styles.categoryText,
+                                            selectedCategory === cat && styles.categoryTextActive,
+                                            isDark && selectedCategory !== cat && styles.textDark
+                                        ]}>
+                                            {cat.toUpperCase()}
+                                        </Text>
                                     </Pressable>
-                                </View>
+                                ))}
                             </View>
-                        );
-                    })}
-                </View>
-            </ScrollView>
+                        </ScrollView>
+
+                        {/* Buy Interaction Special */}
+                        <View style={[styles.specialOffer, isDark && styles.specialOfferDark]}>
+                            <View style={styles.specialInfo}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                    <Text style={[styles.specialTitle, isDark && styles.textDark]}>Buddy Interaction +1</Text>
+                                    <Ionicons name="heart" size={18} color="#e11d48" style={{ marginLeft: 6 }} />
+                                </View>
+                                <Text style={styles.specialSub}>Get +1 Buddy Interaction for today.</Text>
+                            </View>
+                            <Pressable style={styles.buyButtonSmall} onPress={handleBuyInteraction}>
+                                <Text style={styles.buyButtonText}>200</Text>
+                                <Image source={CoinIcon} style={styles.coinIconSmall} />
+                            </Pressable>
+                        </View>
+                    </>
+                }
+                renderItem={({ item }) => (
+                    <ShopItemCard
+                        item={item}
+                        count={inventory[item.id] || 0}
+                        isDark={isDark}
+                        onBuy={() => handleBuyItem(item)}
+                    />
+                )}
+            />
         </SafeAreaView>
     );
 }
+
+const ShopItemCard = React.memo(({ item, count, isDark, onBuy }: { item: ShopItem, count: number, isDark: boolean, onBuy: () => void }) => {
+    const cardBackground = TYPE_COLORS['electric']; // Default background
+    const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash'].includes(item.id);
+
+    return (
+        <View style={[styles.itemCard, isDark && styles.itemCardDark]}>
+            {/* Full Card Background */}
+            <View style={[styles.cardBackground, { backgroundColor: isSpecialEffect ? 'transparent' : cardBackground }]}>
+                {/* Live Effect Preview */}
+                {item.id === 'extra_love' && <ExtraLoveEffect />}
+                {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
+                {item.id === 'effect_icy_wind' && <IcyWindEffect />}
+                {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
+                {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
+                {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
+                {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
+                {item.id === 'effect_air_slash' && <AirSlashEffect />}
+                {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
+
+                {/* Pokemon Preview Card Content */}
+                {count > 0 && <View style={[styles.ownedBadge, { top: 12, right: 12 }]}><Text style={styles.ownedText}>x{count}</Text></View>}
+                <Text style={styles.cardId}>#025</Text>
+                <Image
+                    source={{ uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
+                    style={styles.previewImage}
+                />
+                <Text style={styles.cardName}>Pikachu</Text>
+                <View style={styles.cardTypeContainer}>
+                    <Image source={TYPE_ICONS['electric']} style={styles.cardTypeIcon} />
+                </View>
+
+                {/* Effects Overlay */}
+                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                    {!isSpecialEffect && (
+                        <View style={styles.effectIconOverlay}>
+                            <Ionicons name="sparkles" size={24} color={item.category === 'mythical' ? '#FFD700' : '#fff'} />
+                        </View>
+                    )}
+                </View>
+            </View>
+
+            {/* Info Overlay */}
+            <View style={[styles.itemInfoOverlay, isDark && styles.itemInfoOverlayDark]}>
+                <Text style={[styles.itemName, isDark && styles.textDark]}>{item.name}</Text>
+                <Text style={styles.itemDesc} numberOfLines={2}>{item.description}</Text>
+                <Pressable style={styles.buyButton} onPress={onBuy}>
+                    <Text style={styles.buyButtonText}>{item.price}</Text>
+                    <Image source={CoinIcon} style={styles.coinIconSmall} />
+                </Pressable>
+            </View>
+        </View>
+    );
+});
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f5f5' },
