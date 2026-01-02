@@ -36,12 +36,19 @@ export default function ProfileScreen() {
     const [trainerId, setTrainerId] = useState('');
     const [trainerLevel, setTrainerLevel] = useState('');
     const [selectedTeam, setSelectedTeam] = useState<TeamName | null>(null);
+    const [streak, setStreak] = useState(0);
     const [saving, setSaving] = useState(false);
 
     // Load profile data
     useEffect(() => {
         async function loadProfile() {
             if (isLoaded && isSignedIn && user) {
+                // Load Streak
+                if (user.unsafeMetadata.economy) {
+                    const economy = user.unsafeMetadata.economy as any;
+                    setStreak(economy.streak || 0);
+                }
+
                 // 1. Try to load from Cloud (Clerk Metadata)
                 const cloudProfile = user.unsafeMetadata?.trainerProfile as UserProfile | undefined;
 
@@ -298,6 +305,12 @@ export default function ProfileScreen() {
                                 <Text style={[styles.trainerLevelDisplay, darkMode && styles.textDark]}>
                                     Level {trainerLevel || '00'}
                                 </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                    <Ionicons name="flame" size={16} color="#FF6B6B" style={{ marginRight: 4 }} />
+                                    <Text style={[styles.trainerLevelDisplay, { fontSize: 14, fontWeight: '600' }, darkMode && styles.textDark]}>
+                                        Streak: {streak} Days
+                                    </Text>
+                                </View>
                             </View>
                         </View>
 

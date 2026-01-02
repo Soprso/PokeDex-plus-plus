@@ -13,9 +13,10 @@ import Animated, {
 interface ShineOverlayProps {
     color?: string; // e.g. 'rgba(255, 215, 0, 0.4)'
     duration?: number;
+    diagonal?: boolean;
 }
 
-export const ShineOverlay: React.FC<ShineOverlayProps> = ({ color = 'rgba(255, 255, 255, 0.3)', duration = 3000 }) => {
+export const ShineOverlay: React.FC<ShineOverlayProps> = ({ color = 'rgba(255, 255, 255, 0.3)', duration = 3000, diagonal = false }) => {
     const translateX = useSharedValue(-100);
 
     useEffect(() => {
@@ -30,7 +31,10 @@ export const ShineOverlay: React.FC<ShineOverlayProps> = ({ color = 'rgba(255, 2
     }, []);
 
     const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ translateX: `${translateX.value}%` }],
+        transform: [
+            { translateX: `${translateX.value}%` },
+            { rotate: diagonal ? '45deg' : '0deg' }
+        ],
     }));
 
     return (
@@ -39,8 +43,10 @@ export const ShineOverlay: React.FC<ShineOverlayProps> = ({ color = 'rgba(255, 2
                 style={[
                     StyleSheet.absoluteFill,
                     {
-                        width: '100%', // Full width of container
-                        height: '100%',
+                        width: diagonal ? '200%' : '100%',
+                        height: diagonal ? '200%' : '100%',
+                        left: diagonal ? '-50%' : 0,
+                        top: diagonal ? '-50%' : 0,
                     },
                     animatedStyle
                 ]}
@@ -52,7 +58,7 @@ export const ShineOverlay: React.FC<ShineOverlayProps> = ({ color = 'rgba(255, 2
                     style={{
                         width: '50%', // The beam width
                         height: '100%',
-                        transform: [{ skewX: '-20deg' }]
+                        transform: [{ skewX: diagonal ? '0deg' : '-20deg' }] // Remove skew if rotated, let rotation handle angle
                     }}
                 />
             </Animated.View>

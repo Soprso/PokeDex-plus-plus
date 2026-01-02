@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -12,9 +12,10 @@ interface GlowBorderProps {
     color: string;
     borderWidth: number;
     cornerRadius?: number;
+    style?: StyleProp<ViewStyle>;
 }
 
-export const GlowBorder: React.FC<GlowBorderProps> = ({ color, borderWidth, cornerRadius = 12 }) => {
+export const GlowBorder: React.FC<GlowBorderProps> = ({ color, borderWidth, cornerRadius = 12, style }) => {
     const opacity = useSharedValue(0.5);
 
     useEffect(() => {
@@ -43,6 +44,7 @@ export const GlowBorder: React.FC<GlowBorderProps> = ({ color, borderWidth, corn
                     borderRadius: cornerRadius,
                     zIndex: 1, // Ensure it's visible on top of card content
                 },
+                style,
                 animatedStyle,
             ]}
             pointerEvents="none"

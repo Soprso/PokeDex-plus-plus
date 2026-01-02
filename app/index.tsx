@@ -51,11 +51,9 @@ export interface DailyInteraction {
 export interface EconomyData {
   balance: number;
   lastDailyRewardDate: string; // YYYY-MM-DD
+  streak: number;
 }
 
-export interface Inventory {
-  [effectId: string]: number;
-}
 
 export interface CardEffects {
   [pokemonId: number]: string; // pokemonId -> effectId
@@ -150,6 +148,7 @@ export default function PokedexListScreen() {
   const [economy, setEconomy] = useState<EconomyData>({
     balance: 0,
     lastDailyRewardDate: '',
+    streak: 0,
   });
   const [inventory, setInventory] = useState<Inventory>({});
   const [cardEffects, setCardEffects] = useState<CardEffects>({});
@@ -238,24 +237,61 @@ export default function PokedexListScreen() {
       }
 
       // Economy & Daily Reward Logic
-      let currentEconomy = { balance: 0, lastDailyRewardDate: '' };
+      let currentEconomy: EconomyData = { balance: 0, lastDailyRewardDate: '', streak: 0 };
       if (user.unsafeMetadata.economy) {
-        currentEconomy = user.unsafeMetadata.economy as EconomyData;
+        const rawEconomy = user.unsafeMetadata.economy as any;
+        currentEconomy = {
+          balance: rawEconomy.balance || 0,
+          lastDailyRewardDate: rawEconomy.lastDailyRewardDate || '',
+          streak: rawEconomy.streak || 0
+        };
       }
 
-
-
       const currentDate = new Date().toISOString().split('T')[0];
+
+      // Check if reward is needed
       if (currentEconomy.lastDailyRewardDate !== currentDate) {
-        // Grant Daily Reward
-        const rewardAmount = 50;
+        let rewardAmount = 50;
+        let isStreakBonus = false;
+        let streakMessage = '';
+
+        // Calculate Streak
+        const lastDate = new Date(currentEconomy.lastDailyRewardDate);
+        const todayDate = new Date(currentDate);
+
+        // If first time or invalid date, streak is 1 (starts today)
+        if (!currentEconomy.lastDailyRewardDate) {
+          currentEconomy.streak = 1;
+        } else {
+          // Calculate difference in days
+          const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays === 1) {
+            // Consecutive day
+            currentEconomy.streak += 1;
+          } else {
+            // Missed a day (or more), reset to 1
+            currentEconomy.streak = 1;
+          }
+        }
+
+        // Check for 7-day Bonus
+        if (currentEconomy.streak > 0 && currentEconomy.streak % 7 === 0) {
+          rewardAmount += 350;
+          isStreakBonus = true;
+          streakMessage = `\n🔥 ${currentEconomy.streak} Day Streak! +350 Bonus!`;
+        } else {
+          streakMessage = `\n🔥 Streak: ${currentEconomy.streak} Days`;
+        }
+
         currentEconomy.balance += rewardAmount;
         currentEconomy.lastDailyRewardDate = currentDate;
 
         setEconomyModal({
           visible: true,
-          title: '📅 Daily Login Reward!',
-          message: `You received ${rewardAmount} Dex Coins! 💰\nNew Balance: ${currentEconomy.balance}`,
+          title: isStreakBonus ? '🎉 HUGE Daily Reward!' : '📅 Daily Login Reward!',
+          message: `You received ${rewardAmount} Dex Coins! 💰${streakMessage}\nNew Balance: ${currentEconomy.balance}`,
           type: 'reward'
         });
 
@@ -266,6 +302,19 @@ export default function PokedexListScreen() {
             economy: currentEconomy,
           },
         }).catch(console.error);
+      } else {
+        // Daily reward not due, but check if we need to migrate schema (add streak)
+        const storedEconomy = user.unsafeMetadata.economy as any;
+        if (storedEconomy && typeof storedEconomy.streak === 'undefined') {
+          console.log('Migrating economy metadata to include streak...');
+          currentEconomy.streak = currentEconomy.streak || 1; // Default to 1 if missing for active user
+          user.update({
+            unsafeMetadata: {
+              ...user.unsafeMetadata,
+              economy: currentEconomy,
+            },
+          }).catch(console.error);
+        }
       }
       setEconomy(currentEconomy);
 
@@ -288,7 +337,7 @@ export default function PokedexListScreen() {
         heartsGiven: 0,
         pokemonIds: [],
       });
-      setEconomy({ balance: 0, lastDailyRewardDate: '' });
+      setEconomy({ balance: 0, lastDailyRewardDate: '', streak: 0 });
     }
   }, [user]);
 
@@ -1144,8 +1193,8 @@ export default function PokedexListScreen() {
             ]}
             onPress={() => setEconomyModal({
               visible: true,
-              title: '💰 Dex Coin Balance',
-              message: `${economy.balance} Dex coins.\nUse it to purchase items from the store!!`,
+              title: 'Wallet',
+              message: '', // Handled visually
               type: 'info'
             })}
           >
@@ -1655,93 +1704,103 @@ export default function PokedexListScreen() {
       {/* Buddy Help Modal */}
       <Modal visible={buddyHelpModalOpen} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => setBuddyHelpModalOpen(false)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.buddyModalContent, settings.darkMode && styles.modalContentDark]}>
-            <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark]}>❤️ Buddy System</Text>
-
-            <Text style={[styles.buddyModalText, settings.darkMode && styles.buddyModalTextDark]}>
-              Build a bond with your Pokémon by giving them hearts! Progress through 4 levels to unlock premium visual effects.
-            </Text>
-
-            {!isSignedIn && (
-              <Pressable
-                style={[styles.signInPrompt, settings.darkMode && styles.signInPromptDark]}
-                onPress={() => { setBuddyHelpModalOpen(false); setAuthModalOpen(true); }}
-              >
-                <Text style={styles.signInPromptText}>Sign in to start your journey! 🔐</Text>
-              </Pressable>
-            )}
-
-            <View style={styles.buddyLevelRow}>
-              <View style={{ flexDirection: 'row', gap: 2 }}>
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart-outline" size={16} color="#ccc" />
-                <Ionicons name="heart-outline" size={16} color="#ccc" />
-                <Ionicons name="heart-outline" size={16} color="#ccc" />
-              </View>
-              <View style={styles.buddyLevelInfo}>
-                <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Good Buddy</Text>
-                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 1</Text>
-              </View>
-            </View>
-
-            <View style={styles.buddyLevelRow}>
-              <View style={{ flexDirection: 'row', gap: 2 }}>
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart-outline" size={16} color="#ccc" />
-                <Ionicons name="heart-outline" size={16} color="#ccc" />
-              </View>
-              <View style={styles.buddyLevelInfo}>
-                <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Great Buddy</Text>
-                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 4 • Blue Neon Glow</Text>
-              </View>
-            </View>
-
-            <View style={styles.buddyLevelRow}>
-              <View style={{ flexDirection: 'row', gap: 2 }}>
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart-outline" size={16} color="#ccc" />
-              </View>
-              <View style={styles.buddyLevelInfo}>
-                <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Ultra Buddy</Text>
-                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 11 • Platinum Shine</Text>
-              </View>
-            </View>
-
-            <View style={styles.buddyLevelRow}>
-              <View style={{ flexDirection: 'row', gap: 2 }}>
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-                <Ionicons name="heart" size={16} color="#FF6B6B" />
-              </View>
-              <View style={styles.buddyLevelInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Best Buddy</Text>
-                  <Image source={require('@/assets/images/best-buddy.png')} style={{ width: 16, height: 16, marginLeft: 6 }} resizeMode="contain" />
-                </View>
-                <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 21 • Gold Shine + Badge</Text>
-              </View>
-            </View>
-
-            <View style={[styles.dailyLimitBox, settings.darkMode && styles.dailyLimitBoxDark]}>
-              <Text style={[styles.dailyLimitText, settings.darkMode && styles.dailyLimitTextDark]}>
-                ⚠️ Limit: 3 Pokémon per day
-              </Text>
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.modalClose,
-                { marginTop: 24 },
-                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
-              ]}
-              onPress={() => setBuddyHelpModalOpen(false)}
+          <View style={[styles.modalContent, styles.buddyModalContent, { padding: 0, overflow: 'hidden' }, settings.darkMode && styles.modalContentDark]}>
+            <ImageBackground
+              source={require('@/assets/images/buddy-system.png')}
+              style={{ width: '100%', padding: 24 }}
+              resizeMode="stretch"
+              imageStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
             >
-              <Text style={styles.modalCloseText}>Got it!</Text>
-            </Pressable>
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: settings.darkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)', borderTopLeftRadius: 20, borderTopRightRadius: 20 }} />
+              <View style={{ position: 'relative', zIndex: 1 }}>
+                <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark]}>❤️ Buddy System</Text>
+
+                <Text style={[styles.buddyModalText, settings.darkMode && styles.buddyModalTextDark]}>
+                  Build a bond with your Pokémon by giving them hearts! Progress through 4 levels to unlock premium visual effects.
+                </Text>
+
+                {!isSignedIn && (
+                  <Pressable
+                    style={[styles.signInPrompt, settings.darkMode && styles.signInPromptDark]}
+                    onPress={() => { setBuddyHelpModalOpen(false); setAuthModalOpen(true); }}
+                  >
+                    <Text style={styles.signInPromptText}>Sign in to start your journey! 🔐</Text>
+                  </Pressable>
+                )}
+
+                <View style={styles.buddyLevelRow}>
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart-outline" size={16} color="#ccc" />
+                    <Ionicons name="heart-outline" size={16} color="#ccc" />
+                    <Ionicons name="heart-outline" size={16} color="#ccc" />
+                  </View>
+                  <View style={styles.buddyLevelInfo}>
+                    <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Good Buddy</Text>
+                    <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 1</Text>
+                  </View>
+                </View>
+
+                <View style={styles.buddyLevelRow}>
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart-outline" size={16} color="#ccc" />
+                    <Ionicons name="heart-outline" size={16} color="#ccc" />
+                  </View>
+                  <View style={styles.buddyLevelInfo}>
+                    <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Great Buddy</Text>
+                    <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 4 • Blue Neon Glow</Text>
+                  </View>
+                </View>
+
+                <View style={styles.buddyLevelRow}>
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart-outline" size={16} color="#ccc" />
+                  </View>
+                  <View style={styles.buddyLevelInfo}>
+                    <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Ultra Buddy</Text>
+                    <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 11 • Platinum Shine</Text>
+                  </View>
+                </View>
+
+                <View style={styles.buddyLevelRow}>
+                  <View style={{ flexDirection: 'row', gap: 2 }}>
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                    <Ionicons name="heart" size={16} color="#FF6B6B" />
+                  </View>
+                  <View style={styles.buddyLevelInfo}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={[styles.buddyLevelTitle, settings.darkMode && styles.buddyLevelTitleDark]}>Best Buddy</Text>
+                      <Image source={require('@/assets/images/best-buddy.png')} style={{ width: 16, height: 16, marginLeft: 6 }} resizeMode="contain" />
+                    </View>
+                    <Text style={[styles.buddyLevelDesc, settings.darkMode && styles.buddyLevelDescDark]}>Day 21 • Gold Shine + Badge</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.dailyLimitBox, settings.darkMode && styles.dailyLimitBoxDark]}>
+                  <Text style={[styles.dailyLimitText, settings.darkMode && styles.dailyLimitTextDark]}>
+                    ⚠️ Limit: 3 Pokémon per day
+                  </Text>
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.modalClose,
+                    { marginTop: 24 },
+                    pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                  ]}
+                  onPress={() => setBuddyHelpModalOpen(false)}
+                >
+                  <Text style={styles.modalCloseText}>Got it!</Text>
+                </Pressable>
+              </View>
+            </ImageBackground>
           </View>
         </View>
       </Modal>
@@ -1972,49 +2031,118 @@ export default function PokedexListScreen() {
       {/* Economy/Reward Modal */}
       <Modal visible={economyModal.visible} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => setEconomyModal({ ...economyModal, visible: false })}>
         <View style={styles.centeredModalOverlay}>
-          <View style={[styles.modalContent, styles.economyModalContent, { borderRadius: 20 }, settings.darkMode && styles.modalContentDark, economyModal.type === 'reward' && styles.economyModalReward]}>
-            {economyModal.type === 'reward' && (
-              <Animated.View style={styles.rewardIconContainer}>
-                <Image source={require('@/assets/images/dex-coin.png')} style={styles.rewardCoinIconLarge} />
-                <View style={styles.rewardBadgeContainer}>
-                  <Ionicons name="gift" size={20} color="#fff" />
+          <View style={[styles.modalContent, styles.economyModalContent, { borderRadius: 24, padding: 0 }, settings.darkMode && styles.modalContentDark, economyModal.type === 'reward' && styles.economyModalReward]}>
+
+            {/* Header Section */}
+            <View style={[styles.economyModalHeaderContainer, { borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' }]}>
+              <ImageBackground
+                source={require('@/assets/images/dex-wallet.png')}
+                style={[styles.economyModalHeader, economyModal.type === 'reward' ? styles.economyModalHeaderReward : styles.economyModalHeaderInfo, settings.darkMode && styles.economyModalHeaderDark]}
+                resizeMode="cover"
+              >
+                <ShineOverlay color="rgba(255, 215, 0, 0.4)" duration={3000} />
+                <GlowBorder color="#FFD700" borderWidth={2} cornerRadius={24} style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} />
+                <View style={styles.rewardIconContainer}>
+                  <Image source={require('@/assets/images/dex-coin.png')} style={economyModal.type === 'reward' ? styles.rewardCoinIconLarge : styles.rewardCoinIcon} />
+                  {economyModal.type === 'reward' && (
+                    <View style={styles.rewardBadgeContainer}>
+                      <Ionicons name="gift" size={20} color="#fff" />
+                    </View>
+                  )}
+                  {/* Balance Display (Wallet Mode) or Reward Amount (Reward Mode) */}
+                  {economyModal.type === 'info' && (
+                    <Text style={styles.walletBalanceText}>
+                      {economy.balance}
+                    </Text>
+                  )}
                 </View>
-              </Animated.View>
-            )}
-            {economyModal.type === 'info' && (
-              <View style={styles.infoIconContainer}>
-                <Image source={require('@/assets/images/dex-coin.png')} style={styles.rewardCoinIcon} />
-              </View>
-            )}
+                <Text style={[
+                  styles.economyModalTitle,
+                  {
+                    marginTop: economyModal.type === 'info' ? 8 : 16,
+                    color: settings.darkMode ? '#fff' : '#000',
+                    textShadowColor: settings.darkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.3)',
+                    textShadowRadius: 4
+                  }
+                ]}>
+                  {economyModal.title}
+                </Text>
+              </ImageBackground>
+            </View>
 
-            <Text style={[styles.economyModalTitle, settings.darkMode && styles.modalTitleDark]}>
-              {economyModal.title}
-            </Text>
+            {/* Content Section */}
+            <View style={styles.economyModalBody}>
+              {/* Only show message if it's NOT the wallet info (which now shows balance in header) or if it has extra info */}
+              {economyModal.type !== 'info' && (
+                <Text style={[styles.buddyModalText, settings.darkMode && styles.buddyModalTextDark]}>
+                  {economyModal.message.replace(/🔥 Current Streak: \d+ Days/, '')}
+                </Text>
+              )}
 
-            <Text style={[styles.economyModalText, settings.darkMode && styles.buddyModalTextDark]}>
-              {economyModal.message}
-            </Text>
+              {/* Streak Card UI - Only for Info (Wallet) or if it's a reward with streak info */}
+              {(economyModal.type === 'info' || economyModal.message.includes('Streak')) && (
+                <View style={[styles.streakCard, settings.darkMode && styles.streakCardDark]}>
+                  <View style={styles.streakHeader}>
+                    <Ionicons name="flame" size={20} color="#FF6B6B" />
+                    <Text style={[styles.streakTitle, settings.darkMode && styles.textDark]}>
+                      Current Streak
+                    </Text>
+                  </View>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.modalClose,
-                styles.economyModalButton,
-                pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
-              ]}
-              onPress={() => setEconomyModal({ ...economyModal, visible: false })}
-            >
-              <Text style={styles.modalCloseText}>
-                {economyModal.type === 'reward' ? 'Claim!' : 'Got it'}
-              </Text>
-            </Pressable>
+                  <Text style={[styles.streakCountMain, settings.darkMode && styles.textDark]}>
+                    {(economy.streak || 1)} <Text style={styles.streakCountLabel}>Days</Text>
+                  </Text>
+
+                  <View style={styles.streakContainer}>
+                    {[...Array(7)].map((_, index) => {
+                      const currentStreak = economy.streak || 1;
+                      const filledCount = (currentStreak > 0 && currentStreak % 7 === 0)
+                        ? 7
+                        : currentStreak % 7;
+
+                      const isFilled = index < filledCount;
+
+                      return (
+                        <View
+                          key={index}
+                          style={[
+                            styles.streakCircle,
+                            settings.darkMode && styles.streakCircleDark,
+                            isFilled && styles.streakCircleFilled,
+                            isFilled && index === filledCount - 1 && styles.streakCircleActive
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
+                  <Text style={[styles.streakSubtitle, settings.darkMode && styles.textDark]}>
+                    Keep it up for a 350 coin bonus!
+                  </Text>
+                </View>
+              )}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.economyModalButton,
+                  settings.darkMode && styles.economyModalButtonDark,
+                  pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                ]}
+                onPress={() => setEconomyModal({ ...economyModal, visible: false })}
+              >
+                <Text style={[styles.economyModalButtonText, settings.darkMode && styles.economyModalButtonTextDark]}>
+                  {economyModal.type === 'reward' ? 'Claim Reward' : 'Got it'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </View >
+      </Modal >
 
       {/* Auth Modal */}
-      <AuthModal
+      < AuthModal
         visible={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={() => setAuthModalOpen(false)
+        }
         darkMode={settings.darkMode}
       />
     </>
@@ -2659,6 +2787,169 @@ const styles = StyleSheet.create({
     right: 4,
     zIndex: 10,
   },
+  // Streak UI
+  streakCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  streakCardDark: {
+    backgroundColor: '#333',
+    borderColor: '#444',
+  },
+  streakHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  streakTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  streakCountMain: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#333',
+    marginBottom: 8,
+  },
+  streakCountLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+  },
+  streakSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 8,
+    gap: 8,
+    height: 30, // Fixed height for alignment
+  },
+  streakCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#e0e0e0', // Light gray default
+    borderWidth: 2,
+    borderColor: '#ccc',
+  },
+  streakCircleDark: {
+    backgroundColor: '#444',
+    borderColor: '#555',
+  },
+  streakCircleFilled: {
+    backgroundColor: '#FFD700', // Gold
+    borderColor: '#DAA520', // Goldenrod
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  streakCircleActive: {
+    transform: [{ scale: 1.2 }],
+    borderWidth: 2,
+    borderColor: '#fff',
+    zIndex: 1,
+  },
+  // Modal Enhancements
+  economyModalHeaderContainer: {
+    width: '100%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  economyModalHeader: {
+    width: '100%',
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  economyModalHeaderReward: {
+    backgroundColor: '#6366f1',
+  },
+  economyModalHeaderInfo: {
+    backgroundColor: '#f1f5f9',
+  },
+  economyModalHeaderDark: {
+    backgroundColor: '#333',
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+  },
+  walletBalanceText: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFC107', // Amber 500 - Matches coin image better than pure gold
+    marginTop: 8,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    // Add text stroke for Android (mimic border)
+    textShadowRadius: 1,
+    elevation: 3,
+  },
+  economyModalBody: {
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  economyModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333', // Default overridden by header style if needed
+    textAlign: 'center',
+  },
+  economyModalButton: {
+    backgroundColor: '#6366f1', // Indigo (Light Mode Tab Color)
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    width: '100%',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  economyModalButtonDark: {
+    backgroundColor: '#fff', // White (Dark Mode Tab Tint)
+    shadowColor: '#fff',
+    shadowOpacity: 0.2,
+  },
+  economyModalButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  economyModalButtonTextDark: {
+    color: '#000',
+  },
+  rewardCoinIconLarge: {
+    width: 80,
+    height: 80,
+  },
+  rewardCoinIcon: {
+    width: 60,
+    height: 60,
+  },
   // Card Type Icons (no backgrounds)
   cardTypeIcon: {
     width: 24,
@@ -2840,10 +3131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rewardCoinIconLarge: {
-    width: 100,
-    height: 100,
-  },
+
   rewardBadgeContainer: {
     position: 'absolute',
     bottom: 0,
@@ -2861,25 +3149,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
   },
-  economyModalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-    textAlign: 'center',
-  },
-  economyModalText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  economyModalButton: {
-    minWidth: 140,
-    backgroundColor: '#007AFF',
-    marginTop: 0,
-  },
+
   // Buddy Progress / Management Styles
   tabContainer: {
     flexDirection: 'row',
