@@ -1,4 +1,5 @@
 import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect } from '@/components/card-effects';
+import { GoldFrame, NeonFrame } from '@/components/frame-effects';
 import { TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { ShopItem } from '@/constants/shopItems';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,17 +44,11 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                     isSpecialEffect && <View style={[StyleSheet.absoluteFill, { backgroundColor: '#333', opacity: 0.1 }]} />
                 )}
 
-                {/* Frame Preview (just logic placeholder for now) */}
+                {/* Frame Preview - Always render frames to ensure visibility */}
                 {item.type === 'frame' && (
                     <View style={StyleSheet.absoluteFill}>
-                        <View style={[
-                            StyleSheet.absoluteFill,
-                            {
-                                borderWidth: 4,
-                                borderColor: item.id === 'frame_gold' ? '#FFD700' : '#00FF00',
-                                borderRadius: 12
-                            }
-                        ]} />
+                        {item.id === 'frame_gold' && <GoldFrame />}
+                        {item.id === 'frame_neon' && <NeonFrame />}
                     </View>
                 )}
 

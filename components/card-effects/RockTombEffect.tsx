@@ -116,20 +116,22 @@ const SandStorm = () => {
     );
 };
 
-export const RockTombEffect = () => {
+export const RockTombEffect = ({ showBorder = true }: { showBorder?: boolean }) => {
     // Border Pulse Animation
     const borderOpacity = useSharedValue(0.6);
 
     useEffect(() => {
-        borderOpacity.value = withRepeat(
-            withSequence(
-                withTiming(1, { duration: 1500 }),
-                withTiming(0.6, { duration: 1500 })
-            ),
-            -1,
-            true
-        );
-    }, []);
+        if (showBorder) {
+            borderOpacity.value = withRepeat(
+                withSequence(
+                    withTiming(1, { duration: 1500 }),
+                    withTiming(0.6, { duration: 1500 })
+                ),
+                -1,
+                true
+            );
+        }
+    }, [showBorder]);
 
     const borderStyle = useAnimatedStyle(() => ({
         opacity: borderOpacity.value,
@@ -152,14 +154,16 @@ export const RockTombEffect = () => {
             <SandStorm />
 
             {/* Rock Animated Border */}
-            <Animated.View
-                style={[
-                    StyleSheet.absoluteFill,
-                    styles.border,
-                    borderStyle
-                ]}
-                pointerEvents="none"
-            />
+            {showBorder && (
+                <Animated.View
+                    style={[
+                        StyleSheet.absoluteFill,
+                        styles.border,
+                        borderStyle
+                    ]}
+                    pointerEvents="none"
+                />
+            )}
         </View>
     );
 };

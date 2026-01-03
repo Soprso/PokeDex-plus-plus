@@ -1,4 +1,5 @@
 import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GlowBorder, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect, ShineOverlay } from '@/components/card-effects';
+import { GoldFrame, NeonFrame } from '@/components/frame-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -12,7 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, FlatList, Image, ImageBackground, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthModal from './modals/auth';
 
@@ -158,13 +159,16 @@ export default function PokedexListScreen() {
   const [inventory, setInventory] = useState<Inventory>({});
   const [cardEffects, setCardEffects] = useState<CardEffects>({});
   const [unlockedCardEffects, setUnlockedCardEffects] = useState<Record<number, string[]>>({}); // History of unlocks per Pokemon
+  const [cardFrames, setCardFrames] = useState<Record<number, string>>({});
+  const [unlockedCardFrames, setUnlockedCardFrames] = useState<Record<number, string[]>>({});
   const [economyModal, setEconomyModal] = useState<{ visible: boolean; title: string; message: string; type: 'reward' | 'info' }>({
     visible: false,
     title: '',
     message: '',
     type: 'info',
   });
-  const [selectedBuddyProgress, setSelectedBuddyProgress] = useState<{ name: string; buddy: BuddyData; activeTab?: 'progress' | 'effects'; pokemon: PokemonWithNickname } | null>(null);
+  const [selectedBuddyProgress, setSelectedBuddyProgress] = useState<{ name: string; buddy: BuddyData; pokemon: PokemonWithNickname } | null>(null);
+  const [cardOptionsActiveTab, setCardOptionsActiveTab] = useState<'nickname' | 'effects' | 'frames'>('nickname');
   const [buddyHelpModalOpen, setBuddyHelpModalOpen] = useState(false);
 
   // Auth state
@@ -334,6 +338,12 @@ export default function PokedexListScreen() {
       }
       if (user.unsafeMetadata.unlockedCardEffects) {
         setUnlockedCardEffects(user.unsafeMetadata.unlockedCardEffects as Record<number, string[]>);
+      }
+      if (user.unsafeMetadata.cardFrames) {
+        setCardFrames(user.unsafeMetadata.cardFrames as Record<number, string>);
+      }
+      if (user.unsafeMetadata.unlockedCardFrames) {
+        setUnlockedCardFrames(user.unsafeMetadata.unlockedCardFrames as Record<number, string[]>);
       }
 
     } else {
@@ -588,8 +598,10 @@ export default function PokedexListScreen() {
   };
 
   const handlePokemonLongPress = (pokemon: PokemonWithNickname) => {
+    console.log('Long press detected for:', pokemon.name);
     setSelectedPokemon(pokemon);
     setNicknameInput(pokemon.nickname || '');
+    setCardOptionsActiveTab('nickname');
     setNicknameModalOpen(true);
   };
 
@@ -608,9 +620,78 @@ export default function PokedexListScreen() {
     setNicknameInput('');
   };
 
+  const handleApplyFrame = async (frameId: string) => {
+    if (!selectedPokemon || !user) return;
+    const pokemonId = selectedPokemon.id;
+    const currentFrame = cardFrames[pokemonId];
+
+    if (currentFrame === frameId) {
+      showAlert('Already Active', 'This frame is already applied.', undefined, 'checkmark-circle', '#4CAF50');
+      return;
+    }
+
+    // Default/Reset
+    if (frameId === 'default') {
+      const newCardFrames = { ...cardFrames, [pokemonId]: 'none' };
+      setCardFrames(newCardFrames);
+      await user.update({ unsafeMetadata: { ...user.unsafeMetadata, cardFrames: newCardFrames } });
+      return;
+    }
+
+    // Shop Items (One-time Unlock)
+    const unlockedForThisMon = unlockedCardFrames[pokemonId] || [];
+    const isUnlocked = unlockedForThisMon.includes(frameId);
+
+    if (isUnlocked) {
+      const newCardFrames = { ...cardFrames, [pokemonId]: frameId };
+      setCardFrames(newCardFrames);
+      await user.update({ unsafeMetadata: { ...user.unsafeMetadata, cardFrames: newCardFrames } });
+      return;
+    }
+
+    const count = inventory[frameId] || 0;
+    if (count <= 0) {
+      showAlert('Locked', 'You do not own this frame.', undefined, 'lock-closed', '#FF6B6B');
+      return;
+    }
+
+    showAlert(
+      'Unlock Frame?',
+      'This will consume 1 frame from your inventory to permanently unlock it for this Pokémon.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unlock',
+          style: 'default',
+          onPress: async () => {
+            const newInventory = { ...inventory, [frameId]: count - 1 };
+            if (newInventory[frameId] === 0) delete newInventory[frameId];
+
+            const newUnlocked = { ...unlockedCardFrames, [pokemonId]: [...unlockedForThisMon, frameId] };
+            const newCardFrames = { ...cardFrames, [pokemonId]: frameId };
+
+            setInventory(newInventory);
+            setUnlockedCardFrames(newUnlocked);
+            setCardFrames(newCardFrames);
+
+            await user.update({
+              unsafeMetadata: {
+                ...user.unsafeMetadata,
+                inventory: newInventory,
+                unlockedCardFrames: newUnlocked,
+                cardFrames: newCardFrames
+              }
+            });
+            showAlert('Frame Unlocked!', 'This frame is now permanently available for this Pokémon.', undefined, 'star', '#FFD700');
+          }
+        }
+      ]
+    );
+  };
+
   const handleApplyEffect = async (effectId: string) => {
-    if (!selectedBuddyProgress || !user) return;
-    const pokemonId = selectedBuddyProgress.buddy.pokemonId;
+    if (!selectedPokemon || !user) return;
+    const pokemonId = selectedPokemon.id;
     const currentEffect = cardEffects[pokemonId];
 
     if (currentEffect === effectId) {
@@ -635,7 +716,8 @@ export default function PokedexListScreen() {
 
     // 2. Best Buddy (Milestone)
     if (effectId === 'effect_best_buddy') {
-      if (selectedBuddyProgress.buddy.level < 4) {
+      const buddy = buddyData[pokemonId];
+      if (!buddy || buddy.level < 4) {
         showAlert('Locked', 'You must be Best Buddies to use this effect!', undefined, 'lock-closed', '#FF6B6B');
         return;
       }
@@ -706,7 +788,8 @@ export default function PokedexListScreen() {
                 },
               });
               setTimeout(() => {
-                showAlert('Effect Set!', `${selectedBuddyProgress.name} is looking stylish! ✨`, undefined, 'sparkles', '#FFD700');
+                const name = selectedPokemon.nickname || selectedPokemon.name;
+                showAlert('Effect Set!', `${name} is looking stylish! ✨`, undefined, 'sparkles', '#FFD700');
               }, 300);
             } catch (err) {
               console.error('Failed to save effect:', err);
@@ -726,7 +809,7 @@ export default function PokedexListScreen() {
       consecutiveDays: 0,
       lastInteractionDate: '',
     };
-    setSelectedBuddyProgress({ name: pokemon.nickname || pokemon.name, buddy, activeTab: 'progress', pokemon });
+    setSelectedBuddyProgress({ name: pokemon.nickname || pokemon.name, buddy, pokemon });
   };
 
   const handleSortSelect = (option: SortOption) => {
@@ -895,9 +978,10 @@ export default function PokedexListScreen() {
         onLongPress={handlePokemonLongPress}
         onHeart={giveHeart}
         onLongHeart={handleLongPressHearts}
+        cardFrames={cardFrames}
       />
     );
-  }, [settings, buddyData, cardEffects, cardWidth, handlePokemonPress, handlePokemonLongPress, giveHeart, handleLongPressHearts]);
+  }, [settings, buddyData, cardEffects, cardFrames, cardWidth, handlePokemonPress, handlePokemonLongPress, giveHeart, handleLongPressHearts]);
 
 
 
@@ -1441,54 +1525,316 @@ export default function PokedexListScreen() {
         </View>
       </Modal>
 
-      {/* Nickname Modal */}
+      {/* Card Options Modal (formerly Nickname Modal) */}
       <Modal visible={nicknameModalOpen} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => { setNicknameModalOpen(false); closeMenu(); }}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.nicknameModal, settings.darkMode && styles.modalContentDark]}>
+        <View style={styles.centeredModalOverlay}>
+          <View style={[styles.nicknameModal, settings.darkMode && styles.modalContentDark, { height: 500, padding: 0, overflow: 'hidden' }]}>
+            {!selectedPokemon && (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#6366f1" />
+              </View>
+            )}
             {selectedPokemon && (
-              <>
-                <Image
-                  source={{ uri: selectedPokemon.imageUrl }}
-                  style={styles.nicknameImage}
-                  resizeMode="contain"
-                />
-                <Text style={[styles.nicknameTitle, settings.darkMode && styles.modalTitleDark]}>
-                  {selectedPokemon.name}
-                </Text>
-                <Text style={[styles.nicknameSubtitle, settings.darkMode && styles.settingLabelDark]}>
-                  #{selectedPokemon.id.toString().padStart(3, '0')}
-                </Text>
-                <TextInput
-                  style={[styles.nicknameInput, settings.darkMode && styles.searchBarDark]}
-                  placeholder="Enter nickname..."
-                  placeholderTextColor="#999"
-                  value={nicknameInput}
-                  onChangeText={setNicknameInput}
-                  autoFocus
-                />
-                <View style={styles.nicknameActions}>
+              <View style={{ flex: 1 }}>
+                {/* Header / Tab Bar */}
+                <View style={{ padding: 16, paddingBottom: 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <Image
+                      source={{ uri: selectedPokemon.imageUrl }}
+                      style={{ width: 40, height: 40, marginRight: 12 }}
+                      resizeMode="contain"
+                    />
+                    <View>
+                      <Text style={[styles.nicknameTitle, settings.darkMode && styles.modalTitleDark, { fontSize: 20 }]}>
+                        {selectedPokemon.name}
+                      </Text>
+                      <Text style={[styles.nicknameSubtitle, settings.darkMode && styles.settingLabelDark, { marginTop: 0 }]}>
+                        #{selectedPokemon.id.toString().padStart(3, '0')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Tabs */}
+                  <View style={[styles.tabContainer, { marginBottom: 16 }]}>
+                    <Pressable
+                      style={[styles.modalTab, cardOptionsActiveTab === 'nickname' && styles.modalTabActive]}
+                      onPress={() => setCardOptionsActiveTab('nickname')}
+                    >
+                      <Text style={[styles.modalTabText, cardOptionsActiveTab === 'nickname' && styles.modalTabTextActive, settings.darkMode && cardOptionsActiveTab !== 'nickname' && styles.textDark]}>Nickname</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalTab, cardOptionsActiveTab === 'effects' && styles.modalTabActive]}
+                      onPress={() => setCardOptionsActiveTab('effects')}
+                    >
+                      <Text style={[styles.modalTabText, cardOptionsActiveTab === 'effects' && styles.modalTabTextActive, settings.darkMode && cardOptionsActiveTab !== 'effects' && styles.textDark]}>Style</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.modalTab, cardOptionsActiveTab === 'frames' && styles.modalTabActive]}
+                      onPress={() => setCardOptionsActiveTab('frames')}
+                    >
+                      <Text style={[styles.modalTabText, cardOptionsActiveTab === 'frames' && styles.modalTabTextActive, settings.darkMode && cardOptionsActiveTab !== 'frames' && styles.textDark]}>Frames</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                {/* Content Area */}
+                <View style={{ padding: 16 }}>
+                  <Text style={{ fontSize: 12, color: '#aaa', marginBottom: 8 }}>Debug: {cardOptionsActiveTab}</Text>
+                </View>
+                <ScrollView style={{ flex: 1, backgroundColor: settings.darkMode ? '#333' : '#f9f9f9' }} contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
+
+                  {/* Nickname Tab */}
+                  {cardOptionsActiveTab === 'nickname' && (
+                    <View>
+                      <Text style={[styles.buddyModalText, settings.darkMode && styles.buddyModalTextDark, { marginBottom: 12 }]}>
+                        Give your Pokémon a unique nickname!
+                      </Text>
+                      <TextInput
+                        style={[styles.nicknameInput, settings.darkMode && styles.searchBarDark]}
+                        placeholder="Enter nickname..."
+                        placeholderTextColor="#999"
+                        value={nicknameInput}
+                        onChangeText={setNicknameInput}
+                        autoFocus
+                      />
+                      <View style={styles.nicknameActions}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.nicknameButton,
+                            styles.nicknameCancel,
+                            pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                          ]}
+                          onPress={() => { setNicknameModalOpen(false); closeMenu(); }}
+                        >
+                          <Text style={styles.nicknameCancelText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.nicknameButton,
+                            styles.nicknameSave,
+                            pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
+                          ]}
+                          onPress={saveNickname}
+                        >
+                          <Text style={styles.nicknameSaveText}>Save</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Effects Tab */}
+                  {cardOptionsActiveTab === 'effects' && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}>
+                      {[
+                        {
+                          id: 'default',
+                          name: 'Default',
+                          description: 'Original card style.',
+                          price: 0,
+                          type: 'effect',
+                          category: 'standard'
+                        },
+                        {
+                          id: 'effect_best_buddy',
+                          name: 'Best Buddy',
+                          description: 'The mark of true friendship.',
+                          price: 0,
+                          type: 'effect',
+                          category: 'milestone'
+                        },
+                        ...SHOP_ITEMS.filter(i => i.type === 'effect')
+                      ].map((item) => {
+                        const isBestBuddyItem = item.id === 'effect_best_buddy';
+                        const isDefaultItem = item.id === 'default';
+                        // Need buddy level for this pokemon
+                        const buddy = buddyData[selectedPokemon.id];
+                        const isBestBuddyReached = buddy && buddy.level === 4;
+
+                        const unlockedForThisMon = unlockedCardEffects[selectedPokemon.id] || [];
+                        const isUnlocked = unlockedForThisMon.includes(item.id);
+
+                        const count = isBestBuddyItem
+                          ? (isBestBuddyReached ? 1 : 0)
+                          : (isDefaultItem || isUnlocked ? 1 : (inventory[item.id] || 0));
+
+                        const isActive = isDefaultItem
+                          ? !cardEffects[selectedPokemon.id]
+                          : cardEffects[selectedPokemon.id] === item.id;
+
+                        const isLocked = count === 0 && !isActive;
+
+                        const pokemon = selectedPokemon;
+                        const isDualType = pokemon.types.length > 1;
+                        const backgroundColor = TYPE_COLORS[pokemon.types[0]] || '#A8A878';
+
+                        return (
+                          <View key={item.id} style={[styles.effectCard, settings.darkMode && styles.effectCardDark, isActive && styles.effectCardActive]}>
+                            <View style={styles.effectPreview}>
+                              <View style={[
+                                styles.gridCard,
+                                { width: 140, height: undefined, aspectRatio: 0.72, margin: 0, padding: 8, borderWidth: 0 }
+                              ]}>
+                                <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
+                                  {isDualType ? (
+                                    <LinearGradient
+                                      colors={[TYPE_COLORS[pokemon.types[0]], TYPE_COLORS[pokemon.types[1]]]}
+                                      start={{ x: 0, y: 0 }}
+                                      end={{ x: 1, y: 1 }}
+                                      style={StyleSheet.absoluteFill}
+                                    />
+                                  ) : (
+                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_icy_wind' || item.id === 'effect_magma_storm' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : backgroundColor }]} />
+                                  )}
+
+                                  {item.id === 'extra_love' && <ExtraLoveEffect />}
+                                  {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
+                                  {item.id === 'effect_icy_wind' && <IcyWindEffect />}
+                                  {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
+                                  {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
+                                  {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
+                                  {item.id === 'effect_air_slash' && <AirSlashEffect />}
+                                  {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
+                                  {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
+                                  {item.id === 'effect_rock_tomb' && <RockTombEffect />}
+
+                                  {item.id !== 'extra_love' && (
+                                    <Image source={require('@/assets/images/pokeball.png')} style={styles.gridCardWatermark} />
+                                  )}
+                                </View>
+
+                                <Text style={styles.gridCardId}>#{pokemon.id.toString().padStart(3, '0')}</Text>
+                                <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%', zIndex: 10, elevation: 5 } as any]} resizeMode="contain" />
+                                <Text style={styles.gridCardName} numberOfLines={1}>{pokemon.nickname || pokemon.name}</Text>
+                                <View style={styles.gridTypesContainer}>
+                                  {pokemon.types.map((type, index) => (
+                                    <Image key={index} source={TYPE_ICONS[type]} style={{ width: 14, height: 14, resizeMode: 'contain' }} />
+                                  ))}
+                                </View>
+
+                                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                                  {item.id === 'effect_best_buddy' && <GlowBorder color="#FFD700" borderWidth={2} />}
+                                  {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
+                                  {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />}
+                                </View>
+                              </View>
+
+                              {isLocked && (
+                                <View style={styles.lockedOverlay}>
+                                  <Ionicons name="lock-closed" size={24} color="#fff" />
+                                  <Text style={styles.lockedPrice}>{item.price > 0 ? item.price : 'Locked'}</Text>
+                                  {item.price > 0 && <Image source={require('@/assets/images/dex-coin.png')} style={{ width: 12, height: 12 }} />}
+                                </View>
+                              )}
+                            </View>
+                            <Text style={[styles.effectName, settings.darkMode && styles.textDark]}>{item.name}</Text>
+                            <Text style={styles.effectCount}>{isBestBuddyItem ? (isBestBuddyReached ? 'Unlocked' : 'Locked') : `Owned: ${count}`}</Text>
+
+                            <Pressable
+                              style={[styles.applyButton, isLocked && styles.applyButtonLocked, isActive && styles.applyButtonActive]}
+                              onPress={() => !isLocked && !isActive && handleApplyEffect(item.id)}
+                            >
+                              <Text style={styles.applyButtonText}>
+                                {isActive ? 'Active' : isLocked ? 'Locked' : 'Apply'}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+
+                  {/* Frames Tab */}
+                  {cardOptionsActiveTab === 'frames' && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}>
+                      {[
+                        {
+                          id: 'default',
+                          name: 'None',
+                          description: 'No frame.',
+                          price: 0,
+                          type: 'frame',
+                          category: 'normal'
+                        },
+                        ...SHOP_ITEMS.filter(i => i.type === 'frame')
+                      ].map((item) => {
+                        const isDefaultItem = item.id === 'default';
+                        const unlockedForThisMon = unlockedCardFrames[selectedPokemon.id] || [];
+                        const isUnlocked = isDefaultItem || unlockedForThisMon.includes(item.id);
+                        const count = isUnlocked ? 1 : (inventory[item.id] || 0);
+
+                        const isActive = isDefaultItem
+                          ? (!cardFrames[selectedPokemon.id] || cardFrames[selectedPokemon.id] === 'none')
+                          : cardFrames[selectedPokemon.id] === item.id;
+
+                        const isLocked = count === 0 && !isActive;
+                        const pokemon = selectedPokemon;
+                        const isDualType = pokemon.types.length > 1;
+                        const backgroundColor = TYPE_COLORS[pokemon.types[0]] || '#A8A878';
+
+                        return (
+                          <View key={item.id} style={[styles.effectCard, settings.darkMode && styles.effectCardDark, isActive && styles.effectCardActive]}>
+                            <View style={styles.effectPreview}>
+                              <View style={[
+                                styles.gridCard,
+                                { width: 140, height: undefined, aspectRatio: 0.72, margin: 0, padding: 8, borderWidth: 0 }
+                              ]}>
+                                <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden', backgroundColor: isDualType ? 'transparent' : backgroundColor }]}>
+                                  {isDualType && (
+                                    <LinearGradient
+                                      colors={[TYPE_COLORS[pokemon.types[0]], TYPE_COLORS[pokemon.types[1]]]}
+                                      style={StyleSheet.absoluteFill}
+                                    />
+                                  )}
+                                  <Image source={require('@/assets/images/pokeball.png')} style={styles.gridCardWatermark} />
+                                </View>
+                                <Text style={styles.gridCardId}>#{pokemon.id.toString().padStart(3, '0')}</Text>
+                                <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%', zIndex: 10 }]} resizeMode="contain" />
+                                <Text style={styles.gridCardName} numberOfLines={1}>{pokemon.nickname || pokemon.name}</Text>
+
+                                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                                  {item.id === 'frame_gold' && <GoldFrame />}
+                                  {item.id === 'frame_neon' && <NeonFrame />}
+                                </View>
+                              </View>
+
+                              {isLocked && (
+                                <View style={styles.lockedOverlay}>
+                                  <Ionicons name="lock-closed" size={24} color="#fff" />
+                                  <Text style={styles.lockedPrice}>{item.price > 0 ? item.price : 'Locked'}</Text>
+                                  {item.price > 0 && <Image source={require('@/assets/images/dex-coin.png')} style={{ width: 12, height: 12 }} />}
+                                </View>
+                              )}
+                            </View>
+                            <Text style={[styles.effectName, settings.darkMode && styles.textDark]}>{item.name}</Text>
+                            <Text style={styles.effectCount}>{isUnlocked ? 'Unlocked' : `Owned: ${count}`}</Text>
+                            <Pressable
+                              style={[styles.applyButton, isLocked && styles.applyButtonLocked, isActive && styles.applyButtonActive]}
+                              onPress={() => !isLocked && !isActive && handleApplyFrame(item.id)}
+                            >
+                              <Text style={styles.applyButtonText}>
+                                {isActive ? 'Active' : isLocked ? 'Locked' : isUnlocked ? 'Apply' : 'Unlock'}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+
                   <Pressable
                     style={({ pressed }) => [
-                      styles.nicknameButton,
-                      styles.nicknameCancel,
+                      styles.modalClose,
+                      styles.economyModalButton,
+                      { marginTop: 24, width: '100%' },
                       pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
                     ]}
                     onPress={() => { setNicknameModalOpen(false); closeMenu(); }}
                   >
-                    <Text style={styles.nicknameCancelText}>Cancel</Text>
+                    <Text style={[styles.modalCloseText, { color: '#fff' }]}>Close</Text>
                   </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.nicknameButton,
-                      styles.nicknameSave,
-                      pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] }
-                    ]}
-                    onPress={saveNickname}
-                  >
-                    <Text style={styles.nicknameSaveText}>Save</Text>
-                  </Pressable>
-                </View>
-              </>
+
+                </ScrollView>
+              </View>
             )}
           </View>
         </View>
@@ -1598,7 +1944,7 @@ export default function PokedexListScreen() {
         </View>
       </Modal>
 
-      {/* Buddy Progress / Effects Modal */}
+      {/* Buddy Progress Modal (Simplified) */}
       <Modal visible={!!selectedBuddyProgress} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => setSelectedBuddyProgress(null)}>
         <View style={styles.centeredModalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedBuddyProgress(null)} />
@@ -1609,203 +1955,42 @@ export default function PokedexListScreen() {
               <Text style={[styles.modalTitle, settings.darkMode && styles.modalTitleDark, { textAlign: 'center', marginBottom: 4 }]}>
                 {selectedBuddyProgress?.name}
               </Text>
-              <View style={styles.tabContainer}>
-                <Pressable
-                  style={[styles.modalTab, selectedBuddyProgress?.activeTab === 'progress' && styles.modalTabActive]}
-                  onPress={() => setSelectedBuddyProgress(curr => curr ? ({ ...curr, activeTab: 'progress' }) : null)}
-                >
-                  <Text style={[
-                    styles.modalTabText,
-                    selectedBuddyProgress?.activeTab === 'progress' && styles.modalTabTextActive,
-                    settings.darkMode && selectedBuddyProgress?.activeTab !== 'progress' && styles.textDark
-                  ]}>Friendship</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.modalTab, selectedBuddyProgress?.activeTab === 'effects' && styles.modalTabActive]}
-                  onPress={() => setSelectedBuddyProgress(curr => curr ? ({ ...curr, activeTab: 'effects' }) : null)}
-                >
-                  <Text style={[
-                    styles.modalTabText,
-                    selectedBuddyProgress?.activeTab === 'effects' && styles.modalTabTextActive,
-                    settings.darkMode && selectedBuddyProgress?.activeTab !== 'effects' && styles.textDark
-                  ]}>Card Style</Text>
-                </Pressable>
-              </View>
+              <Text style={[styles.settingLabel, settings.darkMode && styles.settingLabelDark, { textAlign: 'center', fontSize: 14 }]}>
+                Friendship Progress
+              </Text>
             </View>
 
-            {/* Progress Tab */}
-            {selectedBuddyProgress?.activeTab === 'progress' && (
-              <View style={styles.progressList}>
-                <Ionicons name="heart-circle" size={50} color="#e11d48" style={{ alignSelf: 'center', marginBottom: 16 }} />
-                {[
-                  { level: 1, name: 'Good Buddy', days: 1 },
-                  { level: 2, name: 'Great Buddy', days: 4 },
-                  { level: 3, name: 'Ultra Buddy', days: 11 },
-                  { level: 4, name: 'Best Buddy', days: 21 },
-                ].map((tier) => {
-                  const daysLeft = Math.max(0, tier.days - (selectedBuddyProgress?.buddy.consecutiveDays || 0));
-                  const isReached = daysLeft === 0;
-                  return (
-                    <View key={tier.level} style={[styles.progressRow, settings.darkMode && styles.progressRowDark]}>
-                      <View style={styles.progressRowLeft}>
-                        <Ionicons name={isReached ? "checkmark-circle" : "time-outline"} size={24} color={isReached ? "#4ade80" : "#9ca3af"} />
-                        <View>
-                          <Text style={[styles.progressTierName, settings.darkMode && styles.tierNameDark]}>{tier.name}</Text>
-                          <Text style={styles.progressTierDays}>{tier.days} Days Streak</Text>
-                        </View>
-                      </View>
+            {/* Progress List */}
+            <View style={styles.progressList}>
+              <Ionicons name="heart-circle" size={50} color="#e11d48" style={{ alignSelf: 'center', marginBottom: 16 }} />
+              {[
+                { level: 1, name: 'Good Buddy', days: 1 },
+                { level: 2, name: 'Great Buddy', days: 4 },
+                { level: 3, name: 'Ultra Buddy', days: 11 },
+                { level: 4, name: 'Best Buddy', days: 21 },
+              ].map((tier) => {
+                const daysLeft = Math.max(0, tier.days - (selectedBuddyProgress?.buddy.consecutiveDays || 0));
+                const isReached = daysLeft === 0;
+                return (
+                  <View key={tier.level} style={[styles.progressRow, settings.darkMode && styles.progressRowDark]}>
+                    <View style={styles.progressRowLeft}>
+                      <Ionicons name={isReached ? "checkmark-circle" : "time-outline"} size={24} color={isReached ? "#4ade80" : "#9ca3af"} />
                       <View>
-                        {isReached ? (
-                          <Text style={styles.progressReachedText}>Reached!</Text>
-                        ) : (
-                          <Text style={styles.progressLeftText}>{daysLeft} days left</Text>
-                        )}
+                        <Text style={[styles.progressTierName, settings.darkMode && styles.tierNameDark]}>{tier.name}</Text>
+                        <Text style={styles.progressTierDays}>{tier.days} Days Streak</Text>
                       </View>
                     </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {/* Effects Tab */}
-            {selectedBuddyProgress?.activeTab === 'effects' && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}>
-                {[
-                  {
-                    id: 'default',
-                    name: 'Default',
-                    description: 'Original card style.',
-                    price: 0,
-                    type: 'effect',
-                    category: 'standard'
-                  },
-                  {
-                    id: 'effect_best_buddy',
-                    name: 'Best Buddy',
-                    description: 'The mark of true friendship.',
-                    price: 0,
-                    type: 'effect',
-                    category: 'milestone'
-                  },
-                  ...SHOP_ITEMS.filter(i => i.type === 'effect')
-                ].map((item) => {
-                  const isBestBuddyItem = item.id === 'effect_best_buddy';
-                  const isDefaultItem = item.id === 'default';
-                  const isBestBuddyReached = selectedBuddyProgress?.buddy.level === 4;
-                  const unlockedForThisMon = selectedBuddyProgress ? (unlockedCardEffects[selectedBuddyProgress.buddy.pokemonId] || []) : [];
-                  const isUnlocked = unlockedForThisMon.includes(item.id);
-
-                  const count = isBestBuddyItem
-                    ? (isBestBuddyReached ? 1 : 0)
-                    : (isDefaultItem || isUnlocked ? 1 : (inventory[item.id] || 0));
-
-                  const isActive = selectedBuddyProgress && (
-                    isDefaultItem
-                      ? !cardEffects[selectedBuddyProgress.buddy.pokemonId]
-                      : cardEffects[selectedBuddyProgress.buddy.pokemonId] === item.id
-                  );
-
-                  // Strict Lock Policy: Locked if count is 0 (and not active).
-                  const isLocked = count === 0 && !isActive;
-
-                  const pokemon = selectedBuddyProgress?.pokemon;
-                  const isDualType = pokemon && pokemon.types.length > 1;
-                  const backgroundColor = pokemon ? (TYPE_COLORS[pokemon.types[0]] || '#A8A878') : '#A8A878';
-
-                  return (
-                    <View key={item.id} style={[styles.effectCard, settings.darkMode && styles.effectCardDark, isActive && styles.effectCardActive]}>
-                      <View style={styles.effectPreview}>
-                        {/* Real Card Preview */}
-                        {pokemon && (
-                          <View style={[
-                            styles.gridCard,
-                            { width: 140, height: undefined, aspectRatio: 0.72, margin: 0, padding: 8, borderWidth: 0 }
-                          ]}>
-                            {/* Background */}
-                            <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
-                              {isDualType ? (
-                                <LinearGradient
-                                  colors={[TYPE_COLORS[pokemon.types[0]], TYPE_COLORS[pokemon.types[1]]]}
-                                  start={{ x: 0, y: 0 }}
-                                  end={{ x: 1, y: 1 }}
-                                  style={StyleSheet.absoluteFill}
-                                />
-                              ) : (
-                                <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_icy_wind' || item.id === 'effect_magma_storm' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : backgroundColor }]} />
-                              )}
-
-                              {/* Live Effect Preview */}
-                              {item.id === 'extra_love' && <ExtraLoveEffect />}
-                              {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
-                              {item.id === 'effect_icy_wind' && <IcyWindEffect />}
-                              {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
-                              {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
-                              {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
-                              {item.id === 'effect_air_slash' && <AirSlashEffect />}
-                              {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
-                              {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
-                              {item.id === 'effect_rock_tomb' && <RockTombEffect />}
-
-                              {/* Watermark */}
-                              {item.id !== 'extra_love' && (
-                                <Image source={require('@/assets/images/pokeball.png')} style={styles.gridCardWatermark} />
-                              )}
-                            </View>
-
-                            {/* Content */}
-                            <Text style={styles.gridCardId}>#{pokemon.id.toString().padStart(3, '0')}</Text>
-                            <Image source={{ uri: settings.shinySprites ? pokemon.shinyImageUrl : pokemon.imageUrl }} style={[styles.gridCardImage, { width: '80%', zIndex: 10, elevation: 5 } as any]} resizeMode="contain" />
-                            <Text style={styles.gridCardName} numberOfLines={1}>{pokemon.nickname || pokemon.name}</Text>
-                            <View style={styles.gridTypesContainer}>
-                              {pokemon.types.map((type, index) => (
-                                <Image key={index} source={TYPE_ICONS[type]} style={{ width: 14, height: 14, resizeMode: 'contain' }} />
-                              ))}
-                            </View>
-
-                            {/* Effects Overlay */}
-                            <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                              {item.id === 'effect_best_buddy' && <GlowBorder color="#FFD700" borderWidth={2} />}
-                              {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
-                              {/* Wait, NeonCyber is overlay AND background? Actually NeonCyberEffect contains GlowBorder inside it if logic was correct, 
-                                  but shop/index uses GlowBorder separately? 
-                                  Let's just use the Component in the BG layer (already done above) OR Overlay layer.
-                                  NeonCyberEffect renders ImageBG + Border. So it should be in the BG View above. 
-                                  It IS in the BG View above (line 1745 in original, or line ? in replacement).
-                                  So I don't need to add it to Overlay unless it's just border. 
-                                  I will remove duplicate NeonCyber in Overlay if I added it above.
-                                  Wait, the BG View is overflow hidden.
-                              */}
-                              {item.id === 'effect_golden_glory' && <ShineOverlay color="rgba(255, 215, 0, 0.6)" duration={2000} />}
-                            </View>
-                          </View>
-                        )}
-                        {!pokemon && <Text>Loading...</Text>}
-
-                        {isLocked && (
-                          <View style={styles.lockedOverlay}>
-                            <Ionicons name="lock-closed" size={24} color="#fff" />
-                            <Text style={styles.lockedPrice}>{item.price > 0 ? item.price : 'Locked'}</Text>
-                            {item.price > 0 && <Image source={require('@/assets/images/dex-coin.png')} style={{ width: 12, height: 12 }} />}
-                          </View>
-                        )}
-                      </View>
-                      <Text style={[styles.effectName, settings.darkMode && styles.textDark]}>{item.name}</Text>
-                      <Text style={styles.effectCount}>{isBestBuddyItem ? (isBestBuddyReached ? 'Unlocked' : 'Locked') : `Owned: ${count}`}</Text>
-
-                      <Pressable
-                        style={[styles.applyButton, isLocked && styles.applyButtonLocked, isActive && styles.applyButtonActive]}
-                        onPress={() => !isLocked && !isActive && handleApplyEffect(item.id)}
-                      >
-                        <Text style={styles.applyButtonText}>
-                          {isActive ? 'Active' : isLocked ? 'Locked' : 'Apply'}
-                        </Text>
-                      </Pressable>
+                    <View>
+                      {isReached ? (
+                        <Text style={styles.progressReachedText}>Reached!</Text>
+                      ) : (
+                        <Text style={styles.progressLeftText}>{daysLeft} days left</Text>
+                      )}
                     </View>
-                  );
-                })}
-              </ScrollView>
-            )}
-
+                  </View>
+                );
+              })}
+            </View>
 
             <Pressable
               style={({ pressed }) => [
@@ -1958,7 +2143,8 @@ const PokemonCardComponent = ({
   onPress,
   onLongPress,
   onHeart,
-  onLongHeart
+  onLongHeart,
+  cardFrames
 }: {
   item: PokemonWithNickname,
   settings: any,
@@ -1968,7 +2154,8 @@ const PokemonCardComponent = ({
   onPress: (item: PokemonWithNickname) => void,
   onLongPress: (item: PokemonWithNickname) => void,
   onHeart: (id: number) => void,
-  onLongHeart: (item: PokemonWithNickname) => void
+  onLongHeart: (item: PokemonWithNickname) => void,
+  cardFrames: Record<number, string>
 }) => {
   const primaryType = item.types[0];
   const backgroundColor = TYPE_COLORS[primaryType] || '#A8A878';
@@ -2043,6 +2230,7 @@ const PokemonCardComponent = ({
       <Pressable
         onPress={() => onPress(item)}
         onLongPress={() => onLongPress(item)}
+        delayLongPress={300}
         style={({ pressed }) => [
           styles.gridCard,
           { width: cardWidth },
@@ -2062,6 +2250,11 @@ const PokemonCardComponent = ({
           />
         )}
         {BuddyEffects}
+
+        {/* Render Active Frame */}
+        {cardFrames[item.id] === 'frame_gold' && <GoldFrame />}
+        {cardFrames[item.id] === 'frame_neon' && <NeonFrame />}
+
         <Image
           source={require('@/assets/images/pokeball.png')}
           style={styles.gridCardWatermark}
@@ -2131,6 +2324,7 @@ const PokemonCardComponent = ({
     <Pressable
       onPress={() => onPress(item)}
       onLongPress={() => onLongPress(item)}
+      delayLongPress={300}
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber' || activeEffectId === 'effect_rock_tomb') ? 'transparent' : backgroundColor },
@@ -2149,6 +2343,11 @@ const PokemonCardComponent = ({
         />
       )}
       {BuddyEffects}
+
+      {/* Render Active Frame */}
+      {cardFrames[item.id] === 'frame_gold' && <GoldFrame />}
+      {cardFrames[item.id] === 'frame_neon' && <NeonFrame />}
+
       <Image
         source={require('@/assets/images/pokeball.png')}
         style={styles.cardWatermark}

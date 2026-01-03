@@ -136,7 +136,7 @@ export default function ShopScreen() {
                     <Ionicons name="arrow-back" size={24} color={isDark ? "#fff" : "#333"} />
                 </Pressable>
 
-                <View style={styles.titleContainer}>
+                <View style={styles.titleContainer} pointerEvents="none">
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={[styles.title, isDark && styles.textDark]}>Shop</Text>
                         <Ionicons name="cart" size={20} color={isDark ? "#fff" : "#333"} style={{ marginLeft: 8 }} />
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', zIndex: 10, justifyContent: 'space-between' },
     headerDark: { backgroundColor: '#121212', borderBottomColor: 'rgba(255,255,255,0.05)' },
     backButton: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.03)', zIndex: 20 },
-    titleContainer: { position: 'absolute', left: 0, right: 0, alignItems: 'center', pointerEvents: 'none' },
+    titleContainer: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
     title: { fontSize: 24, fontWeight: '800', color: '#1a1a1a', letterSpacing: -0.5 },
     textDark: { color: '#fff' },
     balanceContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9C4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FFD700', zIndex: 20 },

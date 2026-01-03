@@ -15,7 +15,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         id: 'frame_gold',
         name: 'Gold Frame',
         description: 'A luxurious golden frame for your card.',
-        price: 500,
+        price: 0,
         category: 'normal',
         type: 'frame',
     },
