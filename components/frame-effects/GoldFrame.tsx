@@ -11,31 +11,36 @@ export const GoldFrame = () => {
             <View style={styles.innerBorder} />
 
             {/* Corner Ornaments */}
-            <Corner style={{ top: -2, left: -2 }} />
-            <Corner style={{ top: -2, right: -2, transform: [{ rotate: '90deg' }] }} />
-            <Corner style={{ bottom: -2, right: -2, transform: [{ rotate: '180deg' }] }} />
-            <Corner style={{ bottom: -2, left: -2, transform: [{ rotate: '270deg' }] }} />
+            <Corner style={{ top: -3, left: -3 }} />
+            <Corner style={{ top: -3, right: -3, transform: [{ rotate: '90deg' }] }} />
+            <Corner style={{ bottom: -3, right: -3, transform: [{ rotate: '180deg' }] }} />
+            <Corner style={{ bottom: -3, left: -3, transform: [{ rotate: '270deg' }] }} />
         </View>
     );
 };
 
 const Corner = ({ style }: { style: any }) => (
     <View style={[styles.cornerContainer, style]}>
-        {/* Main Outer Fancy Corner */}
-        <View style={styles.cornerMain} />
-        {/* Inner Detail */}
-        <View style={styles.cornerInner} />
-        {/* Decorative Gem/Dot */}
-        <View style={styles.cornerGem} />
-        {/* Accents */}
-        <View style={styles.cornerAccentH} />
-        <View style={styles.cornerAccentV} />
+        {/* Outer Filigree Curve */}
+        <View style={styles.cornerOuterCurve} />
+
+        {/* Inner Detail Line */}
+        <View style={styles.cornerInnerCurve} />
+
+        {/* Central Gem/Diamond */}
+        <View style={styles.centerGemContainer}>
+            <View style={styles.centerGem} />
+        </View>
+
+        {/* End Finials (Dots) */}
+        <View style={styles.finialRight} />
+        <View style={styles.finialBottom} />
     </View>
 );
 
 const GOLD_COLOR = '#FFD700'; // Gold
 const DARK_GOLD = '#B8860B'; // DarkGoldenRod
-const LIGHT_GOLD = '#FDB931'; // Light Gold
+const SHADOW_COLOR = 'rgba(0,0,0,0.3)';
 
 const styles = StyleSheet.create({
     outerBorder: {
@@ -43,64 +48,81 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: GOLD_COLOR,
         borderRadius: 12,
-        margin: 1,
+        margin: 2,
     },
     innerBorder: {
         ...StyleSheet.absoluteFillObject,
         borderWidth: 1,
         borderColor: DARK_GOLD,
         borderRadius: 10,
-        margin: 5,
-        opacity: 0.6
+        margin: 6,
+        opacity: 0.5
     },
     cornerContainer: {
         position: 'absolute',
-        width: 28,
-        height: 28,
+        width: 32,
+        height: 32,
     },
-    cornerMain: {
+    cornerOuterCurve: {
         position: 'absolute',
         top: 0, left: 0,
-        width: '100%', height: '100%',
+        width: 32, height: 32,
         borderTopWidth: 4,
         borderLeftWidth: 4,
         borderColor: GOLD_COLOR,
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 4,
-        borderBottomLeftRadius: 4,
+        borderTopLeftRadius: 12, // Reduced for tighter curve
+        borderTopRightRadius: 0,
+        zIndex: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 1, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 1,
     },
-    cornerInner: {
+    cornerInnerCurve: {
         position: 'absolute',
-        top: 5, left: 5,
-        width: '70%', height: '70%',
+        top: 6, left: 6,
+        width: 26, height: 26,
         borderTopWidth: 1,
         borderLeftWidth: 1,
-        borderColor: LIGHT_GOLD,
-        borderTopLeftRadius: 4,
+        borderColor: DARK_GOLD,
+        borderTopLeftRadius: 6,
+        zIndex: 1
     },
-    cornerGem: {
+    centerGemContainer: {
         position: 'absolute',
         top: 0, left: 0,
-        width: 8, height: 8,
-        borderRadius: 4,
+        width: 12, height: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 3,
+    },
+    centerGem: {
+        width: 6, height: 6,
         backgroundColor: GOLD_COLOR,
+        transform: [{ rotate: '45deg' }],
         borderWidth: 1,
         borderColor: '#FFF',
-        transform: [{ translateX: -2 }, { translateY: -2 }], // Center on corner
-        zIndex: 10
     },
-    cornerAccentH: {
+    finialRight: {
         position: 'absolute',
-        top: 10, right: 0,
-        width: 8, height: 2,
+        top: -1,
+        right: 0,
+        width: 6, height: 6,
+        borderRadius: 3,
         backgroundColor: GOLD_COLOR,
-        borderRadius: 1
+        borderWidth: 1,
+        borderColor: DARK_GOLD,
+        zIndex: 3
     },
-    cornerAccentV: {
+    finialBottom: {
         position: 'absolute',
-        bottom: 0, left: 10,
-        width: 2, height: 8,
+        bottom: 0,
+        left: -1,
+        width: 6, height: 6,
+        borderRadius: 3,
         backgroundColor: GOLD_COLOR,
-        borderRadius: 1
+        borderWidth: 1,
+        borderColor: DARK_GOLD,
+        zIndex: 3
     }
 });

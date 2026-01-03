@@ -1528,7 +1528,7 @@ export default function PokedexListScreen() {
       {/* Card Options Modal (formerly Nickname Modal) */}
       <Modal visible={nicknameModalOpen} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={() => { setNicknameModalOpen(false); closeMenu(); }}>
         <View style={styles.centeredModalOverlay}>
-          <View style={[styles.nicknameModal, settings.darkMode && styles.modalContentDark, { height: 500, padding: 0, overflow: 'hidden' }]}>
+          <View style={[styles.nicknameModal, settings.darkMode && styles.modalContentDark, { height: 600, width: '95%', padding: 0, overflow: 'hidden' }]}>
             {!selectedPokemon && (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <ActivityIndicator size="large" color="#6366f1" />
@@ -1578,10 +1578,8 @@ export default function PokedexListScreen() {
                 </View>
 
                 {/* Content Area */}
-                <View style={{ padding: 16 }}>
-                  <Text style={{ fontSize: 12, color: '#aaa', marginBottom: 8 }}>Debug: {cardOptionsActiveTab}</Text>
-                </View>
-                <ScrollView style={{ flex: 1, backgroundColor: settings.darkMode ? '#333' : '#f9f9f9' }} contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
+                {/* Content Area */}
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
 
                   {/* Nickname Tab */}
                   {cardOptionsActiveTab === 'nickname' && (
@@ -1624,8 +1622,8 @@ export default function PokedexListScreen() {
 
                   {/* Effects Tab */}
                   {cardOptionsActiveTab === 'effects' && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}>
-                      {[
+                    <FlatList
+                      data={[
                         {
                           id: 'default',
                           name: 'Default',
@@ -1643,7 +1641,15 @@ export default function PokedexListScreen() {
                           category: 'milestone'
                         },
                         ...SHOP_ITEMS.filter(i => i.type === 'effect')
-                      ].map((item) => {
+                      ]}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}
+                      initialNumToRender={2}
+                      maxToRenderPerBatch={2}
+                      windowSize={3}
+                      keyExtractor={(item) => item.id}
+                      renderItem={({ item }) => {
                         const isBestBuddyItem = item.id === 'effect_best_buddy';
                         const isDefaultItem = item.id === 'default';
                         // Need buddy level for this pokemon
@@ -1668,7 +1674,7 @@ export default function PokedexListScreen() {
                         const backgroundColor = TYPE_COLORS[pokemon.types[0]] || '#A8A878';
 
                         return (
-                          <View key={item.id} style={[styles.effectCard, settings.darkMode && styles.effectCardDark, isActive && styles.effectCardActive]}>
+                          <View style={[styles.effectCard, settings.darkMode && styles.effectCardDark, isActive && styles.effectCardActive]}>
                             <View style={styles.effectPreview}>
                               <View style={[
                                 styles.gridCard,
@@ -1739,14 +1745,14 @@ export default function PokedexListScreen() {
                             </Pressable>
                           </View>
                         );
-                      })}
-                    </ScrollView>
+                      }}
+                    />
                   )}
 
                   {/* Frames Tab */}
                   {cardOptionsActiveTab === 'frames' && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}>
-                      {[
+                    <FlatList
+                      data={[
                         {
                           id: 'default',
                           name: 'None',
@@ -1756,7 +1762,15 @@ export default function PokedexListScreen() {
                           category: 'normal'
                         },
                         ...SHOP_ITEMS.filter(i => i.type === 'frame')
-                      ].map((item) => {
+                      ]}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 4 }}
+                      initialNumToRender={2}
+                      maxToRenderPerBatch={2}
+                      windowSize={3}
+                      keyExtractor={(item) => item.id}
+                      renderItem={({ item }) => {
                         const isDefaultItem = item.id === 'default';
                         const unlockedForThisMon = unlockedCardFrames[selectedPokemon.id] || [];
                         const isUnlocked = isDefaultItem || unlockedForThisMon.includes(item.id);
@@ -1812,13 +1826,13 @@ export default function PokedexListScreen() {
                               onPress={() => !isLocked && !isActive && handleApplyFrame(item.id)}
                             >
                               <Text style={styles.applyButtonText}>
-                                {isActive ? 'Active' : isLocked ? 'Locked' : isUnlocked ? 'Apply' : 'Unlock'}
+                                {isActive ? 'Active' : isLocked ? 'Locked' : 'Apply'}
                               </Text>
                             </Pressable>
                           </View>
                         );
-                      })}
-                    </ScrollView>
+                      }}
+                    />
                   )}
 
                   <Pressable
