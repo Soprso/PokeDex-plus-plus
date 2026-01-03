@@ -1,26 +1,28 @@
-import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect } from '@/components/card-effects';
-import { TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
-import { SHOP_ITEMS, ShopItem, ShopItemCategory } from '@/constants/shopItems';
+import { ShopItemCard } from '@/components/ShopItemCard';
+import { SHOP_ITEMS, ShopItem } from '@/constants/shopItems';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, FlatList, Image, Pressable, StyleSheet, Text, useColorScheme, View, ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DailyInteraction, EconomyData, Inventory } from '../index'; // Import from index
+import { DailyInteraction, EconomyData, Inventory } from '../index';
 
-const InteractionIcon = require('@/assets/images/pokeball.png'); // Reuse generic or add specific
+const InteractionIcon = require('@/assets/images/pokeball.png');
 const CoinIcon = require('@/assets/images/dex-coin.png');
+
+type TabType = 'effects' | 'frames' | 'items';
 
 export default function ShopScreen() {
     const router = useRouter();
     const { user } = useUser();
     const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark'; // Simple dark mode for now, ideally pass settings
+    const isDark = colorScheme === 'dark';
 
     const [balance, setBalance] = useState(0);
     const [inventory, setInventory] = useState<Inventory>({});
-    const [selectedCategory, setSelectedCategory] = useState<ShopItemCategory | 'all'>('all');
+    const [activeTab, setActiveTab] = useState<TabType>('effects');
+    const [viewableItems, setViewableItems] = useState<Set<string>>(new Set());
 
     // Load initial data
     useEffect(() => {
@@ -30,7 +32,7 @@ export default function ShopScreen() {
             setBalance(economy.balance || 0);
             setInventory(userInventory);
         }
-    }, [user?.id]); // Only re-run if ID changes to prevent loops if object ref changes inappropriately
+    }, [user?.id]);
 
     const handleBuyItem = async (item: ShopItem) => {
         if (!user) {
@@ -66,7 +68,6 @@ export default function ShopScreen() {
         } catch (error) {
             console.error('Purchase failed', error);
             Alert.alert('Error', 'Transaction failed. Please try again.');
-            // Rollback (omitted for brevity, ideally would reload)
         }
     };
 
@@ -79,11 +80,7 @@ export default function ShopScreen() {
             return;
         }
 
-        // Logic: Decrement heartsGiven in todayInteraction
         const todayInteraction = (user.unsafeMetadata.todayInteraction as DailyInteraction) || { date: '', heartsGiven: 0, pokemonIds: [] };
-        // Check if heartsGiven > 0 to be useful? Or creates "Negative" debt?
-        // User wants "1 more buy". So simply decrementing heartsGiven by 1 allows 1 more.
-        // Or if it's 3, make it 2.
 
         if (todayInteraction.heartsGiven <= 0) {
             Alert.alert('Full Energy', 'You haven\'t used your daily interactions yet!');
@@ -103,7 +100,7 @@ export default function ShopScreen() {
                         ...(user.unsafeMetadata.economy as EconomyData),
                         balance: newBalance,
                     },
-                    todayInteraction: newInteraction, // Decrement count
+                    todayInteraction: newInteraction,
                 },
             });
             Alert.alert('Energy Restored!', 'You can interact with one more buddy today!');
@@ -112,7 +109,22 @@ export default function ShopScreen() {
         }
     };
 
-    const filteredItems = SHOP_ITEMS.filter(i => selectedCategory === 'all' || i.category === selectedCategory);
+    const filteredItems = SHOP_ITEMS.filter(item => {
+        if (activeTab === 'effects') return item.type === 'effect';
+        if (activeTab === 'frames') return item.type === 'frame';
+        return item.type === 'consumable'; // Items
+    });
+
+    // Viewability Config for Lazy Loading
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 50,
+        minimumViewTime: 0, // Instant
+    }).current;
+
+    const onViewableItemsChanged = useCallback(({ viewableItems: visibleItems }: { viewableItems: ViewToken[] }) => {
+        const visibleIds = new Set(visibleItems.map(token => token.item.id as string));
+        setViewableItems(visibleIds);
+    }, []);
 
     return (
         <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
@@ -123,16 +135,48 @@ export default function ShopScreen() {
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={isDark ? "#fff" : "#333"} />
                 </Pressable>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.title, isDark && styles.textDark]}>Shop</Text>
-                    <Ionicons name="cart" size={20} color={isDark ? "#fff" : "#333"} style={{ marginLeft: 8 }} />
+
+                <View style={styles.titleContainer}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[styles.title, isDark && styles.textDark]}>Shop</Text>
+                        <Ionicons name="cart" size={20} color={isDark ? "#fff" : "#333"} style={{ marginLeft: 8 }} />
+                    </View>
                 </View>
+
                 <View style={styles.balanceContainer}>
                     <Image source={CoinIcon} style={styles.coinIcon} />
-                    <Text style={[styles.balanceText, isDark && styles.textDark]}>{balance}</Text>
+                    <Text style={styles.balanceText}>{balance}</Text>
                 </View>
             </View>
 
+            {/* Tabs */}
+            <View style={[styles.tabContainer, isDark && styles.tabContainerDark]}>
+                {(['effects', 'frames', 'items'] as const).map((tab) => {
+                    const isActive = activeTab === tab;
+                    return (
+                        <Pressable
+                            key={tab}
+                            style={[
+                                styles.tab,
+                                isActive && styles.tabActive,
+                                isActive && isDark && { backgroundColor: '#333' }
+                            ]}
+                            onPress={() => setActiveTab(tab)}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                isActive && styles.tabTextActive,
+                                isDark && !isActive && { color: '#aaa' },
+                                isDark && isActive && { color: '#fff' }
+                            ]}>
+                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            </Text>
+                        </Pressable>
+                    );
+                })}
+            </View>
+
+            {/* List */}
             <FlatList
                 data={filteredItems}
                 keyExtractor={(item) => item.id}
@@ -140,36 +184,13 @@ export default function ShopScreen() {
                 columnWrapperStyle={{ justifyContent: 'space-between' }}
                 contentContainerStyle={styles.scrollContent}
                 windowSize={5}
-                initialNumToRender={8}
-                maxToRenderPerBatch={8}
+                initialNumToRender={6}
+                maxToRenderPerBatch={6}
                 removeClippedSubviews={true}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
                 ListHeaderComponent={
-                    <>
-                        {/* Categories - Tab Style */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-                            <View style={styles.categories}>
-                                {(['all', 'normal', 'legendary', 'mythical'] as const).map(cat => (
-                                    <Pressable
-                                        key={cat}
-                                        style={[
-                                            styles.categoryTab,
-                                            selectedCategory === cat && styles.categoryTabActive,
-                                        ]}
-                                        onPress={() => setSelectedCategory(cat)}
-                                    >
-                                        <Text style={[
-                                            styles.categoryText,
-                                            selectedCategory === cat && styles.categoryTextActive,
-                                            isDark && selectedCategory !== cat && styles.textDark
-                                        ]}>
-                                            {cat.toUpperCase()}
-                                        </Text>
-                                    </Pressable>
-                                ))}
-                            </View>
-                        </ScrollView>
-
-                        {/* Buy Interaction Special */}
+                    activeTab === 'items' ? (
                         <View style={[styles.specialOffer, isDark && styles.specialOfferDark]}>
                             <View style={styles.specialInfo}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -183,7 +204,7 @@ export default function ShopScreen() {
                                 <Image source={CoinIcon} style={styles.coinIconSmall} />
                             </Pressable>
                         </View>
-                    </>
+                    ) : null
                 }
                 renderItem={({ item }) => (
                     <ShopItemCard
@@ -191,6 +212,7 @@ export default function ShopScreen() {
                         count={inventory[item.id] || 0}
                         isDark={isDark}
                         onBuy={() => handleBuyItem(item)}
+                        shouldPlay={viewableItems.has(item.id)}
                     />
                 )}
             />
@@ -198,132 +220,34 @@ export default function ShopScreen() {
     );
 }
 
-const ShopItemCard = React.memo(({ item, count, isDark, onBuy }: { item: ShopItem, count: number, isDark: boolean, onBuy: () => void }) => {
-    const cardBackground = TYPE_COLORS['electric']; // Default background
-    const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
-
-    return (
-        <View style={[styles.itemCard, isDark && styles.itemCardDark]}>
-            {/* Full Card Background */}
-            <View style={[styles.cardBackground, { backgroundColor: isSpecialEffect ? 'transparent' : cardBackground }]}>
-                {/* Live Effect Preview */}
-                {item.id === 'extra_love' && <ExtraLoveEffect />}
-                {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
-                {item.id === 'effect_icy_wind' && <IcyWindEffect />}
-                {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
-                {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
-                {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
-                {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
-                {item.id === 'effect_air_slash' && <AirSlashEffect />}
-                {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
-                {item.id === 'effect_rock_tomb' && <RockTombEffect />}
-
-                {/* Pokemon Preview Card Content */}
-                {count > 0 && <View style={[styles.ownedBadge, { top: 12, right: 12 }]}><Text style={styles.ownedText}>x{count}</Text></View>}
-                <Text style={styles.cardId}>#025</Text>
-                <Image
-                    source={{ uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
-                    style={styles.previewImage}
-                />
-                <Text style={styles.cardName}>Pikachu</Text>
-                <View style={styles.cardTypeContainer}>
-                    <Image source={TYPE_ICONS['electric']} style={styles.cardTypeIcon} />
-                </View>
-
-                {/* Effects Overlay */}
-                <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                    {!isSpecialEffect && (
-                        <View style={styles.effectIconOverlay}>
-                            <Ionicons name="sparkles" size={24} color={item.category === 'mythical' ? '#FFD700' : '#fff'} />
-                        </View>
-                    )}
-                </View>
-            </View>
-
-            {/* Info Overlay */}
-            <View style={[styles.itemInfoOverlay, isDark && styles.itemInfoOverlayDark]}>
-                <Text style={[styles.itemName, isDark && styles.textDark]}>{item.name}</Text>
-                <Text style={styles.itemDesc} numberOfLines={2}>{item.description}</Text>
-                <Pressable style={styles.buyButton} onPress={onBuy}>
-                    <Text style={styles.buyButtonText}>{item.price}</Text>
-                    <Image source={CoinIcon} style={styles.coinIconSmall} />
-                </Pressable>
-            </View>
-        </View>
-    );
-});
-
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f5f5' },
     containerDark: { backgroundColor: '#121212' },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', elevation: 2, justifyContent: 'space-between' },
-    headerDark: { backgroundColor: '#1e1e1e', borderBottomColor: '#333' },
-    backButton: { padding: 8 },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', zIndex: 10, justifyContent: 'space-between' },
+    headerDark: { backgroundColor: '#121212', borderBottomColor: 'rgba(255,255,255,0.05)' },
+    backButton: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.03)', zIndex: 20 },
+    titleContainer: { position: 'absolute', left: 0, right: 0, alignItems: 'center', pointerEvents: 'none' },
+    title: { fontSize: 24, fontWeight: '800', color: '#1a1a1a', letterSpacing: -0.5 },
     textDark: { color: '#fff' },
-    balanceContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.05)', padding: 8, borderRadius: 20 },
-    coinIcon: { width: 20, height: 20, marginRight: 6 },
-    balanceText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+    balanceContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9C4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FFD700', zIndex: 20 },
+    coinIcon: { width: 18, height: 18, marginRight: 6 },
+    balanceText: { fontSize: 16, fontWeight: '900', color: '#FFD700', textShadowColor: '#000', textShadowRadius: 1, textShadowOffset: { width: 1, height: 1 } },
 
-    scrollContent: { padding: 16 },
-    categoriesScroll: { marginBottom: 20 },
-    categories: { flexDirection: 'row', gap: 20, paddingHorizontal: 4 },
-    categoryTab: { paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    categoryTabActive: { borderBottomColor: '#3b82f6' },
-    categoryText: { fontSize: 14, fontWeight: '600', color: '#999' },
-    categoryTextActive: { color: '#333' },
+    tabContainer: { flexDirection: 'row', margin: 16, padding: 4, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 16 },
+    tabContainerDark: { backgroundColor: 'rgba(255,255,255,0.1)' },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
+    tabActive: { backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+    tabText: { fontWeight: '600', color: '#888', fontSize: 13 },
+    tabTextActive: { color: '#1a1a1a', fontWeight: '700' },
 
-    specialOffer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 20, elevation: 1 },
-    specialOfferDark: { backgroundColor: '#1e1e1e' },
+    scrollContent: { padding: 16, paddingBottom: 40 },
+
+    specialOffer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+    specialOfferDark: { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.05)' },
     specialInfo: { flex: 1 },
-    specialTitle: { fontSize: 16, fontWeight: 'bold' },
-    specialSub: { fontSize: 12, color: '#999' },
-
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    itemCard: { width: '48%', height: 260, borderRadius: 16, overflow: 'hidden', marginBottom: 12, elevation: 3, position: 'relative' },
-    itemCardDark: { backgroundColor: '#1e1e1e' },
-    cardBackground: { flex: 1, alignItems: 'center', paddingTop: 0 },
-    cardId: {
-        fontSize: 10,
-        color: '#fff',
-        opacity: 0.8,
-        alignSelf: 'flex-start',
-        marginTop: 16,
-        marginLeft: 8,
-    },
-    cardName: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#fff',
-        textAlign: 'center',
-        textTransform: 'capitalize',
-        marginTop: 4,
-    },
-    cardTypeContainer: { flexDirection: 'row', gap: 4, marginTop: 4 },
-    cardTypeBadge: { display: 'none' }, // Removed
-    cardTypeIcon: { width: 14, height: 14, resizeMode: 'contain' },
-    previewImage: {
-        width: '80%',
-        height: undefined,
-        aspectRatio: 1,
-        marginVertical: 4,
-    },
-    effectIconOverlay: { position: 'absolute', top: 12, right: 12, opacity: 0.8 },
-
-    itemInfoOverlay: {
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-        padding: 12,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16
-    },
-    itemInfoOverlayDark: { backgroundColor: 'rgba(30, 30, 30, 0.6)' },
-    itemName: { fontSize: 14, fontWeight: 'bold', marginBottom: 4, color: '#333' },
-    itemDesc: { fontSize: 11, color: '#666', marginBottom: 8, height: 28 },
-    buyButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start' },
-    buyButtonText: { fontWeight: 'bold', marginRight: 4, fontSize: 12, color: '#333' },
-    buyButtonSmall: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', padding: 8, borderRadius: 20 },
+    specialTitle: { fontSize: 16, fontWeight: '700', letterSpacing: -0.3 },
+    specialSub: { fontSize: 13, color: '#888', marginTop: 2 },
+    buyButtonSmall: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f9ff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e0f2fe' },
+    buyButtonText: { fontWeight: '700', marginRight: 6, fontSize: 13, color: '#0284c7' },
     coinIconSmall: { width: 14, height: 14 },
-    ownedBadge: { position: 'absolute', top: -10, right: 0, backgroundColor: '#22c55e', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-    ownedText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
 });

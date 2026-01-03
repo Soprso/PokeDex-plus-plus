@@ -6,11 +6,27 @@ export interface ShopItem {
     description: string;
     price: number;
     category: ShopItemCategory;
-    type: 'consumable' | 'effect';
+    type: 'consumable' | 'effect' | 'frame';
     image?: any; // Placeholder for require()
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
+    {
+        id: 'frame_gold',
+        name: 'Gold Frame',
+        description: 'A luxurious golden frame for your card.',
+        price: 500,
+        category: 'normal',
+        type: 'frame',
+    },
+    {
+        id: 'frame_neon',
+        name: 'Neon Frame',
+        description: 'Bright neon lights border.',
+        price: 300,
+        category: 'normal',
+        type: 'frame',
+    },
     {
         id: 'extra_love',
         name: 'Extra Love',
