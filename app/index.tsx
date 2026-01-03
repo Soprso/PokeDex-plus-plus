@@ -1,4 +1,4 @@
-import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GlowBorder, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, ShineOverlay } from '@/components/card-effects';
+import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GlowBorder, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect, ShineOverlay } from '@/components/card-effects';
 import { POKEMON_TYPES, PokemonType, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
 import { SHOP_ITEMS } from '@/constants/shopItems';
@@ -1744,6 +1744,7 @@ export default function PokedexListScreen() {
                               {item.id === 'effect_air_slash' && <AirSlashEffect />}
                               {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
                               {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
+                              {item.id === 'effect_rock_tomb' && <RockTombEffect />}
 
                               {/* Watermark */}
                               {item.id !== 'extra_love' && (
@@ -2007,6 +2008,8 @@ const PokemonCardComponent = ({
       BuddyEffects = <AirSlashEffect />;
     } else if (activeEffectId === 'effect_ghostly_mist') {
       BuddyEffects = <GhostlyMistEffect />;
+    } else if (activeEffectId === 'effect_rock_tomb') {
+      BuddyEffects = <RockTombEffect />;
     } else if (activeEffectId === 'none') {
       // Explicit None: Do not render anything, do not use fallback.
       BuddyEffects = null;
@@ -2043,7 +2046,7 @@ const PokemonCardComponent = ({
         style={({ pressed }) => [
           styles.gridCard,
           { width: cardWidth },
-          { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+          { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber' || activeEffectId === 'effect_rock_tomb') ? 'transparent' : backgroundColor },
           settings.darkMode && styles.cardDark,
           pressed && styles.cardPressed,
           activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,
@@ -2130,7 +2133,7 @@ const PokemonCardComponent = ({
       onLongPress={() => onLongPress(item)}
       style={({ pressed }) => [
         styles.card,
-        { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber') ? 'transparent' : backgroundColor },
+        { backgroundColor: (isDualType || activeEffectId === 'extra_love' || activeEffectId === 'effect_golden_glory' || activeEffectId === 'effect_icy_wind' || activeEffectId === 'effect_magma_storm' || activeEffectId === 'effect_frenzy_plant' || activeEffectId === 'effect_bubble_beam' || activeEffectId === 'effect_air_slash' || activeEffectId === 'effect_ghostly_mist' || activeEffectId === 'effect_neon_cyber' || activeEffectId === 'effect_rock_tomb') ? 'transparent' : backgroundColor },
         settings.darkMode && styles.cardDark,
         pressed && styles.cardPressed,
         activeEffectId === 'effect_golden_glory' && styles.cardGoldenGlory,

@@ -1,4 +1,4 @@
-import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect } from '@/components/card-effects';
+import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect } from '@/components/card-effects';
 import { TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import { SHOP_ITEMS, ShopItem, ShopItemCategory } from '@/constants/shopItems';
 import { useUser } from '@clerk/clerk-expo';
@@ -200,7 +200,7 @@ export default function ShopScreen() {
 
 const ShopItemCard = React.memo(({ item, count, isDark, onBuy }: { item: ShopItem, count: number, isDark: boolean, onBuy: () => void }) => {
     const cardBackground = TYPE_COLORS['electric']; // Default background
-    const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash'].includes(item.id);
+    const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
 
     return (
         <View style={[styles.itemCard, isDark && styles.itemCardDark]}>
@@ -216,6 +216,7 @@ const ShopItemCard = React.memo(({ item, count, isDark, onBuy }: { item: ShopIte
                 {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
                 {item.id === 'effect_air_slash' && <AirSlashEffect />}
                 {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
+                {item.id === 'effect_rock_tomb' && <RockTombEffect />}
 
                 {/* Pokemon Preview Card Content */}
                 {count > 0 && <View style={[styles.ownedBadge, { top: 12, right: 12 }]}><Text style={styles.ownedText}>x{count}</Text></View>}

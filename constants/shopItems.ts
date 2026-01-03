@@ -83,4 +83,12 @@ export const SHOP_ITEMS: ShopItem[] = [
         category: 'normal',
         type: 'effect',
     },
+    {
+        id: 'effect_rock_tomb',
+        name: 'Rock Tomb',
+        description: 'Sand particles flowing across a rocky landscape.',
+        price: 200,
+        category: 'normal',
+        type: 'effect',
+    },
 ];
