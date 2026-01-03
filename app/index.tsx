@@ -192,20 +192,13 @@ export default function PokedexListScreen() {
   const randomTip = useMemo(() => getRandomTip(), []);
 
   // Load settings and nicknames from AsyncStorage
-  // Load buddy data from Clerk user metadata
+  // Load settings from AsyncStorage (Global app settings)
   useEffect(() => {
     async function loadStoredData() {
       try {
-        const [storedSettings, storedNicknames] = await Promise.all([
-          AsyncStorage.getItem('settings'),
-          AsyncStorage.getItem('nicknames'),
-        ]);
-
+        const storedSettings = await AsyncStorage.getItem('settings');
         if (storedSettings) {
           setSettings(JSON.parse(storedSettings));
-        }
-        if (storedNicknames) {
-          setNicknames(JSON.parse(storedNicknames));
         }
       } catch (err) {
         console.error('Failed to load stored data:', err);
@@ -346,8 +339,13 @@ export default function PokedexListScreen() {
         setUnlockedCardFrames(user.unsafeMetadata.unlockedCardFrames as Record<number, string[]>);
       }
 
+      if (user.unsafeMetadata.nicknames) {
+        setNicknames(user.unsafeMetadata.nicknames as Record<number, string>);
+      }
+
     } else {
-      // Clear data if logged out
+      // STRICT CLEAR: Reset all user-specific data when logged out
+      console.log('User logged out - Clearing all session data');
       setBuddyData({});
       setTodayInteraction({
         date: new Date().toISOString().split('T')[0],
@@ -355,6 +353,13 @@ export default function PokedexListScreen() {
         pokemonIds: [],
       });
       setEconomy({ balance: 0, lastDailyRewardDate: '', streak: 0 });
+      setInventory({});
+      setCardEffects({});
+      setUnlockedCardEffects({});
+      setCardFrames({});
+      setUnlockedCardFrames({});
+      setNicknames({}); // Hide nicknames on logout
+      setSettings(prev => ({ ...prev, shinySprites: false })); // Reset sensitive settings if needed
     }
   }, [user]);
 
@@ -390,10 +395,21 @@ export default function PokedexListScreen() {
     AsyncStorage.setItem('settings', JSON.stringify(settings)).catch(console.error);
   }, [settings]);
 
-  // Save nicknames to AsyncStorage
+  // Save nicknames to Clerk Metadata (Secure) instead of AsyncStorage
   useEffect(() => {
-    AsyncStorage.setItem('nicknames', JSON.stringify(nicknames)).catch(console.error);
-  }, [nicknames]);
+    if (isSignedIn && user && Object.keys(nicknames).length > 0) {
+      // Debounce saving to prevent API spam
+      const timeoutId = setTimeout(() => {
+        user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            nicknames: nicknames,
+          }
+        }).catch(err => console.error('Failed to save nicknames:', err));
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [nicknames, isSignedIn, user]);
 
   // Fetch Pokémon data on mount
   useEffect(() => {
@@ -2266,8 +2282,9 @@ const PokemonCardComponent = ({
         {BuddyEffects}
 
         {/* Render Active Frame */}
-        {cardFrames[item.id] === 'frame_gold' && <GoldFrame />}
-        {cardFrames[item.id] === 'frame_neon' && <NeonFrame />}
+        {/* Render Active Frame */}
+        {cardFrames && cardFrames[item.id] === 'frame_gold' && <GoldFrame />}
+        {cardFrames && cardFrames[item.id] === 'frame_neon' && <NeonFrame />}
 
         <Image
           source={require('@/assets/images/pokeball.png')}
