@@ -1,3 +1,4 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -38,6 +39,7 @@ export function ThemedModal({
     const backgroundColor = useThemeColor({}, 'background');
     const textColor = useThemeColor({}, 'text');
     const tintColor = useThemeColor({}, 'tint');
+    const theme = useColorScheme() ?? 'light';
 
     if (!visible) return null;
 
@@ -96,7 +98,7 @@ export function ThemedModal({
                                                         styles.buttonText,
                                                         isCancel && { color: textColor, opacity: 0.7 },
                                                         isDestructive && { color: '#FF6B6B' },
-                                                        !isCancel && !isDestructive && { color: '#FFF' },
+                                                        !isCancel && !isDestructive && { color: theme === 'dark' ? '#000' : '#FFF' },
                                                     ]}
                                                 >
                                                     {action.text}

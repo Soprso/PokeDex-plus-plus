@@ -294,7 +294,7 @@ export default function PokedexListScreen() {
 
         setEconomyModal({
           visible: true,
-          title: isStreakBonus ? '🎉 HUGE Daily Reward!' : '📅 Daily Login Reward!',
+          title: isStreakBonus ? '🎉 HUGE Daily Reward!' : 'Daily Login Reward!',
           message: `You received ${rewardAmount} Dex Coins! 💰${streakMessage}\nNew Balance: ${currentEconomy.balance}`,
           type: 'reward'
         });
@@ -1860,7 +1860,7 @@ export default function PokedexListScreen() {
                     ]}
                     onPress={() => { setNicknameModalOpen(false); closeMenu(); }}
                   >
-                    <Text style={[styles.modalCloseText, { color: '#fff' }]}>Close</Text>
+                    <Text style={[styles.economyModalButtonText, settings.darkMode && styles.economyModalButtonTextDark]}>Close</Text>
                   </Pressable>
 
                 </ScrollView>
@@ -2031,7 +2031,7 @@ export default function PokedexListScreen() {
               ]}
               onPress={() => setSelectedBuddyProgress(null)}
             >
-              <Text style={[styles.modalCloseText, { color: '#fff' }]}>Close</Text>
+              <Text style={[styles.economyModalButtonText, settings.darkMode && styles.economyModalButtonTextDark]}>Close</Text>
             </Pressable>
           </View>
         </View>
