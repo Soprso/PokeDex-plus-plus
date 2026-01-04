@@ -89,7 +89,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                 <Text style={[styles.itemName, isDark && styles.textDark]}>{item.name}</Text>
                 <Text style={styles.itemDesc} numberOfLines={2}>{item.description}</Text>
                 <Pressable style={styles.buyButton} onPress={onBuy}>
-                    <Text style={styles.buyButtonText}>{item.price}</Text>
+                    <Text style={styles.buyButtonText}>{item.price === 0 ? 'Free' : item.price}</Text>
                     <Image source={CoinIcon} style={styles.coinIconSmall} />
                 </Pressable>
             </View>

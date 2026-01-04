@@ -9,41 +9,88 @@ import Animated, {
 } from 'react-native-reanimated';
 
 export const NeonFrame = () => {
-    const pulse = useSharedValue(1);
+    const glowOpacity = useSharedValue(0.3);
+    const borderColor = useSharedValue('#39FF14'); // Neon Green
 
     useEffect(() => {
-        pulse.value = withRepeat(
+        glowOpacity.value = withRepeat(
             withSequence(
-                withTiming(1.5, { duration: 1000 }),
-                withTiming(1, { duration: 1000 })
+                withTiming(1, { duration: 800 }), // Faster pulse up
+                withTiming(0.2, { duration: 800 }) // Deep fade out
             ),
-            -1,
-            true
+            -1, // Infinite repeat
+            true // Reverse
         );
     }, []);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        opacity: pulse.value,
-        shadowOpacity: pulse.value * 0.5 + 0.3
-    }));
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            borderColor: borderColor.value,
+            shadowOpacity: glowOpacity.value,
+            shadowRadius: glowOpacity.value * 15 + 5, // Increased radius
+            borderWidth: 2 + (glowOpacity.value * 1), // Subtle width pulse
+        };
+    });
 
     return (
         <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="none">
-            <Animated.View style={[styles.border, animatedStyle]} />
+            {/* Outer Glowing Border */}
+            <Animated.View style={[styles.outerBorder, animatedStyle]} />
+
+            {/* Corner Accents */}
+            <Corner style={{ top: -2, left: -2 }} />
+            <Corner style={{ top: -2, right: -2, transform: [{ rotate: '90deg' }] }} />
+            <Corner style={{ bottom: -2, right: -2, transform: [{ rotate: '180deg' }] }} />
+            <Corner style={{ bottom: -2, left: -2, transform: [{ rotate: '270deg' }] }} />
         </View>
     );
 };
 
+const Corner = ({ style }: { style: any }) => (
+    <View style={[styles.cornerContainer, style]}>
+        <View style={styles.cornerLineH} />
+        <View style={styles.cornerLineV} />
+    </View>
+);
+
+const NEON_GREEN = '#39FF14';
+
 const styles = StyleSheet.create({
-    border: {
+    outerBorder: {
         ...StyleSheet.absoluteFillObject,
-        borderWidth: 4,
-        borderColor: '#00FF00', // Neon Green
-        borderRadius: 24,
-        shadowColor: '#00FF00',
+        borderWidth: 2,
+        borderRadius: 16,
+        margin: 0,
+        shadowColor: NEON_GREEN,
         shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 10,
-        elevation: 8,
+        elevation: 10, // For Android
         backgroundColor: 'transparent'
+    },
+    cornerContainer: {
+        position: 'absolute',
+        width: 16,
+        height: 16,
+    },
+    cornerLineH: {
+        position: 'absolute',
+        top: 0, left: 0,
+        width: 16, height: 2,
+        backgroundColor: NEON_GREEN,
+        shadowColor: NEON_GREEN,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+        elevation: 5
+    },
+    cornerLineV: {
+        position: 'absolute',
+        top: 0, left: 0,
+        width: 2, height: 16,
+        backgroundColor: NEON_GREEN,
+        shadowColor: NEON_GREEN,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+        elevation: 5
     }
 });

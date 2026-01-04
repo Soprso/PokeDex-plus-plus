@@ -651,6 +651,7 @@ export default function PokedexListScreen() {
       const newCardFrames = { ...cardFrames, [pokemonId]: 'none' };
       setCardFrames(newCardFrames);
       await user.update({ unsafeMetadata: { ...user.unsafeMetadata, cardFrames: newCardFrames } });
+      showAlert('Default Applied', 'The frame has been reset to default.', undefined, 'refresh', '#3b82f6');
       return;
     }
 
@@ -665,8 +666,11 @@ export default function PokedexListScreen() {
       return;
     }
 
+    const item = SHOP_ITEMS.find(i => i.id === frameId);
+    const isFree = item ? item.price === 0 : false;
+
     const count = inventory[frameId] || 0;
-    if (count <= 0) {
+    if (count <= 0 && !isFree) {
       showAlert('Locked', 'You do not own this frame.', undefined, 'lock-closed', '#FF6B6B');
       return;
     }
@@ -727,6 +731,7 @@ export default function PokedexListScreen() {
           cardEffects: newCardEffects
         }
       });
+      showAlert('Default Applied', 'The effect has been reset to default.', undefined, 'refresh', '#3b82f6');
       return;
     }
 
@@ -765,9 +770,12 @@ export default function PokedexListScreen() {
       return;
     }
 
+    const item = SHOP_ITEMS.find(i => i.id === effectId);
+    const isFree = item ? item.price === 0 : false;
+
     // If NOT unlocked, require inventory.
     const count = inventory[effectId] || 0;
-    if (count <= 0) {
+    if (count <= 0 && !isFree) {
       showAlert('Locked', 'You do not own this effect. Visit the Shop to buy more!', undefined, 'cart', '#F59E0B');
       return;
     }
@@ -1680,10 +1688,11 @@ export default function PokedexListScreen() {
                           : (isDefaultItem || isUnlocked ? 1 : (inventory[item.id] || 0));
 
                         const isActive = isDefaultItem
-                          ? !cardEffects[selectedPokemon.id]
+                          ? (!cardEffects[selectedPokemon.id] || cardEffects[selectedPokemon.id] === 'none')
                           : cardEffects[selectedPokemon.id] === item.id;
 
-                        const isLocked = count === 0 && !isActive;
+                        const isFree = item.price === 0;
+                        const isLocked = !isFree && count === 0 && !isActive;
 
                         const pokemon = selectedPokemon;
                         const isDualType = pokemon.types.length > 1;
@@ -1705,7 +1714,7 @@ export default function PokedexListScreen() {
                                       style={StyleSheet.absoluteFill}
                                     />
                                   ) : (
-                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_icy_wind' || item.id === 'effect_magma_storm' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : backgroundColor }]} />
+                                    <View style={[StyleSheet.absoluteFill, { backgroundColor: (item.id === 'extra_love' || item.id === 'effect_golden_glory' || item.id === 'effect_icy_wind' || item.id === 'effect_magma_storm' || item.id === 'effect_ghostly_mist' || item.id === 'effect_neon_cyber') ? 'transparent' : backgroundColor }]} />
                                   )}
 
                                   {item.id === 'extra_love' && <ExtraLoveEffect />}
@@ -1749,7 +1758,7 @@ export default function PokedexListScreen() {
                               )}
                             </View>
                             <Text style={[styles.effectName, settings.darkMode && styles.textDark]}>{item.name}</Text>
-                            <Text style={styles.effectCount}>{isBestBuddyItem ? (isBestBuddyReached ? 'Unlocked' : 'Locked') : `Owned: ${count}`}</Text>
+                            <Text style={styles.effectCount}>{isBestBuddyItem ? (isBestBuddyReached ? 'Unlocked' : 'Locked') : (isFree ? 'Free' : `Owned: ${count}`)}</Text>
 
                             <Pressable
                               style={[styles.applyButton, isLocked && styles.applyButtonLocked, isActive && styles.applyButtonActive]}
@@ -1790,13 +1799,14 @@ export default function PokedexListScreen() {
                         const isDefaultItem = item.id === 'default';
                         const unlockedForThisMon = unlockedCardFrames[selectedPokemon.id] || [];
                         const isUnlocked = isDefaultItem || unlockedForThisMon.includes(item.id);
-                        const count = isUnlocked ? 1 : (inventory[item.id] || 0);
+                        const isFree = item.price === 0;
+                        const count = (isUnlocked || isFree) ? 1 : (inventory[item.id] || 0);
 
                         const isActive = isDefaultItem
                           ? (!cardFrames[selectedPokemon.id] || cardFrames[selectedPokemon.id] === 'none')
                           : cardFrames[selectedPokemon.id] === item.id;
 
-                        const isLocked = count === 0 && !isActive;
+                        const isLocked = item.category === 'mythical' && (inventory[item.id] || 0) === 0 && !isActive;
                         const pokemon = selectedPokemon;
                         const isDualType = pokemon.types.length > 1;
                         const backgroundColor = TYPE_COLORS[pokemon.types[0]] || '#A8A878';
@@ -2630,7 +2640,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     borderColor: '#FFD700',
     borderWidth: 0,
-    overflow: 'visible', // Critical for shadow
     backgroundColor: 'transparent',
   },
   cardWatermark: {
