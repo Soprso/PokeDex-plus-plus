@@ -458,6 +458,7 @@ export default function HomeScreen() {
         visible={modals.comingSoon}
         onClose={() => setModals({ ...modals, comingSoon: false })}
         featureName="PokéHub"
+        darkMode={settings.darkMode}
       />
 
       <EconomyModal
