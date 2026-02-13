@@ -18,6 +18,7 @@ export const ScrollView = forwardRef<HTMLDivElement, ScrollViewProps>(
         return (
             <div
                 ref={ref}
+                data-testid={(props as any).testID}
                 style={{
                     display: 'flex',
                     flexDirection: horizontal ? 'row' : 'column',

@@ -3,21 +3,26 @@ import TypeEffectOverlay from "@/components/TypeEffectOverlay";
 import { LinearGradient, SafeAreaView } from '@/components/native';
 import ShinyEffect from "@/components/type-effects/ShinyEffect";
 import React, { useEffect, useRef, useState } from "react";
+import { FiArrowLeft, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import {
     Animated,
     Dimensions,
     FlatList,
     Image,
     ImageBackground,
+    Platform,
     StyleSheet,
     Text,
+    TouchableOpacity,
+    useWindowDimensions,
     View
 } from "react-native";
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 
-const { width } = Dimensions.get("window");
+// Fallback static width for stylesheet, but we use useWindowDimensions in components
+const { width: windowWidth } = Dimensions.get("window");
 
 /* =======================
    Types
@@ -117,7 +122,7 @@ const ROLE_DESCRIPTIONS = {
 /* =======================
    Radar Chart Component
 ======================= */
-function RadarChart({ stats, size = 200 }: { stats: any[], size?: number }) {
+function RadarChart({ stats, size = 200, darkMode }: { stats: any[], size?: number, darkMode: boolean }) {
     const center = size / 2;
     const radius = size * 0.35;
     const categories = ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'];
@@ -148,19 +153,19 @@ function RadarChart({ stats, size = 200 }: { stats: any[], size?: number }) {
 
     // Create path for the radar shape
     const pathData = points.map((point, i) =>
-        `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+        `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y} `
     ).join(' ') + ' Z';
 
     return (
         <View style={{ alignItems: 'center', marginVertical: 20 }}>
             <Svg width={size} height={size}>
                 {/* Outer boundary */}
-                <Circle cx={center} cy={center} r={radius} fill="none" stroke="#e0e0e0" strokeWidth={1} />
+                <Circle cx={center} cy={center} r={radius} fill="none" stroke={darkMode ? "#334155" : "#e0e0e0"} strokeWidth={1} />
 
                 {/* Grid circles */}
-                <Circle cx={center} cy={center} r={radius * 0.75} fill="none" stroke="#f0f0f0" strokeWidth={1} />
-                <Circle cx={center} cy={center} r={radius * 0.5} fill="none" stroke="#f0f0f0" strokeWidth={1} />
-                <Circle cx={center} cy={center} r={radius * 0.25} fill="none" stroke="#f0f0f0" strokeWidth={1} />
+                <Circle cx={center} cy={center} r={radius * 0.75} fill="none" stroke={darkMode ? "#1e293b" : "#f0f0f0"} strokeWidth={1} />
+                <Circle cx={center} cy={center} r={radius * 0.5} fill="none" stroke={darkMode ? "#1e293b" : "#f0f0f0"} strokeWidth={1} />
+                <Circle cx={center} cy={center} r={radius * 0.25} fill="none" stroke={darkMode ? "#1e293b" : "#f0f0f0"} strokeWidth={1} />
 
                 {/* Category lines */}
                 {categories.map((_, i) => {
@@ -175,14 +180,14 @@ function RadarChart({ stats, size = 200 }: { stats: any[], size?: number }) {
                             y1={center}
                             x2={x}
                             y2={y}
-                            stroke="#ccc"
+                            stroke={darkMode ? "#334155" : "#ccc"}
                             strokeWidth={1}
                         />
                     );
                 })}
 
                 {/* Radar shape */}
-                <Path d={pathData} fill="rgba(100, 150, 255, 0.3)" stroke="#4a90e2" strokeWidth={2} />
+                <Path d={pathData} fill="rgba(74, 144, 226, 0.3)" stroke="#4a90e2" strokeWidth={2} />
 
                 {/* Stat labels at endpoints */}
                 {categories.map((category, i) => {
@@ -199,7 +204,7 @@ function RadarChart({ stats, size = 200 }: { stats: any[], size?: number }) {
                                 y={y}
                                 textAnchor="middle"
                                 fontSize="10"
-                                fill="#444"
+                                fill={darkMode ? "#94a3b8" : "#444"}
                                 fontWeight="bold"
                             >
                                 {category}
@@ -209,7 +214,7 @@ function RadarChart({ stats, size = 200 }: { stats: any[], size?: number }) {
                                 y={y + 14}
                                 textAnchor="middle"
                                 fontSize="9"
-                                fill="#666"
+                                fill={darkMode ? "#64748b" : "#666"}
                             >
                                 {statValue}
                             </SvgText>
@@ -359,6 +364,7 @@ function getRatingColor(rating: number): string {
 ======================= */
 export default function Details() {
     const { name } = useParams<{ name: string }>();
+    const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
     const [pokemon, setPokemon] = useState<PokemonDetails | null>(null);
     const [fastMoves, setFastMoves] = useState<EnhancedMove[]>([]);
@@ -371,6 +377,24 @@ export default function Details() {
     const [hasEvolution, setHasEvolution] = useState(true);
     const [abilities, setAbilities] = useState<Ability[]>([]);
     const [speciesInfo, setSpeciesInfo] = useState<SpeciesInfo | null>(null);
+    const [settings, setSettings] = useState({ darkMode: false });
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const flatListRef = useRef<FlatList>(null);
+
+    // Load settings from localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem('pokedex-settings');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setSettings(parsed);
+            } catch (e) {
+                console.error('Failed to parse settings:', e);
+            }
+        }
+    }, []);
+
+    const darkMode = settings.darkMode;
 
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -378,14 +402,67 @@ export default function Details() {
     const statAnims = useRef<Animated.Value[]>([]).current;
     const typeAnim = useRef(new Animated.Value(0)).current;
 
+    const { width } = useWindowDimensions();
+    const carouselItemWidth = width > 600 ? 500 : width;
+
+    // Synchronize scroll on width change
+    useEffect(() => {
+        if (flatListRef.current && activeImageIndex > 0) {
+            flatListRef.current.scrollToOffset({
+                offset: activeImageIndex * carouselItemWidth,
+                animated: false
+            });
+        }
+    }, [width]);
+
+    const scrollNext = () => {
+        if (activeImageIndex < images.length - 1) {
+            const nextIndex = activeImageIndex + 1;
+            flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+            setActiveImageIndex(nextIndex);
+        }
+    };
+
+    const scrollPrev = () => {
+        if (activeImageIndex > 0) {
+            const prevIndex = activeImageIndex - 1;
+            flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
+            setActiveImageIndex(prevIndex);
+        }
+    };
+
+    const onScroll = (event: any) => {
+        const contentOffset = event.nativeEvent.contentOffset.x;
+        const index = Math.round(contentOffset / carouselItemWidth);
+        if (index !== activeImageIndex) {
+            setActiveImageIndex(index);
+        }
+        // Manually update scrollX for Sparkle effect
+        scrollX.setValue(contentOffset);
+    };
+
     /* =======================
-       Fetch Pokémon Data
+       Fetch Pokémon Data & Add Global CSS for Web
     ======================= */
     useEffect(() => {
+        if (Platform.OS === 'web') {
+            const style = document.createElement('style');
+            style.textContent = `
+                /* Targeted scrollbar removal for Web */
+                [data-testid="hero-carousel"] {
+                    -ms-overflow-style: none !important;
+                    scrollbar-width: none !important;
+                }
+                [data-testid="hero-carousel"]::-webkit-scrollbar {
+                    display: none !important;
+                }
+            `;
+            document.head.append(style);
+        }
         fetchPokemon();
     }, []);
 
-    async function fetchPokemon() {
+    const fetchPokemon = async () => {
         try {
             setIsLoading(true); // Start loading
             const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
@@ -675,15 +752,24 @@ export default function Details() {
        Hero Images
     ======================= */
     const images = [
-        pokemon.sprites.other["official-artwork"].front_default,
-        pokemon.sprites.other["official-artwork"].front_shiny,
-    ];
+        pokemon.sprites.other?.["official-artwork"]?.front_default || pokemon.sprites.front_default,
+        pokemon.sprites.other?.["official-artwork"]?.front_shiny || pokemon.sprites.front_shiny,
+    ].filter(Boolean);
 
     /* =======================
        Render
     ======================= */
     return (
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+            {/* BACK BUTTON */}
+            <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigate('/')}
+                activeOpacity={0.7}
+            >
+                <FiArrowLeft size={24} color={darkMode ? '#fff' : '#333'} />
+            </TouchableOpacity>
+
             <Animated.ScrollView
                 style={{ flex: 1, opacity: fadeAnim, backgroundColor: '#fff' }}
                 showsVerticalScrollIndicator={false}
@@ -715,7 +801,7 @@ export default function Details() {
                         style={{
                             ...StyleSheet.absoluteFillObject,
                             opacity: scrollX.interpolate({
-                                inputRange: [0, width * 0.5, width],
+                                inputRange: [0, carouselItemWidth * 0.5, carouselItemWidth],
                                 outputRange: [0, 0.5, 1],
                                 extrapolate: 'clamp',
                             }),
@@ -724,15 +810,15 @@ export default function Details() {
                         <ShinyEffect />
                     </Animated.View>
 
-                    {/* Legendary/Mythical Badges */}
+                    {/* Legendary/Mythical Badges - Shifted down for Back Button */}
                     {speciesInfo?.isLegendary && (
-                        <View style={styles.legendaryBadge}>
+                        <View style={[styles.legendaryBadge, { top: 70 }]}>
                             <Text style={styles.legendaryIcon}>👑</Text>
                             <Text style={styles.legendaryText}>Legendary</Text>
                         </View>
                     )}
                     {speciesInfo?.isMythical && (
-                        <View style={[styles.legendaryBadge, { top: speciesInfo?.isLegendary ? 70 : 20 }]}>
+                        <View style={[styles.legendaryBadge, { top: speciesInfo?.isLegendary ? 120 : 70 }]}>
                             <Text style={styles.legendaryIcon}>⭐</Text>
                             <Text style={styles.legendaryText}>Mythical</Text>
                         </View>
@@ -747,41 +833,88 @@ export default function Details() {
                     )}
 
 
-                    <FlatList
-                        data={images}
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        keyExtractor={(_, i) => i.toString()}
-                        onScroll={Animated.event(
-                            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                            { useNativeDriver: false }
+                    {/* Main Image Carousel */}
+                    <View style={[styles.carouselWrapper, { width: carouselItemWidth }]}>
+                        <FlatList
+                            ref={flatListRef}
+                            data={images}
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            showsVerticalScrollIndicator={false}
+                            testID="hero-carousel"
+                            keyExtractor={(_, i) => i.toString()}
+                            getItemLayout={(_, index) => ({
+                                length: carouselItemWidth,
+                                offset: carouselItemWidth * index,
+                                index,
+                            })}
+                            onScroll={onScroll}
+                            scrollEventThrottle={16}
+                            renderItem={({ item }) => (
+                                <View style={[styles.carouselItem, { width: carouselItemWidth }]}>
+                                    <View style={styles.heroImageContainer}>
+                                        <Image
+                                            source={{ uri: item }}
+                                            style={styles.heroImage}
+                                            resizeMode="contain"
+                                        />
+                                    </View>
+                                </View>
+                            )}
+                        />
+
+                        {/* Navigation Arrows */}
+                        {images.length > 1 && (
+                            <>
+                                {activeImageIndex > 0 && (
+                                    <TouchableOpacity
+                                        style={[styles.arrowButton, { left: 10 }]}
+                                        onPress={scrollPrev}
+                                        activeOpacity={0.7}
+                                    >
+                                        <FiChevronLeft size={28} color="#fff" />
+                                    </TouchableOpacity>
+                                )}
+                                {activeImageIndex < images.length - 1 && (
+                                    <TouchableOpacity
+                                        style={[styles.arrowButton, { right: 10 }]}
+                                        onPress={scrollNext}
+                                        activeOpacity={0.7}
+                                    >
+                                        <FiChevronRight size={28} color="#fff" />
+                                    </TouchableOpacity>
+                                )}
+                            </>
                         )}
-                        renderItem={({ item, index: _index }) => (
-                            <View style={{ width, alignItems: "center" }}>
-                                <Image
-                                    source={{ uri: item }}
-                                    style={styles.heroImage}
-                                    resizeMode="contain"
-                                />
-                            </View>
-                        )}
-                    />
+                    </View>
 
                     {/* Image Dots Indicator */}
                     <View style={styles.dots}>
-                        {images.map((_, i) => {
-                            const opacity = scrollX.interpolate({
-                                inputRange: [(i - 1) * width, i * width, (i + 1) * width],
-                                outputRange: [0.3, 1, 0.3],
-                                extrapolate: "clamp",
-                            });
-                            return <Animated.View key={i} style={[styles.dot, { opacity }]} />;
-                        })}
+                        {images.map((_, i) => (
+                            <Animated.View
+                                key={i}
+                                style={[
+                                    styles.dot,
+                                    {
+                                        opacity: scrollX.interpolate({
+                                            inputRange: [(i - 1) * width, i * width, (i + 1) * width],
+                                            outputRange: [0.4, 1, 0.4],
+                                            extrapolate: "clamp",
+                                        }),
+                                        width: scrollX.interpolate({
+                                            inputRange: [(i - 1) * width, i * width, (i + 1) * width],
+                                            outputRange: [6, 12, 6],
+                                            extrapolate: "clamp",
+                                        })
+                                    }
+                                ]}
+                            />
+                        ))}
                     </View>
 
                     <Text style={styles.name}>{pokemon.name}</Text>
-                    <Text style={styles.id}>#{pokemon.id}</Text>
+                    <Text style={styles.id}>#{String(pokemon.id).padStart(3, '0')}</Text>
 
                     {/* Type Badges */}
                     <View style={styles.typesRow}>
@@ -790,13 +923,13 @@ export default function Details() {
                                 key={t.type.name}
                                 style={[
                                     styles.typeBadge,
-                                    { backgroundColor: colorsByType[t.type.name] },
+                                    { backgroundColor: 'rgba(255,255,255,0.15)' },
                                 ]}
                             >
                                 {(typeIcons as any)[t.type.name] && (
                                     <Image
                                         source={(typeIcons as any)[t.type.name]}
-                                        style={{ width: 18, height: 18, marginRight: 4 }}
+                                        style={{ width: 14, height: 14, marginRight: 6 }}
                                     />
                                 )}
                                 <Text style={styles.typeText}>{t.type.name}</Text>
@@ -806,27 +939,27 @@ export default function Details() {
                 </ImageBackground>
 
                 {/* ABOUT SECTION */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>About</Text>
-                    <Text style={{ marginBottom: 12 }}>{description}</Text>
+                <View style={[styles.section, darkMode && styles.sectionDark]}>
+                    <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>About</Text>
+                    <Text style={{ marginBottom: 12, color: darkMode ? '#94a3b8' : '#64748b' }}>{description}</Text>
                     <View style={styles.aboutRow}>
-                        <Text>Height (avg)</Text>
-                        <Text>{pokemon.height / 10} m</Text>
+                        <Text style={{ color: darkMode ? '#94a3b8' : '#64748b' }}>Height (avg)</Text>
+                        <Text style={{ color: darkMode ? '#f1f5f9' : '#0f172a', fontWeight: '700' }}>{pokemon.height / 10} m</Text>
                     </View>
                     <View style={styles.aboutRow}>
-                        <Text>Weight (avg)</Text>
-                        <Text>{pokemon.weight / 10} kg</Text>
+                        <Text style={{ color: darkMode ? '#94a3b8' : '#64748b' }}>Weight (avg)</Text>
+                        <Text style={{ color: darkMode ? '#f1f5f9' : '#0f172a', fontWeight: '700' }}>{pokemon.weight / 10} kg</Text>
                     </View>
                 </View>
 
                 {/* ABILITIES SECTION */}
                 {abilities.length > 0 && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Abilities</Text>
+                    <View style={[styles.section, darkMode && styles.sectionDark]}>
+                        <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Abilities</Text>
                         {abilities.map((ability, index) => (
                             <View key={index} style={styles.abilityItem}>
                                 <View style={styles.abilityHeader}>
-                                    <Text style={styles.abilityName}>
+                                    <Text style={[styles.abilityName, { color: darkMode ? '#f1f5f9' : '#0f172a' }]}>
                                         {ability.name.replace('-', ' ')}
                                     </Text>
                                     {ability.isHidden && (
@@ -835,7 +968,7 @@ export default function Details() {
                                         </View>
                                     )}
                                 </View>
-                                <Text style={styles.abilityDescription}>{ability.description}</Text>
+                                <Text style={[styles.abilityDescription, { color: darkMode ? '#94a3b8' : '#64748b' }]}>{ability.description}</Text>
                             </View>
                         ))}
                     </View>
@@ -843,14 +976,14 @@ export default function Details() {
 
                 {/* BREEDING INFO SECTION */}
                 {speciesInfo && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Breeding</Text>
+                    <View style={[styles.section, darkMode && styles.sectionDark]}>
+                        <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Breeding</Text>
 
                         {/* Gender Ratio */}
                         <View style={styles.breedingRow}>
-                            <Text style={styles.breedingLabel}>Gender Ratio</Text>
+                            <Text style={[styles.breedingLabel, { color: darkMode ? '#94a3b8' : '#64748b' }]}>Gender Ratio</Text>
                             {speciesInfo.genderRatio === -1 ? (
-                                <Text style={styles.breedingValue}>Genderless</Text>
+                                <Text style={[styles.breedingValue, { color: darkMode ? '#f1f5f9' : '#0f172a' }]}>Genderless</Text>
                             ) : (
                                 <View style={styles.genderContainer}>
                                     <View style={styles.genderBar}>
@@ -868,10 +1001,10 @@ export default function Details() {
                                         />
                                     </View>
                                     <View style={styles.genderLabels}>
-                                        <Text style={styles.genderText}>
+                                        <Text style={[styles.genderText, { color: darkMode ? '#94a3b8' : '#64748b' }]}>
                                             ♂ {((8 - speciesInfo.genderRatio) / 8 * 100).toFixed(1)}%
                                         </Text>
-                                        <Text style={styles.genderText}>
+                                        <Text style={[styles.genderText, { color: darkMode ? '#94a3b8' : '#64748b' }]}>
                                             ♀ {(speciesInfo.genderRatio / 8 * 100).toFixed(1)}%
                                         </Text>
                                     </View>
@@ -881,10 +1014,10 @@ export default function Details() {
 
                         {/* Egg Groups */}
                         <View style={styles.breedingRow}>
-                            <Text style={styles.breedingLabel}>Egg Groups</Text>
+                            <Text style={[styles.breedingLabel, { color: darkMode ? '#94a3b8' : '#64748b' }]}>Egg Groups</Text>
                             <View style={styles.eggGroupsContainer}>
                                 {speciesInfo.eggGroups.map((group, index) => (
-                                    <View key={index} style={styles.eggGroupBadge}>
+                                    <View key={index} style={[styles.eggGroupBadge, darkMode && { backgroundColor: 'rgba(33, 150, 243, 0.1)', borderColor: '#2196F3' }]}>
                                         <Text style={styles.eggGroupText}>
                                             {group.replace('-', ' ')}
                                         </Text>
@@ -897,13 +1030,13 @@ export default function Details() {
 
                 {/* CAPTURE INFO SECTION */}
                 {speciesInfo && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Capture Info</Text>
+                    <View style={[styles.section, darkMode && styles.sectionDark]}>
+                        <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Capture Info</Text>
                         <View style={styles.captureRow}>
-                            <Text style={styles.captureLabel}>Capture Rate</Text>
+                            <Text style={[styles.captureLabel, { color: darkMode ? '#94a3b8' : '#64748b' }]}>Capture Rate</Text>
                             <View style={styles.captureRateContainer}>
-                                <View style={styles.captureBar}>
-                                    <View
+                                <View style={[styles.captureBar, darkMode && { backgroundColor: '#334155' }]}>
+                                    <Animated.View
                                         style={[
                                             styles.captureBarFill,
                                             {
@@ -916,15 +1049,17 @@ export default function Details() {
                                         ]}
                                     />
                                 </View>
-                                <Text style={styles.captureValue}>
+                                <Text style={[styles.captureValue, { color: darkMode ? '#f1f5f9' : '#0f172a' }]}>
                                     {((speciesInfo.captureRate / 255) * 100).toFixed(1)}%
                                     {' '}
-                                    ({
-                                        speciesInfo.captureRate > 200 ? 'Very Easy' :
-                                            speciesInfo.captureRate > 100 ? 'Easy' :
-                                                speciesInfo.captureRate > 50 ? 'Medium' :
-                                                    speciesInfo.captureRate > 25 ? 'Hard' : 'Very Hard'
-                                    })
+                                    <Text style={{ fontWeight: '400', fontSize: 12, color: darkMode ? '#94a3b8' : '#64748b' }}>
+                                        ({
+                                            speciesInfo.captureRate > 200 ? 'Very Easy' :
+                                                speciesInfo.captureRate > 100 ? 'Easy' :
+                                                    speciesInfo.captureRate > 50 ? 'Medium' :
+                                                        speciesInfo.captureRate > 25 ? 'Hard' : 'Very Hard'
+                                        })
+                                    </Text>
                                 </Text>
                             </View>
                         </View>
@@ -932,14 +1067,14 @@ export default function Details() {
                 )}
 
                 {/* STATS SECTION */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Base Stats</Text>
+                <View style={[styles.section, darkMode && styles.sectionDark]}>
+                    <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Base Stats</Text>
                     {pokemon.stats.map((stat, index) => {
                         const percent = Math.min(stat.base_stat, 150) / 150;
                         return (
                             <View key={stat.stat.name} style={styles.statRow}>
-                                <Text style={styles.statName}>{stat.stat.name.replace('-', ' ').toUpperCase()}</Text>
-                                <View style={styles.statBarBg}>
+                                <Text style={[styles.statName, { color: darkMode ? '#94a3b8' : '#64748b' }]}>{stat.stat.name.replace('-', ' ').toUpperCase()}</Text>
+                                <View style={[styles.statBarBg, darkMode && { backgroundColor: '#334155' }]}>
                                     <Animated.View
                                         style={[
                                             styles.statBar,
@@ -953,7 +1088,7 @@ export default function Details() {
                                         ]}
                                     />
                                 </View>
-                                <Text style={styles.statValue}>{stat.base_stat}</Text>
+                                <Text style={[styles.statValue, { color: darkMode ? '#f1f5f9' : '#0f172a' }]}>{stat.base_stat}</Text>
                             </View>
                         );
                     })}
@@ -961,8 +1096,8 @@ export default function Details() {
 
                 {/* EVOLUTION CHAIN */}
                 {evolutionChain.length > 0 && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Evolution Chain</Text>
+                    <View style={[styles.section, darkMode && styles.sectionDark]}>
+                        <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Evolution Chain</Text>
 
                         {/* No Evolution Case */}
                         {!hasEvolution && (
@@ -977,19 +1112,21 @@ export default function Details() {
                                 {evolutionChain.map((evo, index) => (
                                     <View key={evo.name} style={styles.evoWrapper}>
                                         <View style={styles.evoItem}>
-                                            {evo.image ? (
-                                                <Image
-                                                    source={{ uri: evo.image }}
-                                                    style={styles.evoImage}
-                                                />
-                                            ) : (
-                                                <View style={styles.evoImagePlaceholder} />
-                                            )}
-                                            <Text style={styles.evoName}>{evo.name}</Text>
+                                            <View style={[styles.evoImageBg, darkMode && { backgroundColor: '#334155' }]}>
+                                                {evo.image ? (
+                                                    <Image
+                                                        source={{ uri: evo.image }}
+                                                        style={styles.evoImage}
+                                                    />
+                                                ) : (
+                                                    <View style={styles.evoImagePlaceholder} />
+                                                )}
+                                            </View>
+                                            <Text style={[styles.evoName, { color: darkMode ? '#f1f5f9' : '#0f172a' }]}>{evo.name}</Text>
                                         </View>
 
                                         {index < evolutionChain.length - 1 && (
-                                            <Text style={styles.evoArrow}>→</Text>
+                                            <Text style={[styles.evoArrow, { color: darkMode ? '#334155' : '#e2e8f0' }]}>→</Text>
                                         )}
                                     </View>
                                 ))}
@@ -1002,47 +1139,33 @@ export default function Details() {
                 {/* TYPE STRENGTHS & WEAKNESSES */}
                 {Object.keys(damageMap).length > 0 && (
                     <Animated.View style={{ opacity: typeAnim }}>
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Weaknesses (2× / 4×)</Text>
-                            <View style={styles.typesRow}>
+                        <View style={[styles.section, darkMode && styles.sectionDark]}>
+                            <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Weaknesses</Text>
+                            <View style={styles.typesRowGrid}>
                                 {[...renderDamage(4), ...renderDamage(2)].map(t => (
                                     <View
                                         key={t}
-                                        style={[styles.typeBadge, { backgroundColor: colorsByType[t] }]}
+                                        style={[styles.typeBadgeGrid, { backgroundColor: colorsByType[t] }]}
                                     >
-                                        <Text style={styles.typeText}>
+                                        <Text style={styles.typeTextGrid}>
                                             {t} {damageMap[t] === 4 ? "×4" : "×2"}
                                         </Text>
                                     </View>
                                 ))}
                             </View>
 
-                            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>
-                                Resistances (½× / ¼×)
+                            <Text style={[styles.sectionTitle, { marginTop: 24 }, darkMode && styles.sectionTitleDark]}>
+                                Resistances
                             </Text>
-                            <View style={styles.typesRow}>
+                            <View style={styles.typesRowGrid}>
                                 {[...renderDamage(0.25), ...renderDamage(0.5)].map(t => (
                                     <View
                                         key={t}
-                                        style={[styles.typeBadge, { backgroundColor: colorsByType[t] }]}
+                                        style={[styles.typeBadgeGrid, { backgroundColor: colorsByType[t] }]}
                                     >
-                                        <Text style={styles.typeText}>
+                                        <Text style={styles.typeTextGrid}>
                                             {t} {damageMap[t] === 0.25 ? "×¼" : "×½"}
                                         </Text>
-                                    </View>
-                                ))}
-                            </View>
-
-                            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>
-                                Immunities (0×)
-                            </Text>
-                            <View style={styles.typesRow}>
-                                {renderDamage(0).map(t => (
-                                    <View
-                                        key={t}
-                                        style={[styles.typeBadge, { backgroundColor: colorsByType[t] }]}
-                                    >
-                                        <Text style={styles.typeText}>{t} ×0</Text>
                                     </View>
                                 ))}
                             </View>
@@ -1051,204 +1174,164 @@ export default function Details() {
                 )}
 
                 {/* MOVES SECTION */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Fast Moves</Text>
+                <View style={[styles.section, darkMode && styles.sectionDark]}>
+                    <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Fast Moves</Text>
                     <FlatList
                         data={fastMoves}
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={m => m.name}
+                        contentContainerStyle={{ paddingBottom: 8 }}
                         renderItem={({ item }) => (
-                            <View style={styles.enhancedMoveCard}>
+                            <View style={[styles.compactMoveCard, darkMode && styles.compactMoveCardDark]}>
                                 <View style={styles.moveHeader}>
-                                    <Text style={styles.moveName}>{item.name.replace('-', ' ')}</Text>
-                                    {item.elite && <Text style={styles.eliteBadge}>Elite</Text>}
-                                </View>
-
-                                <View style={styles.moveStatsRow}>
-                                    <View style={styles.moveStat}>
-                                        <Text style={styles.moveStatLabel}>Power</Text>
-                                        <Text style={styles.moveStatValue}>{item.power || '—'}</Text>
-                                    </View>
-                                    <View style={styles.moveStat}>
-                                        <Text style={styles.moveStatLabel}>Acc</Text>
-                                        <Text style={styles.moveStatValue}>{item.accuracy ? `${item.accuracy}%` : '—'}</Text>
-                                    </View>
-                                    <View style={styles.moveStat}>
-                                        <Text style={styles.moveStatLabel}>PP</Text>
-                                        <Text style={styles.moveStatValue}>{item.pp || '—'}</Text>
+                                    <Text style={[styles.moveName, { color: darkMode ? '#f1f5f9' : '#0f172a' }]}>{item.name.replace('-', ' ')}</Text>
+                                    <View style={[styles.damageClassBadge, { backgroundColor: item.damageClass === 'physical' ? '#C92112' : item.damageClass === 'special' ? '#4A90E2' : '#68A090' }]}>
+                                        <Text style={styles.damageClassText}>{item.damageClass === 'physical' ? 'PHY' : item.damageClass === 'special' ? 'SPC' : 'STA'}</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.moveTypeRow}>
+                                <View style={styles.compactMoveStats}>
                                     <View style={[styles.moveTypeBadge, { backgroundColor: colorsByType[item.type] || '#A8A77A' }]}>
                                         <Text style={styles.moveTypeText}>{item.type}</Text>
                                     </View>
-                                    <View style={[
-                                        styles.damageClassBadge,
-                                        {
-                                            backgroundColor:
-                                                item.damageClass === 'physical' ? '#C92112' :
-                                                    item.damageClass === 'special' ? '#4A90E2' : '#68A090'
-                                        }
-                                    ]}>
-                                        <Text style={styles.damageClassText}>
-                                            {item.damageClass === 'physical' ? 'PHY' :
-                                                item.damageClass === 'special' ? 'SPC' : 'STA'}
-                                        </Text>
+                                    <View style={styles.statLine}>
+                                        <Text style={styles.moveStatValue}>{item.power || '—'}</Text>
+                                        <Text style={styles.moveStatLabel}> PWR</Text>
+                                    </View>
+                                    <View style={styles.statLine}>
+                                        <Text style={styles.moveStatValue}>{item.accuracy ? `${item.accuracy}%` : '—'}</Text>
+                                        <Text style={styles.moveStatLabel}> ACC</Text>
                                     </View>
                                 </View>
-
-                                <Text style={styles.moveEffect} numberOfLines={3}>
-                                    {item.effectDescription}
-                                </Text>
                             </View>
                         )}
                     />
 
-                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Charged Moves</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: 24 }, darkMode && styles.sectionTitleDark]}>Charged Moves</Text>
                     <FlatList
                         data={chargedMoves}
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={m => m.name}
+                        contentContainerStyle={{ paddingBottom: 8 }}
                         renderItem={({ item }) => (
-                            <View style={styles.enhancedMoveCard}>
+                            <View style={[styles.compactMoveCard, darkMode && styles.compactMoveCardDark]}>
                                 <View style={styles.moveHeader}>
-                                    <Text style={styles.moveName}>{item.name.replace('-', ' ')}</Text>
-                                    {item.elite && <Text style={styles.eliteBadge}>Elite</Text>}
-                                </View>
-
-                                <View style={styles.moveStatsRow}>
-                                    <View style={styles.moveStat}>
-                                        <Text style={styles.moveStatLabel}>Power</Text>
-                                        <Text style={styles.moveStatValue}>{item.power || '—'}</Text>
-                                    </View>
-                                    <View style={styles.moveStat}>
-                                        <Text style={styles.moveStatLabel}>Acc</Text>
-                                        <Text style={styles.moveStatValue}>{item.accuracy ? `${item.accuracy}%` : '—'}</Text>
-                                    </View>
-                                    <View style={styles.moveStat}>
-                                        <Text style={styles.moveStatLabel}>PP</Text>
-                                        <Text style={styles.moveStatValue}>{item.pp || '—'}</Text>
+                                    <Text style={[styles.moveName, { color: darkMode ? '#f1f5f9' : '#0f172a' }]}>{item.name.replace('-', ' ')}</Text>
+                                    <View style={[styles.damageClassBadge, { backgroundColor: item.damageClass === 'physical' ? '#C92112' : item.damageClass === 'special' ? '#4A90E2' : '#68A090' }]}>
+                                        <Text style={styles.damageClassText}>{item.damageClass === 'physical' ? 'PHY' : item.damageClass === 'special' ? 'SPC' : 'STA'}</Text>
                                     </View>
                                 </View>
 
-                                <View style={styles.moveTypeRow}>
+                                <View style={styles.compactMoveStats}>
                                     <View style={[styles.moveTypeBadge, { backgroundColor: colorsByType[item.type] || '#A8A77A' }]}>
                                         <Text style={styles.moveTypeText}>{item.type}</Text>
                                     </View>
-                                    <View style={[
-                                        styles.damageClassBadge,
-                                        {
-                                            backgroundColor:
-                                                item.damageClass === 'physical' ? '#C92112' :
-                                                    item.damageClass === 'special' ? '#4A90E2' : '#68A090'
-                                        }
-                                    ]}>
-                                        <Text style={styles.damageClassText}>
-                                            {item.damageClass === 'physical' ? 'PHY' :
-                                                item.damageClass === 'special' ? 'SPC' : 'STA'}
-                                        </Text>
+                                    <View style={styles.statLine}>
+                                        <Text style={styles.moveStatValue}>{item.power || '—'}</Text>
+                                        <Text style={styles.moveStatLabel}> PWR</Text>
+                                    </View>
+                                    <View style={styles.statLine}>
+                                        <Text style={styles.moveStatValue}>{item.accuracy ? `${item.accuracy}%` : '—'}</Text>
+                                        <Text style={styles.moveStatLabel}> ACC</Text>
                                     </View>
                                 </View>
-
-                                <Text style={styles.moveEffect} numberOfLines={3}>
-                                    {item.effectDescription}
-                                </Text>
                             </View>
                         )}
                     />
                 </View>
 
                 {/* BATTLE ROLE ANALYSIS - Last section */}
-                {battleStats && role && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Battle Role Analysis</Text>
+                {
+                    battleStats && role && (
+                        <View style={[styles.section, darkMode && styles.sectionDark]}>
+                            <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Battle Role Analysis</Text>
 
-                        {/* Stats Summary */}
-                        <View style={styles.statsSummary}>
-                            <View style={styles.statBox}>
-                                <Text style={styles.statBoxLabel}>Attack</Text>
-                                <Text style={[styles.statBoxValue, { color: '#e74c3c' }]}>
-                                    {battleStats.attackScore}
-                                </Text>
+                            {/* Stats Summary */}
+                            <View style={[styles.statsSummary, darkMode && { backgroundColor: 'rgba(255,255,255,0.03)' }]}>
+                                <View style={styles.statBox}>
+                                    <Text style={[styles.statBoxLabel, darkMode && { color: '#94a3b8' }]}>Attack</Text>
+                                    <Text style={[styles.statBoxValue, { color: '#e74c3c' }]}>
+                                        {battleStats.attackScore}
+                                    </Text>
+                                </View>
+                                <View style={styles.statBox}>
+                                    <Text style={[styles.statBoxLabel, darkMode && { color: '#94a3b8' }]}>Defense</Text>
+                                    <Text style={[styles.statBoxValue, { color: '#3498db' }]}>
+                                        {battleStats.defenseScore}
+                                    </Text>
+                                </View>
+                                <View style={styles.statBox}>
+                                    <Text style={[styles.statBoxLabel, darkMode && { color: '#94a3b8' }]}>Stamina</Text>
+                                    <Text style={[styles.statBoxValue, { color: '#2ecc71' }]}>
+                                        {battleStats.staminaScore}
+                                    </Text>
+                                </View>
+                                <View style={styles.statBox}>
+                                    <Text style={[styles.statBoxLabel, darkMode && { color: '#94a3b8' }]}>Overall</Text>
+                                    <Text style={[styles.statBoxValue, { color: '#9b59b6' }]}>
+                                        {battleStats.overallScore}
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={styles.statBox}>
-                                <Text style={styles.statBoxLabel}>Defense</Text>
-                                <Text style={[styles.statBoxValue, { color: '#3498db' }]}>
-                                    {battleStats.defenseScore}
-                                </Text>
-                            </View>
-                            <View style={styles.statBox}>
-                                <Text style={styles.statBoxLabel}>Stamina</Text>
-                                <Text style={[styles.statBoxValue, { color: '#2ecc71' }]}>
-                                    {battleStats.staminaScore}
-                                </Text>
-                            </View>
-                            <View style={styles.statBox}>
-                                <Text style={styles.statBoxLabel}>Overall</Text>
-                                <Text style={[styles.statBoxValue, { color: '#9b59b6' }]}>
-                                    {battleStats.overallScore}
-                                </Text>
-                            </View>
-                        </View>
 
-                        {/* Radar Chart */}
-                        <RadarChart stats={pokemon.stats} size={300} />
+                            {/* Radar Chart */}
+                            <RadarChart stats={pokemon.stats} size={300} darkMode={darkMode} />
 
-                        {/* Primary Role Card */}
-                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Primary Role</Text>
-                        <View style={styles.roleCard}>
-                            <View style={styles.roleHeader}>
-                                <Text style={styles.roleTitle}>{role.role}</Text>
-                                <View style={styles.ratingContainer}>
-                                    <Text style={styles.ratingText}>Rating: {role.rating}/10</Text>
-                                    <View style={styles.ratingBar}>
-                                        <View
-                                            style={[
-                                                styles.ratingFill,
-                                                {
-                                                    width: `${role.rating * 10}%`,
-                                                    backgroundColor: getRatingColor(role.rating)
-                                                }
-                                            ]}
-                                        />
+                            {/* Primary Role Card */}
+                            <Text style={[styles.sectionTitle, { marginTop: 24 }, darkMode && styles.sectionTitleDark]}>Primary Role</Text>
+                            <View style={[styles.roleCard, darkMode && styles.roleCardDark]}>
+                                <View style={styles.roleHeader}>
+                                    <Text style={[styles.roleTitle, darkMode && styles.roleTitleDark]}>{role.role}</Text>
+                                    <View style={styles.ratingContainer}>
+                                        <Text style={[styles.ratingText, darkMode && { color: '#94a3b8' }]}>Rating: {role.rating}/10</Text>
+                                        <View style={styles.ratingBar}>
+                                            <View
+                                                style={[
+                                                    styles.ratingFill,
+                                                    {
+                                                        width: `${role.rating * 10}%`,
+                                                        backgroundColor: getRatingColor(role.rating)
+                                                    }
+                                                ]}
+                                            />
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
 
-                            <Text style={styles.roleDescription}>
-                                {ROLE_DESCRIPTIONS[role.role]}
-                            </Text>
+                                <Text style={[styles.roleDescription, darkMode && { color: '#94a3b8' }]}>
+                                    {ROLE_DESCRIPTIONS[role.role]}
+                                </Text>
 
-                            <View style={styles.roleDetails}>
-                                <View style={styles.detailColumn}>
-                                    <Text style={styles.detailTitle}>Strengths</Text>
-                                    {role.strengths.map((strength, i) => (
-                                        <Text key={i} style={styles.detailItem}>✓ {strength}</Text>
-                                    ))}
+                                <View style={styles.roleDetails}>
+                                    <View style={styles.detailColumn}>
+                                        <Text style={[styles.detailTitle, darkMode && styles.detailTitleDark]}>Strengths</Text>
+                                        {role.strengths.map((strength, i) => (
+                                            <Text key={i} style={[styles.detailItem, darkMode && styles.detailItemDark]}>✓ {strength}</Text>
+                                        ))}
+                                    </View>
+
+                                    <View style={styles.detailColumn}>
+                                        <Text style={[styles.detailTitle, darkMode && styles.detailTitleDark]}>Best For</Text>
+                                        {role.bestFor.map((use, i) => (
+                                            <Text key={i} style={[styles.detailItem, darkMode && styles.detailItemDark]}>• {use}</Text>
+                                        ))}
+                                    </View>
                                 </View>
 
-                                <View style={styles.detailColumn}>
-                                    <Text style={styles.detailTitle}>Best For</Text>
-                                    {role.bestFor.map((use, i) => (
-                                        <Text key={i} style={styles.detailItem}>• {use}</Text>
+                                <View style={[styles.weaknessSection, darkMode && { borderTopColor: '#334155' }]}>
+                                    <Text style={[styles.detailTitle, darkMode && styles.detailTitleDark]}>Weaknesses</Text>
+                                    {role.weaknesses.map((weakness, i) => (
+                                        <Text key={i} style={[styles.detailItem, darkMode && styles.detailItemDark]}>⚠️ {weakness}</Text>
                                     ))}
                                 </View>
-                            </View>
-
-                            <View style={styles.weaknessSection}>
-                                <Text style={styles.detailTitle}>Weaknesses</Text>
-                                {role.weaknesses.map((weakness, i) => (
-                                    <Text key={i} style={styles.detailItem}>⚠️ {weakness}</Text>
-                                ))}
                             </View>
                         </View>
-                    </View>
-                )}
-            </Animated.ScrollView>
-        </SafeAreaView>
+                    )
+                }
+            </Animated.ScrollView >
+        </SafeAreaView >
     );
 }
 
@@ -1265,9 +1348,60 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.3)',
     },
-    heroImage: {
-        width: width * 0.9,
+    carouselWrapper: {
+        height: 280,
+        width: windowWidth > 600 ? 500 : windowWidth,
+        overflow: 'hidden',
+        alignSelf: 'center',
+    },
+    carouselItem: {
+        width: windowWidth > 600 ? 500 : windowWidth,
+        alignItems: "center",
+        justifyContent: 'center',
+    },
+    heroImageContainer: {
+        width: '100%',
         height: 260,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    heroImage: {
+        width: '85%',
+        height: 240,
+    },
+    backButton: {
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 110,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        // Shadow for premium feel
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    arrowButton: {
+        position: 'absolute',
+        top: '50%',
+        marginTop: -24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     // Legendary/Mythical Badge Styles
     legendaryBadge: {
@@ -1299,15 +1433,15 @@ const styles = StyleSheet.create({
     },
     // Abilities Section Styles
     abilityItem: {
-        marginBottom: 16,
+        marginBottom: 6,
     },
     abilityHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 6,
+        marginBottom: 0,
     },
     abilityName: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
         color: '#000',
         textTransform: 'capitalize',
@@ -1337,12 +1471,13 @@ const styles = StyleSheet.create({
     breedingLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#666',
+        color: '#64748b',
         marginBottom: 8,
     },
     breedingValue: {
         fontSize: 14,
-        color: '#000',
+        color: '#0f172a',
+        fontWeight: '700',
     },
     genderContainer: {
         flex: 1,
@@ -1367,7 +1502,7 @@ const styles = StyleSheet.create({
     genderText: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#666',
+        color: '#64748b',
     },
     eggGroupsContainer: {
         flexDirection: 'row',
@@ -1395,7 +1530,7 @@ const styles = StyleSheet.create({
     captureLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#666',
+        color: '#64748b',
         marginBottom: 8,
     },
     captureRateContainer: {
@@ -1403,7 +1538,7 @@ const styles = StyleSheet.create({
     },
     captureBar: {
         height: 24,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: '#f1f5f9',
         borderRadius: 12,
         overflow: 'hidden',
         marginBottom: 8,
@@ -1415,120 +1550,160 @@ const styles = StyleSheet.create({
     captureValue: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#000',
+        color: '#0f172a',
     },
+    // IMAGE INDICATOR
     dots: {
         flexDirection: "row",
-        marginTop: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 12,
+        marginBottom: 16,
     },
     dot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: "#000",
-        marginHorizontal: 4,
+        backgroundColor: "rgba(255, 255, 255, 0.4)",
     },
+    dotActive: {
+        width: 12,
+        backgroundColor: "#fff",
+    },
+
+    // NAME & ID
     name: {
-        fontSize: 34,
-        fontWeight: "bold",
+        fontSize: 32,
+        fontWeight: "900",
+        color: '#fff',
         textTransform: "capitalize",
-        marginTop: 10,
+        letterSpacing: -1,
+        marginBottom: 4,
+        textAlign: 'center',
     },
     id: {
-        opacity: 0.6,
-        marginBottom: 6,
+        fontSize: 18,
+        fontWeight: '700',
+        color: 'rgba(255, 255, 255, 0.7)',
+        marginBottom: 12,
+        letterSpacing: 2,
+        textAlign: 'center',
     },
+
+    // TYPE BADGES
     typesRow: {
         flexDirection: "row",
-        gap: 10,
-        flexWrap: "wrap",
-        marginTop: 6,
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 4,
     },
     typeBadge: {
-        paddingHorizontal: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 14,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     typeText: {
         color: "#fff",
-        fontWeight: "600",
+        fontSize: 13,
+        fontWeight: "700",
         textTransform: "capitalize",
     },
+
+    // GLOBAL SECTION / CARD STYLING
     section: {
-        padding: 20,
+        padding: 16,
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    sectionDark: {
+        backgroundColor: '#1e293b',
+        shadowOpacity: 0.2,
     },
     sectionTitle: {
-        fontSize: 22,
-        fontWeight: "bold",
-        marginBottom: 12,
+        fontSize: 18,
+        fontWeight: "800",
+        color: '#0f172a',
+        marginBottom: 16,
+        letterSpacing: -0.5,
+    },
+    sectionTitleDark: {
+        color: '#f1f5f9',
     },
     aboutRow: {
         flexDirection: "row",
         justifyContent: "space-between",
-        marginBottom: 8,
+        marginBottom: 4,
     },
     statRow: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 10,
+        marginBottom: 12,
     },
     statName: {
-        width: 90,
-        fontWeight: "600",
-        color: "#555",
+        width: 100,
+        fontWeight: "700",
+        color: "#64748b",
+        fontSize: 11,
     },
     statBarBg: {
         flex: 1,
-        height: 8,
-        backgroundColor: "#eee",
-        borderRadius: 4,
-        marginHorizontal: 8,
+        height: 10,
+        backgroundColor: "#f1f5f9",
+        borderRadius: 5,
+        marginHorizontal: 12,
     },
     statBar: {
-        height: 8,
-        borderRadius: 4,
+        height: 10,
+        borderRadius: 5,
     },
     statValue: {
-        width: 40,
+        width: 30,
         textAlign: "right",
-        fontWeight: "700",
+        fontWeight: "900",
+        fontSize: 13,
+        color: '#0f172a',
     },
-    moveCard: {
-        backgroundColor: "#eee",
-        padding: 14,
-        borderRadius: 14,
-        marginRight: 10,
-        minWidth: 120,
-        alignItems: "center",
-    },
-    moveText: {
-        fontWeight: "600",
-        textTransform: "capitalize",
-    },
-    elite: {
-        marginTop: 4,
-        fontSize: 12,
-        color: "#C9A000",
-        fontWeight: "700",
-    },
-    // Enhanced Move Card Styles
-    enhancedMoveCard: {
+
+    compactMoveCard: {
         backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 16,
+        padding: 12,
+        borderRadius: 20,
         marginRight: 12,
-        minWidth: 220,
-        maxWidth: 240,
+        width: 220,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: '#f1f5f9',
+    },
+    compactMoveCardDark: {
+        backgroundColor: '#1e293b',
+        borderColor: '#334155',
+    },
+    compactMoveStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        gap: 12,
+    },
+    statLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     moveHeader: {
         flexDirection: 'row',
@@ -1538,18 +1713,21 @@ const styles = StyleSheet.create({
     },
     moveName: {
         fontSize: 16,
-        fontWeight: '700',
-        color: '#000',
+        fontWeight: '800',
+        color: '#0f172a',
         textTransform: 'capitalize',
-        flex: 1,
     },
     eliteBadge: {
         backgroundColor: '#FFD700',
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 8,
+        alignSelf: 'flex-start',
+        marginTop: 4,
+    },
+    eliteBadgeText: {
         fontSize: 10,
-        fontWeight: '700',
+        fontWeight: '800',
         color: '#000',
         textTransform: 'uppercase',
     },
@@ -1559,22 +1737,22 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         paddingBottom: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
+        borderBottomColor: '#f1f5f9',
     },
     moveStat: {
         alignItems: 'center',
     },
     moveStatLabel: {
         fontSize: 10,
-        fontWeight: '600',
-        color: '#999',
+        fontWeight: '700',
+        color: '#94a3b8',
         marginBottom: 4,
         textTransform: 'uppercase',
     },
     moveStatValue: {
         fontSize: 16,
-        fontWeight: '700',
-        color: '#000',
+        fontWeight: '800',
+        color: '#0f172a',
     },
     moveTypeRow: {
         flexDirection: 'row',
@@ -1582,95 +1760,148 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     moveTypeBadge: {
-        paddingHorizontal: 10,
+        paddingHorizontal: 6,
         paddingVertical: 4,
         borderRadius: 12,
-        flex: 1,
+        minWidth: 65,
         alignItems: 'center',
     },
     moveTypeText: {
-        fontSize: 11,
-        fontWeight: '700',
+        fontSize: 10,
+        fontWeight: '800',
         color: '#fff',
         textTransform: 'uppercase',
     },
     damageClassBadge: {
-        paddingHorizontal: 10,
+        paddingHorizontal: 6,
         paddingVertical: 4,
         borderRadius: 12,
-        flex: 1,
+        minWidth: 42,
         alignItems: 'center',
     },
     damageClassText: {
         fontSize: 11,
-        fontWeight: '700',
+        fontWeight: '800',
         color: '#fff',
         textTransform: 'uppercase',
     },
     moveEffect: {
         fontSize: 12,
-        color: '#666',
-        lineHeight: 16,
+        color: '#64748b',
+        lineHeight: 18,
     },
+
+    // Evolution Chain Styles
     evolutionRow: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
         flexWrap: "wrap",
+        gap: 12,
     },
     evoWrapper: {
         flexDirection: "row",
         alignItems: "center",
+        gap: 12,
     },
     evoItem: {
         alignItems: "center",
+        width: 100,
+    },
+    evoImageBg: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#f8fafc',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
     },
     evoImage: {
-        width: 90,
-        height: 90,
+        width: 60,
+        height: 60,
     },
     evoName: {
-        marginTop: 4,
-        fontWeight: "600",
+        fontSize: 14,
+        fontWeight: "700",
         textTransform: "capitalize",
+        textAlign: 'center',
     },
     evoArrow: {
-        fontSize: 26,
-        marginHorizontal: 10,
-        fontWeight: "bold",
-        color: "#444",
+        fontSize: 20,
+        fontWeight: "900",
+        color: "#cbd5e1",
     },
+    noEvolutionText: {
+        color: "#94a3b8",
+        fontStyle: "italic",
+        textAlign: "center",
+        marginTop: 10,
+    },
+    evoImagePlaceholder: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: "#cbd5e1",
+    },
+
+    // Type Grid for Weaknesses
+    typesRowGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    typeBadgeGrid: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    typeTextGrid: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+    },
+
+    // Battle Role Analysis Styles
     statsSummary: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginBottom: 20,
-        paddingHorizontal: 10,
+        backgroundColor: 'rgba(0,0,0,0.02)',
+        padding: 15,
+        borderRadius: 20,
     },
     statBox: {
         alignItems: 'center',
         flex: 1,
     },
     statBoxLabel: {
-        fontSize: 12,
-        color: '#666',
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#64748b',
         marginBottom: 4,
+        textTransform: 'uppercase',
     },
     statBoxValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 18,
+        fontWeight: '900',
     },
     roleCard: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor: '#f8fafc',
+        borderRadius: 20,
         padding: 20,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-        borderLeftWidth: 4,
-        borderLeftColor: '#3498db',
+        marginTop: 12,
+        borderLeftWidth: 6,
+        borderLeftColor: '#4A90E2',
+    },
+    roleCardDark: {
+        backgroundColor: '#1e293b',
+        borderLeftColor: '#4A90E2',
     },
     roleHeader: {
         flexDirection: 'row',
@@ -1679,76 +1910,68 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     roleTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#2c3e50',
+        fontSize: 22,
+        fontWeight: '900',
+        color: '#0f172a',
+    },
+    roleTitleDark: {
+        color: '#f1f5f9',
     },
     ratingContainer: {
         alignItems: 'flex-end',
     },
     ratingText: {
         fontSize: 12,
-        color: '#666',
+        fontWeight: '700',
+        color: '#64748b',
         marginBottom: 4,
-        fontWeight: '600',
     },
     ratingBar: {
-        width: 80,
-        height: 8,
-        backgroundColor: '#ecf0f1',
-        borderRadius: 4,
+        width: 100,
+        height: 6,
+        backgroundColor: '#e2e8f0',
+        borderRadius: 3,
         overflow: 'hidden',
     },
     ratingFill: {
         height: '100%',
-        borderRadius: 4,
     },
     roleDescription: {
-        color: '#555',
-        marginBottom: 16,
-        lineHeight: 22,
         fontSize: 14,
+        color: '#475569',
+        lineHeight: 20,
+        marginBottom: 20,
     },
     roleDetails: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 16,
+        gap: 20,
+        marginBottom: 20,
     },
     detailColumn: {
         flex: 1,
     },
     detailTitle: {
-        fontWeight: 'bold',
-        marginBottom: 8,
-        color: '#2c3e50',
         fontSize: 14,
+        fontWeight: '800',
+        color: '#0f172a',
+        marginBottom: 10,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    detailTitleDark: {
+        color: '#f1f5f9',
     },
     detailItem: {
-        color: '#555',
+        fontSize: 13,
+        color: '#64748b',
         marginBottom: 6,
-        fontSize: 12,
-        lineHeight: 16,
+    },
+    detailItemDark: {
+        color: '#94a3b8',
     },
     weaknessSection: {
-        marginTop: 8,
-        paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: '#e2e8f0',
+        paddingTop: 16,
     },
-
-    noEvolutionText: {
-        color: "#aaa",
-        fontStyle: "italic",
-        textAlign: "center",
-        marginTop: 10,
-    },
-
-    evoImagePlaceholder: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: "#333",
-        marginBottom: 6,
-    },
-
 });
