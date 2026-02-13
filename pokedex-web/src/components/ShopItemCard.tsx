@@ -12,6 +12,18 @@ import { ImageBackground } from 'react-native';
 import CoinIcon from '@/assets/images/dex-coin.png';
 import pokeballWatermark from '@/assets/images/pokeball_decorative.png';
 
+// Effect Backgrounds
+import bgAirSlash from '@/assets/card-effects/air-slash.jpg';
+import bgBubbleBeam from '@/assets/card-effects/bubble-beam.jpg';
+import bgExtraLove from '@/assets/card-effects/extra-love.jpg';
+import bgFrenzyPlant from '@/assets/card-effects/frenzy-plant.jpg';
+import bgGhostlyMist from '@/assets/card-effects/ghostly-mist.jpg';
+import bgGoldenGlory from '@/assets/card-effects/golden-glory.jpg';
+import bgIcyWind from '@/assets/card-effects/icy-wind.jpg';
+import bgMagmaStorm from '@/assets/card-effects/magma-storm.jpg';
+import bgNeonCyber from '@/assets/card-effects/neon-cyber.jpg';
+import bgRockTomb from '@/assets/card-effects/rock-tomb.jpg';
+
 interface ShopItemCardProps {
     item: ShopItem;
     count: number;
@@ -22,7 +34,23 @@ interface ShopItemCardProps {
 }
 
 export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay, cardWidth }: ShopItemCardProps) => {
-    const bgImage = TYPE_BACKGROUNDS['electric']; // Pikachu is Electric
+    const getEffectBackground = (id: string) => {
+        switch (id) {
+            case 'extra_love': return bgExtraLove;
+            case 'effect_neon_cyber': return bgNeonCyber;
+            case 'effect_ghostly_mist': return bgGhostlyMist;
+            case 'effect_golden_glory': return bgGoldenGlory;
+            case 'effect_icy_wind': return bgIcyWind;
+            case 'effect_magma_storm': return bgMagmaStorm;
+            case 'effect_frenzy_plant': return bgFrenzyPlant;
+            case 'effect_bubble_beam': return bgBubbleBeam;
+            case 'effect_air_slash': return bgAirSlash;
+            case 'effect_rock_tomb': return bgRockTomb;
+            default: return TYPE_BACKGROUNDS['electric'];
+        }
+    };
+
+    const bgImage = item.type === 'effect' ? getEffectBackground(item.id) : TYPE_BACKGROUNDS['electric'];
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
 
     return (
