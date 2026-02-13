@@ -63,24 +63,19 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                 {/* Watermark */}
                 <Image source={{ uri: pokeballWatermark }} style={styles.watermark} resizeMode="contain" />
 
-                {/* Live Effect Preview - Only if shouldPlay is true */}
-                {shouldPlay ? (
-                    <>
-                        {item.id === 'extra_love' && <ExtraLoveEffect />}
-                        {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
-                        {item.id === 'effect_icy_wind' && <IcyWindEffect />}
-                        {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
-                        {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
-                        {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
-                        {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
-                        {item.id === 'effect_air_slash' && <AirSlashEffect />}
-                        {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
-                        {item.id === 'effect_rock_tomb' && <RockTombEffect />}
-                    </>
-                ) : (
-                    // Static placeholder when not playing
-                    isSpecialEffect && <View style={[StyleSheet.absoluteFill, { backgroundColor: '#333', opacity: 0.1 }] as any} />
-                )}
+                {/* Live Effect Preview - Always render in Shop for max fidelity */}
+                <>
+                    {item.id === 'extra_love' && <ExtraLoveEffect />}
+                    {item.id === 'effect_golden_glory' && <GoldenGloryEffect />}
+                    {item.id === 'effect_icy_wind' && <IcyWindEffect />}
+                    {item.id === 'effect_magma_storm' && <MagmaStormEffect />}
+                    {item.id === 'effect_ghostly_mist' && <GhostlyMistEffect />}
+                    {item.id === 'effect_frenzy_plant' && <FrenzyPlantEffect />}
+                    {item.id === 'effect_bubble_beam' && <BubbleBeamEffect />}
+                    {item.id === 'effect_air_slash' && <AirSlashEffect />}
+                    {item.id === 'effect_neon_cyber' && <NeonCyberEffect />}
+                    {item.id === 'effect_rock_tomb' && <RockTombEffect />}
+                </>
 
                 {/* Frame Preview - Always render frames to ensure visibility */}
                 {item.type === 'frame' && (
@@ -157,7 +152,7 @@ const styles = StyleSheet.create({
     cardBackground: { flex: 1, position: 'relative' },
     cardBackgroundImage: {
         borderRadius: 24,
-        opacity: 0.35,
+        opacity: 1.0, // Set to 1.0 for clear effects as requested
     },
     watermark: {
         ...StyleSheet.absoluteFillObject,
