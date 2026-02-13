@@ -4,7 +4,7 @@ import { SHOP_ITEMS, type ShopItem } from '@/constants/shopItems';
 import { type DailyInteraction, type EconomyData, type Inventory } from '@/types';
 import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, useColorScheme, View, type ViewToken } from 'react-native';
+import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigate } from 'react-router-dom';
 // const InteractionIcon = require('@/assets/images/pokeball.png');
@@ -143,36 +143,42 @@ export default function ShopScreen() {
                 </View>
 
                 <View style={styles.balanceContainer}>
-                    <Image source={CoinIcon} style={styles.coinIcon} />
+                    <Image source={typeof CoinIcon === 'string' ? { uri: CoinIcon } : CoinIcon} style={styles.coinIcon} />
                     <Text style={styles.balanceText}>{balance}</Text>
                 </View>
             </View>
 
             {/* Tabs */}
-            <View style={[styles.tabContainer, isDark && styles.tabContainerDark]}>
-                {(['effects', 'frames', 'items'] as const).map((tab) => {
-                    const isActive = activeTab === tab;
-                    return (
-                        <Pressable
-                            key={tab}
-                            style={[
-                                styles.tab,
-                                isActive && styles.tabActive,
-                                isActive && isDark && { backgroundColor: '#333' }
-                            ]}
-                            onPress={() => setActiveTab(tab)}
-                        >
-                            <Text style={[
-                                styles.tabText,
-                                isActive && styles.tabTextActive,
-                                isDark && !isActive && { color: '#aaa' },
-                                isDark && isActive && { color: '#fff' }
-                            ]}>
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                            </Text>
-                        </Pressable>
-                    );
-                })}
+            <View style={styles.tabScrollContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tabList}
+                    style={styles.tabScroll}
+                >
+                    {(['effects', 'frames', 'items'] as const).map((tab) => {
+                        const isActive = activeTab === tab;
+                        return (
+                            <Pressable
+                                key={tab}
+                                style={[
+                                    styles.tabChip,
+                                    isDark && styles.tabChipDark,
+                                    isActive && styles.tabChipActive
+                                ]}
+                                onPress={() => setActiveTab(tab)}
+                            >
+                                <Text style={[
+                                    styles.tabChipText,
+                                    isDark && styles.tabChipTextDark,
+                                    isActive && styles.tabChipTextActive
+                                ]}>
+                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                </Text>
+                            </Pressable>
+                        );
+                    })}
+                </ScrollView>
             </View>
 
             {/* List */}
@@ -200,7 +206,7 @@ export default function ShopScreen() {
                             </View>
                             <Pressable style={styles.buyButtonSmall} onPress={handleBuyInteraction}>
                                 <Text style={styles.buyButtonText}>200</Text>
-                                <Image source={CoinIcon} style={styles.coinIconSmall} />
+                                <Image source={typeof CoinIcon === 'string' ? { uri: CoinIcon } : CoinIcon} style={styles.coinIconSmall} />
                             </Pressable>
                         </View>
                     ) : null
@@ -232,12 +238,59 @@ const styles = StyleSheet.create({
     coinIcon: { width: 18, height: 18, marginRight: 6 },
     balanceText: { fontSize: 16, fontWeight: '900', color: '#FFD700', textShadowColor: '#000', textShadowRadius: 1, textShadowOffset: { width: 1, height: 1 } },
 
-    tabContainer: { flexDirection: 'row', margin: 16, padding: 4, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 16 },
-    tabContainerDark: { backgroundColor: 'rgba(255,255,255,0.1)' },
-    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
-    tabActive: { backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
-    tabText: { fontWeight: '600', color: '#888', fontSize: 13 },
-    tabTextActive: { color: '#1a1a1a', fontWeight: '700' },
+    tabScrollContainer: {
+        width: '100%',
+        paddingVertical: 15,
+        backgroundColor: 'transparent',
+    },
+    tabScroll: {
+        maxHeight: 60,
+        width: '100%',
+    },
+    tabList: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        gap: 20,
+    },
+    tabChip: {
+        height: 50,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#f0f0f0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
+        minWidth: 90,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    tabChipDark: {
+        backgroundColor: '#2a2a2a',
+        borderColor: '#444',
+    },
+    tabChipActive: {
+        backgroundColor: '#6366f1',
+        borderColor: '#6366f1',
+        shadowColor: '#6366f1',
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+    },
+    tabChipText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+    },
+    tabChipTextDark: {
+        color: '#aaa',
+    },
+    tabChipTextActive: {
+        color: '#fff',
+    },
 
     scrollContent: { padding: 16, paddingBottom: 40 },
 
