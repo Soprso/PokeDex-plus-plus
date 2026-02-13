@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigate } from 'react-router-dom';
 // const InteractionIcon = require('@/assets/images/pokeball.png');
 import coinIcon from '@/assets/images/dex-coin.png';
+import { EconomyModal } from '@/components/home/modals/EconomyModal';
 const CoinIcon = coinIcon;
 
 type TabType = 'effects' | 'frames' | 'items';
@@ -19,10 +20,12 @@ export default function ShopScreen() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
-    const [balance, setBalance] = useState(0);
     const [inventory, setInventory] = useState<Inventory>({});
     const [activeTab, setActiveTab] = useState<TabType>('effects');
     const [viewableItems, setViewableItems] = useState<Set<string>>(new Set());
+    const [balance, setBalance] = useState(0);
+    const [streak, setStreak] = useState(1);
+    const [modals, setModals] = useState({ economy: false });
 
     const { width } = useWindowDimensions();
     const numColumns = width > 768 ? 4 : 2;
@@ -33,12 +36,13 @@ export default function ShopScreen() {
     // Load initial data
     useEffect(() => {
         if (user) {
-            const economy = (user.unsafeMetadata.economy as EconomyData) || { balance: 0 };
+            const economy = (user.unsafeMetadata.economy as EconomyData) || { balance: 0, streak: 1 };
             const userInventory = (user.unsafeMetadata.inventory as Inventory) || {};
             setBalance(economy.balance || 0);
+            setStreak(economy.streak || 1);
             setInventory(userInventory);
         }
-    }, [user?.id]);
+    }, [user?.id, user?.unsafeMetadata]);
 
     const handleBuyItem = async (item: ShopItem) => {
         if (!user) {
@@ -148,10 +152,15 @@ export default function ShopScreen() {
                     </View>
                 </View>
 
-                <View style={styles.balanceContainer}>
+                <Pressable
+                    style={[styles.balanceContainer, isDark && styles.balanceContainerDark]}
+                    onPress={() => setModals({ ...modals, economy: true })}
+                >
                     <Image source={typeof CoinIcon === 'string' ? { uri: CoinIcon } : CoinIcon} style={styles.coinIcon} />
-                    <Text style={styles.balanceText}>{balance}</Text>
-                </View>
+                    <Text style={[styles.balanceText, isDark && styles.balanceTextDark]}>
+                        {balance.toLocaleString()}
+                    </Text>
+                </Pressable>
             </View>
 
             {/* Tabs */}
@@ -231,6 +240,18 @@ export default function ShopScreen() {
                     )}
                 />
             </View>
+
+            {/* Modals */}
+            <EconomyModal
+                visible={modals.economy}
+                onClose={() => setModals({ ...modals, economy: false })}
+                type="info"
+                title="Your Wallet"
+                message="Manage your coins and view transactions."
+                balance={balance}
+                streak={streak}
+                darkMode={isDark}
+            />
         </SafeAreaView>
     );
 }
@@ -249,9 +270,39 @@ const styles = StyleSheet.create({
     titleContainer: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
     title: { fontSize: 24, fontWeight: '800', color: '#1a1a1a', letterSpacing: -0.5 },
     textDark: { color: '#fff' },
-    balanceContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF9C4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FFD700', zIndex: 20 },
-    coinIcon: { width: 18, height: 18, marginRight: 6 },
-    balanceText: { fontSize: 16, fontWeight: '900', color: '#FFD700', textShadowColor: '#000', textShadowRadius: 1, textShadowOffset: { width: 1, height: 1 } },
+    balanceContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        paddingHorizontal: 24,
+        height: 50,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
+    balanceContainerDark: {
+        backgroundColor: '#333',
+        borderColor: '#444',
+    },
+    coinIcon: {
+        width: 22,
+        height: 22,
+        marginRight: 8,
+    },
+    balanceText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#FFD700',
+    },
+    balanceTextDark: {
+        color: '#FFD700',
+    },
 
     tabScrollContainer: {
         width: '100%',
