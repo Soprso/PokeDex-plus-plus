@@ -16,6 +16,14 @@ export interface FlatListProps<T> {
     showsVerticalScrollIndicator?: boolean;
     showsHorizontalScrollIndicator?: boolean;
     columnWrapperStyle?: any;
+    onEndReached?: (info: { distanceFromEnd: number }) => void;
+    onEndReachedThreshold?: number;
+    removeClippedSubviews?: boolean; // Add for compatibility
+    initialNumToRender?: number; // Add for compatibility
+    maxToRenderPerBatch?: number; // Add for compatibility
+    windowSize?: number; // Add for compatibility
+    refreshing?: boolean; // Add for compatibility
+    onRefresh?: () => void; // Add for compatibility
 }
 
 export function FlatList<T>({
@@ -30,6 +38,8 @@ export function FlatList<T>({
     numColumns = 1,
     horizontal,
     columnWrapperStyle,
+    onEndReached,
+    onEndReachedThreshold,
     ...props
 }: FlatListProps<T>) {
 
@@ -70,8 +80,27 @@ export function FlatList<T>({
     };
 
 
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        const threshold = (onEndReachedThreshold || 0.5) * clientHeight;
+
+        // Check if we are near the bottom
+        if (scrollHeight - scrollTop - clientHeight <= threshold) {
+            onEndReached?.({ distanceFromEnd: scrollHeight - scrollTop - clientHeight });
+        }
+
+        // Pass through original onScroll if it exists
+        (props as any).onScroll?.(e);
+    };
+
     return (
-        <ScrollView contentContainerStyle={contentContainerStyle} style={style} horizontal={horizontal} {...props}>
+        <ScrollView
+            contentContainerStyle={contentContainerStyle}
+            style={style}
+            horizontal={horizontal}
+            {...props}
+            onScroll={handleScroll}
+        >
             {ListHeaderComponent}
             {renderContent()}
             {ListFooterComponent}

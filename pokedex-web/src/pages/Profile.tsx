@@ -317,6 +317,19 @@ export default function ProfileScreen() {
                             </View>
                         </View>
 
+
+                        {/* Return to Pokedex Button - Prominent */}
+                        <Pressable
+                            style={({ pressed }) => [
+                                styles.homeButton,
+                                pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
+                            ]}
+                            onPress={() => navigate('/')}
+                        >
+                            <Ionicons name="home" size={24} color="#fff" style={{ marginRight: 10 }} />
+                            <Text style={styles.homeButtonText}>Return to Pokédex</Text>
+                        </Pressable>
+
                         {/* Form Fields */}
                         <View style={styles.formSection}>
                             <View style={styles.inputGroup}>
@@ -654,5 +667,26 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    homeButton: {
+        backgroundColor: '#FF3B30', // Pokedex Red
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        marginBottom: 32,
+        shadowColor: '#FF3B30',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    homeButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
+        letterSpacing: 0.5,
     },
 });

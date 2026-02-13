@@ -33,7 +33,7 @@ export function HomeHeader({ balance, onBuddyHelpPress, onWalletPress, darkMode 
                 style={[styles.buddyHelpButton, darkMode && styles.buddyHelpButtonDark]}
                 onPress={onBuddyHelpPress}
             >
-                <Ionicons name="help-circle" size={20} color={darkMode ? '#fff' : '#333'} />
+                <Ionicons name="help-circle" size={24} color={darkMode ? '#fff' : '#333'} />
                 <Text style={[styles.buddyHelpText, darkMode && styles.buddyHelpTextDark]}>
                     Help
                 </Text>
@@ -61,19 +61,20 @@ const styles = StyleSheet.create({
     coinWallet: {
         position: 'absolute',
         left: 16,
-        top: 20, // Aligned with logo center roughly
+        top: 15, // Adjusted for new height
         zIndex: 20,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: '#fff',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 16,
+        paddingHorizontal: 24, // Matches region buttons
+        height: 50, // Matches filterbar height
+        borderRadius: 12, // Matches region buttons
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowRadius: 4,
+        elevation: 3,
         borderWidth: 1,
         borderColor: '#eee',
         cursor: 'pointer', // Web specific
@@ -83,12 +84,12 @@ const styles = StyleSheet.create({
         borderColor: '#444',
     },
     coinWalletIcon: {
-        width: 18,
-        height: 18,
-        marginRight: 6,
+        width: 22,
+        height: 22,
+        marginRight: 8,
     },
     coinWalletText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: 'bold',
         color: '#FFD700',
     },
@@ -98,21 +99,22 @@ const styles = StyleSheet.create({
     buddyHelpButton: {
         position: 'absolute',
         right: 16,
-        top: 20,
+        top: 15, // Adjusted for new height
         zIndex: 20,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: '#fff',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 16,
+        paddingHorizontal: 24, // Matches region buttons
+        height: 50, // Matches filterbar height
+        borderRadius: 12, // Matches region buttons
         borderWidth: 1,
         borderColor: '#eee',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowRadius: 4,
+        elevation: 3,
         cursor: 'pointer',
     },
     buddyHelpButtonDark: {
@@ -120,10 +122,10 @@ const styles = StyleSheet.create({
         borderColor: '#444',
     },
     buddyHelpText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
         color: '#333',
-        marginLeft: 6,
+        marginLeft: 8,
     },
     buddyHelpTextDark: {
         color: '#fff',

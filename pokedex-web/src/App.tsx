@@ -5,6 +5,7 @@ import PokeHub from './pages/PokeHub';
 import PokemonDetails from './pages/PokemonDetails';
 import Profile from './pages/Profile';
 import Shop from './pages/Shop';
+import SSOCallback from './pages/SSOCallback';
 
 // Import your publishable key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || import.meta.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -23,6 +24,9 @@ function App() {
           <Route path="/shop" element={<Shop />} />
           <Route path="/pokehub" element={<PokeHub />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/sso-callback" element={<SSOCallback />} />
+          {/* Handle potential typo path just in case */}
+          <Route path="/ss-callback" element={<SSOCallback />} />
         </Routes>
       </BrowserRouter>
     </ClerkProvider>

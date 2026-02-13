@@ -3,6 +3,9 @@ import { FlatList, Image, ScrollView, Text, View } from '../components/native';
 
 // Re-export everything from react-native-web
 export * from 'react-native-web';
+
+// Override with our custom components
+export { FlatList, Image, ScrollView, Text, View };
 export default ReactNativeWeb;
 
 // Override Animated to use our custom components that properly handle style arrays

@@ -40,6 +40,9 @@ export function BuddyProgressModal({ visible, onClose, pokemon, buddyData, darkM
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, darkMode && styles.modalContentDark]}>
                         <View style={styles.header}>
+                            <Pressable onPress={onClose} style={styles.closeIcon}>
+                                <Ionicons name="close" size={24} color={darkMode ? "#94a3b8" : "#64748b"} />
+                            </Pressable>
                             <Image source={{ uri: pokemon.imageUrl }} style={styles.pokemonImage} resizeMode="contain" />
                             <Text style={[styles.pokemonName, darkMode && styles.pokemonNameDark]}>
                                 {pokemon.nickname || pokemon.name}
@@ -231,8 +234,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#222',
     },
     header: {
+        width: '100%',
         alignItems: 'center',
-        marginBottom: 24,
+        paddingVertical: 24,
+        position: 'relative',
+    },
+    closeIcon: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        padding: 4,
+        zIndex: 10,
     },
     pokemonImage: {
         width: 80,

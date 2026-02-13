@@ -138,6 +138,7 @@ export function PokemonGrid({
 
     return (
         <FlatList
+            style={{ flex: 1 }}
             data={pokemon}
             renderItem={renderItem}
             keyExtractor={(item) => String(item.id)}

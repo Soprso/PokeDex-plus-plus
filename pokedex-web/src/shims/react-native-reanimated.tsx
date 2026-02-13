@@ -55,26 +55,46 @@ const Reanimated = {
         CLAMP: 'clamp',
         IDENTITY: 'identity',
     },
+    // Helper for chained animations
+    createMockAnimation: () => {
+        const chain = {
+            duration: () => chain,
+            springify: () => chain,
+            damping: () => chain,
+            stiffness: () => chain,
+            mass: () => chain,
+            overshootClamping: () => chain,
+            restDisplacementThreshold: () => chain,
+            restSpeedThreshold: () => chain,
+            delay: () => chain,
+            randomDelay: () => chain,
+            withCallback: () => chain,
+        };
+        return chain;
+    },
     interpolate: (value: number, input: number[], output: number[]) => output[0],
     interpolateColor: (value: number, input: number[], output: number[]) => output[0],
-    FadeIn: { duration: () => ({}) },
-    FadeInUp: { duration: () => ({}) },
-    FadeInDown: { duration: () => ({}) },
-    FadeOut: { duration: () => ({}) },
-    Layout: { springify: () => ({}) },
-    ZoomIn: { duration: () => ({}) },
-    ZoomOut: { duration: () => ({}) },
-    SlideInUp: { duration: () => ({}) },
-    SlideInDown: { duration: () => ({}) },
-    SlideOutUp: { duration: () => ({}) },
-    SlideOutDown: { duration: () => ({}) },
-    // Add these to top-level object too just in case
-    View,
-    Text,
-    Image,
-    ScrollView,
-    FlatList,
 };
+
+// Apply the mock helper to animation objects
+const mockAnim = Reanimated.createMockAnimation();
+(Reanimated as any).FadeIn = mockAnim;
+(Reanimated as any).FadeInUp = mockAnim;
+(Reanimated as any).FadeInDown = mockAnim;
+(Reanimated as any).FadeOut = mockAnim;
+(Reanimated as any).Layout = mockAnim;
+(Reanimated as any).ZoomIn = mockAnim;
+(Reanimated as any).ZoomOut = mockAnim;
+(Reanimated as any).SlideInUp = mockAnim;
+(Reanimated as any).SlideInDown = mockAnim;
+(Reanimated as any).SlideOutUp = mockAnim;
+(Reanimated as any).SlideOutDown = mockAnim;
+// Add these to top-level object too just in case
+(Reanimated as any).View = View;
+(Reanimated as any).Text = Text;
+(Reanimated as any).Image = Image;
+(Reanimated as any).ScrollView = ScrollView;
+(Reanimated as any).FlatList = FlatList;
 
 export default Reanimated;
 export const useSharedValue = Reanimated.useSharedValue;
