@@ -57,6 +57,14 @@ export default function HomeScreen() {
     return (user.unsafeMetadata.nicknames as Record<number, string>) || {};
   }, [user?.unsafeMetadata]);
 
+  // Local nicknames for optimistic updates
+  const [localNicknames, setLocalNicknames] = useState<Record<number, string>>({});
+
+  // Sync local nicknames when metadata changes
+  useEffect(() => {
+    setLocalNicknames(nicknames);
+  }, [nicknames]);
+
   // Economy System
   const { checkDailyReward, rewardClaimed, resetRewardState } = useEconomySystem();
 
@@ -168,9 +176,9 @@ export default function HomeScreen() {
   const pokemonWithNicknames = useMemo(() => {
     return allPokemon.map(p => ({
       ...p,
-      nickname: nicknames[p.id] || p.nickname
+      nickname: localNicknames[p.id] || p.nickname
     }));
-  }, [allPokemon, nicknames]);
+  }, [allPokemon, localNicknames]);
 
   const filteredPokemon = useMemo(() => {
     let result = pokemonWithNicknames;
@@ -382,7 +390,7 @@ export default function HomeScreen() {
           displayCount < filteredPokemon.length ? <ActivityIndicator style={{ padding: 20 }} /> : <View style={{ height: 100 }} />
         }
         buddyData={buddyData}
-        nicknames={nicknames}
+        nicknames={localNicknames}
         settings={settings}
         refreshing={refreshing}
         onRefresh={refetch}
@@ -476,20 +484,28 @@ export default function HomeScreen() {
         onSave={async () => {
           if (!nicknameTarget || !user) return;
           try {
+            const newNames = {
+              ...(user.unsafeMetadata.nicknames as Record<number, string> || {}),
+              [nicknameTarget.id]: tempNickname
+            };
+
+            // 1. Optimistic Update
+            setLocalNicknames(newNames);
+            setModals({ ...modals, nickname: false });
+
+            // 2. Persistent Update
             await user.update({
               unsafeMetadata: {
                 ...user.unsafeMetadata,
-                nicknames: {
-                  ...(user.unsafeMetadata.nicknames as Record<number, string> || {}),
-                  [nicknameTarget.id]: tempNickname
-                }
+                nicknames: newNames
               }
             });
             setToast({ visible: true, message: `Updated nickname for ${nicknameTarget.name}!`, type: 'success' });
-            setModals({ ...modals, nickname: false });
           } catch (error) {
             console.error('Failed to save nickname:', error);
             setToast({ visible: true, message: 'Failed to save nickname.', type: 'error' });
+            // Revert on failure
+            setLocalNicknames(nicknames);
           }
         }}
         pokemonName={nicknameTarget?.name || 'Pokemon'}
