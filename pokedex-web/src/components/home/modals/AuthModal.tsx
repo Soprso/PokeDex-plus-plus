@@ -1,5 +1,7 @@
+import pikachuTrainer from '@/assets/images/pikachu_trainer.png';
 import { Ionicons } from '@/components/native/Icons';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 interface AuthModalProps {
     visible: boolean;
@@ -9,54 +11,89 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ visible, onClose, onProfilePress, darkMode }: AuthModalProps) {
+    if (!visible) return null;
+
     return (
         <Modal
             visible={visible}
-            animationType="fade"
+            animationType="none"
             transparent
             presentationStyle="overFullScreen"
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
-                <View style={[styles.content, darkMode && styles.contentDark]}>
-                    {/* Compact Header */}
-                    <View style={[styles.header, darkMode && styles.headerDark]}>
-                        <View style={styles.headerTitleRow}>
-                            <Ionicons name="lock-closed" size={18} color="#3b82f6" />
-                            <Text style={[styles.headerTitle, darkMode && styles.headerTitleDark]}>Sign In Required</Text>
-                        </View>
-                        <Pressable onPress={onClose} style={styles.closeIcon}>
-                            <Ionicons name="close" size={20} color={darkMode ? "#94a3b8" : "#64748b"} />
-                        </Pressable>
+                {/* Backdrop Fade In */}
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    style={StyleSheet.absoluteFillObject}
+                >
+                    <Pressable style={styles.backdrop} onPress={onClose} />
+                </Animated.View>
+
+                {/* Modal Content - Zoom In */}
+                <Animated.View
+                    entering={ZoomIn.duration(400).springify()}
+                    style={[styles.content, darkMode && styles.contentDark]}
+                >
+                    {/* Header Image Area */}
+                    <View style={styles.imageHeader}>
+                        <ImageBackground
+                            source={{ uri: pikachuTrainer }}
+                            style={styles.headerBg}
+                            imageStyle={{ opacity: 0.15 }}
+                        >
+                            <Animated.View entering={FadeInDown.delay(200).duration(500)}>
+                                <View style={styles.iconCircle}>
+                                    <Ionicons name="sparkles" size={32} color="#3b82f6" />
+                                </View>
+                            </Animated.View>
+                        </ImageBackground>
                     </View>
 
                     <View style={styles.body}>
-                        <Text style={[styles.description, darkMode && styles.descriptionDark]}>
-                            Login or signup to continue your journey and start building bonds with your Pokémon!
-                        </Text>
+                        <Animated.View entering={FadeInDown.delay(300).duration(500)}>
+                            <Text style={[styles.title, darkMode && styles.titleDark]}>
+                                Authentication Required
+                            </Text>
+                            <Text style={[styles.description, darkMode && styles.descriptionDark]}>
+                                Login or signup to unlock the full potential of your PokéDex. Start building bonds, training buddies, and tracking your journey!
+                            </Text>
+                        </Animated.View>
 
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.primaryButton,
-                                pressed && { opacity: 0.8 }
-                            ]}
-                            onPress={onProfilePress}
-                        >
-                            <Ionicons name="person" size={14} color="#fff" />
-                            <Text style={styles.primaryButtonText}>Go to Profile</Text>
-                        </Pressable>
+                        <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.buttonContainer}>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.primaryButton,
+                                    pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
+                                ]}
+                                onPress={onProfilePress}
+                            >
+                                <Ionicons name="person-add" size={18} color="#fff" />
+                                <Text style={styles.primaryButtonText}>Sign In / Join Now</Text>
+                            </Pressable>
 
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.secondaryButton,
-                                pressed && { opacity: 0.7 }
-                            ]}
-                            onPress={onClose}
-                        >
-                            <Text style={[styles.secondaryButtonText, darkMode && styles.secondaryButtonTextDark]}>Maybe Later</Text>
-                        </Pressable>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.secondaryButton,
+                                    pressed && { opacity: 0.7 }
+                                ]}
+                                onPress={onClose}
+                            >
+                                <Text style={[styles.secondaryButtonText, darkMode && styles.secondaryButtonTextDark]}>
+                                    Maybe Later
+                                </Text>
+                            </Pressable>
+                        </Animated.View>
                     </View>
-                </View>
+
+                    {/* Corner Close Button */}
+                    <Pressable
+                        onPress={onClose}
+                        style={styles.closeIcon}
+                    >
+                        <Ionicons name="close" size={24} color={darkMode ? "#94a3b8" : "#64748b"} />
+                    </Pressable>
+                </Animated.View>
             </View>
         </Modal>
     );
@@ -65,75 +102,92 @@ export function AuthModal({ visible, onClose, onProfilePress, darkMode }: AuthMo
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 12,
+        padding: 24,
+    },
+    backdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.7)',
     },
     content: {
         width: '100%',
-        maxWidth: 320,
+        maxWidth: 380,
         backgroundColor: '#fff',
-        borderRadius: 16,
+        borderRadius: 28,
         overflow: 'hidden',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
     },
     contentDark: {
-        backgroundColor: '#1e293b',
+        backgroundColor: '#1a1f2e',
     },
-    header: {
-        flexDirection: 'row',
+    imageHeader: {
+        height: 100,
+        backgroundColor: '#f0f4ff',
+    },
+    headerBg: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderColor: '#f1f5f9',
     },
-    headerDark: {
-        borderColor: '#334155',
-    },
-    headerTitleRow: {
-        flexDirection: 'row',
+    iconCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
-    },
-    headerTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#0f172a',
-    },
-    headerTitleDark: {
-        color: '#f1f5f9',
-    },
-    closeIcon: {
-        padding: 4,
+        elevation: 4,
+        shadowColor: '#3b82f6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
     },
     body: {
-        padding: 12,
+        padding: 20,
+        paddingTop: 16,
+        alignItems: 'center',
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#0f172a',
+        textAlign: 'center',
+        marginBottom: 6,
+        letterSpacing: -0.5,
+    },
+    titleDark: {
+        color: '#f1f5f9',
     },
     description: {
         fontSize: 13,
         color: '#64748b',
         textAlign: 'center',
-        marginBottom: 12,
-        lineHeight: 18,
+        marginBottom: 20,
     },
     descriptionDark: {
         color: '#94a3b8',
     },
+    buttonContainer: {
+        width: '100%',
+        gap: 8,
+    },
     primaryButton: {
         backgroundColor: '#3b82f6',
-        paddingVertical: 10,
-        borderRadius: 8,
+        paddingVertical: 12,
+        borderRadius: 12,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginBottom: 6,
     },
     primaryButtonText: {
         color: '#fff',
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '700',
     },
     secondaryButton: {
@@ -147,5 +201,14 @@ const styles = StyleSheet.create({
     },
     secondaryButtonTextDark: {
         color: '#94a3b8',
+    },
+    closeIcon: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        padding: 6,
+        backgroundColor: 'rgba(255,255,255,0.8)',
+        borderRadius: 16,
+        zIndex: 10,
     },
 });
