@@ -13,10 +13,10 @@ interface BuddyProgressModalProps {
 
 // Constants for buddy progression
 const POINTS_PER_LEVEL = {
-    1: 0,   // Good Buddy - Day 1
-    2: 10,  // Great Buddy - Day 4
-    3: 30,  // Ultra Buddy - Day 11
-    4: 70,  // Best Buddy - Day 21
+    1: 1,   // Good Buddy - Day 1
+    2: 4,   // Great Buddy - Day 4
+    3: 11,  // Ultra Buddy - Day 11
+    4: 21,  // Best Buddy - Day 21
 };
 
 const MAX_DAILY_HEARTS = 3;
