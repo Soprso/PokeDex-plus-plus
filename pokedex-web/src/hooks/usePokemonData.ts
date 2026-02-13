@@ -31,25 +31,46 @@ export function usePokemonData() {
 
             const list = await fetchPokemonList(controller.signal);
 
-            // Fetch details and enforce minimum delay in parallel
-            const [details] = await Promise.all([
-                fetchPokemonBatch(
-                    list,
-                    controller.signal,
-                    30,
-                    50,
-                    (loaded, total) => {
-                        setLoadProgress({ loaded, total });
-                    }
-                ),
-                new Promise(resolve => setTimeout(resolve, 1500)) // Minimum 1.5s loading time
-            ]);
+            // 1. Fetch first 30 Pokemon immediately to hide skeleton faster
+            const initialBatchLinks = list.slice(0, 30);
+            const initialDetails = await fetchPokemonBatch(
+                initialBatchLinks,
+                controller.signal,
+                30,
+                0 // No delay for first batch
+            );
 
-            // Sort by ID
-            details.sort((a, b) => a.id - b.id);
+            // Sort and set initial results
+            initialDetails.sort((a, b) => a.id - b.id);
+            setAllPokemon(initialDetails);
+            setLoading(false); // Hide skeleton now
 
-            setAllPokemon(details);
-            console.log('usePokemonData: Loaded pokemon details', details.length);
+            // 2. Fetch the remaining Pokemon in background
+            const remainingLinks = list.slice(30);
+            console.log('usePokemonData: fetching remaining in background', remainingLinks.length);
+
+            await fetchPokemonBatch(
+                remainingLinks,
+                controller.signal,
+                50, // Larger background batches
+                100,
+                (loadedInBatch) => {
+                    // Update progress
+                    setLoadProgress({
+                        loaded: 30 + loadedInBatch,
+                        total: list.length
+                    });
+                },
+                (newlyFetched: PokemonWithNickname[]) => {
+                    // Progressive Update - update state as more batches arrive
+                    setAllPokemon(prev => {
+                        const updated = [...prev, ...newlyFetched];
+                        return updated.sort((a, b) => a.id - b.id);
+                    });
+                }
+            );
+
+            console.log('usePokemonData: Background fetching complete');
         } catch (err) {
             if (err instanceof Error && err.name === 'AbortError') {
                 return;

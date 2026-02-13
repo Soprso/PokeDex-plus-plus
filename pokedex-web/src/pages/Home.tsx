@@ -99,7 +99,7 @@ export default function HomeScreen() {
   const sortOption = (searchParams.get('s') || 'id-asc') as any;
 
   // Pagination is kept local but could be moved to URL if desired
-  const [displayCount, setDisplayCount] = useState(20);
+  const [displayCount, setDisplayCount] = useState(30);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Modals State
@@ -164,7 +164,7 @@ export default function HomeScreen() {
     let result = allPokemon;
 
     // 1. Region Filter
-    if (selectedRegionIndex > 0 && !searchQuery) {
+    if (selectedRegionIndex >= 0 && !searchQuery) {
       const region = REGIONS[selectedRegionIndex];
       const startId = region.offset + 1;
       const endId = region.offset + region.limit;
@@ -324,6 +324,7 @@ export default function HomeScreen() {
           onSearchChange={(q) => updateParams({ q })}
           selectedRegionIndex={selectedRegionIndex}
           onRegionSelect={(r) => updateParams({ r: String(r) })}
+          onClearAll={() => setSearchParams({})}
           darkMode={settings.darkMode}
         />
         <PokemonGridSkeleton darkMode={settings.darkMode} />
@@ -347,6 +348,7 @@ export default function HomeScreen() {
         onSearchChange={(q) => updateParams({ q })}
         selectedRegionIndex={selectedRegionIndex}
         onRegionSelect={(r) => updateParams({ r: String(r) })}
+        onClearAll={() => setSearchParams({})}
         darkMode={settings.darkMode}
       />
 

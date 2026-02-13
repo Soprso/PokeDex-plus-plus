@@ -150,8 +150,8 @@ export function PokemonGrid({
             onEndReachedThreshold={0.5}
             ListFooterComponent={listFooterComponent}
             removeClippedSubviews={Platform.OS === 'android'} // Improve perf
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
+            initialNumToRender={30}
+            maxToRenderPerBatch={30}
             windowSize={5}
             refreshing={refreshing}
             onRefresh={onRefresh}
