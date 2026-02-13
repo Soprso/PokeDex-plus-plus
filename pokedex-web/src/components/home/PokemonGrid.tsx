@@ -49,7 +49,8 @@ export function PokemonGrid({
 
     const renderItem = ({ item }: { item: PokemonWithNickname }) => {
         const isShiny = settings.shinySprites;
-        const displayName = settings.nicknames && item.nickname ? item.nickname : item.name;
+        const currentNickname = nicknames[item.id] || item.nickname;
+        const displayName = settings.nicknames && currentNickname ? currentNickname : item.name;
         const imageUrl = isShiny ? item.shinyImageUrl : item.imageUrl;
         const buddy = buddyData[item.id];
         const isBestBuddy = buddy?.level === 4;
@@ -140,6 +141,7 @@ export function PokemonGrid({
         <FlatList
             style={{ flex: 1 }}
             data={pokemon}
+            extraData={nicknames}
             renderItem={renderItem}
             keyExtractor={(item) => String(item.id)}
             numColumns={numColumns}
