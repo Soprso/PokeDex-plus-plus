@@ -52,6 +52,14 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
 
     const bgImage = item.type === 'effect' ? getEffectBackground(item.id) : TYPE_BACKGROUNDS['electric'];
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
+    const useWhiteText = [
+        'effect_neon_cyber',
+        'effect_ghostly_mist',
+        'effect_golden_glory',
+        'effect_icy_wind',
+        'effect_magma_storm',
+        'effect_frenzy_plant'
+    ].includes(item.id);
 
     return (
         <View style={[styles.itemCard, isDark && styles.itemCardDark, { width: cardWidth }] as any}>
@@ -88,7 +96,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                 {/* Card Content Structure from PokemonGrid */}
                 <View style={styles.cardContent}>
                     {/* ID */}
-                    <Text style={styles.cardId}>#025</Text>
+                    <Text style={[styles.cardId, useWhiteText && { color: '#fff', opacity: 0.8 }] as any}>#025</Text>
 
                     {/* Image container */}
                     <View style={styles.imageContainer}>
@@ -100,7 +108,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                     </View>
 
                     {/* Name */}
-                    <Text style={styles.cardName}>Pikachu</Text>
+                    <Text style={[styles.cardName, useWhiteText && { color: '#fff' }] as any}>Pikachu</Text>
 
                     {/* Types */}
                     <View style={styles.cardTypeContainer}>
