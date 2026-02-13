@@ -28,9 +28,7 @@ export default function ShopScreen() {
     const numColumns = width > 768 ? 4 : 2;
     const cardGap = 8;
     const listPadding = 16;
-    const maxContentWidth = 1000;
-    const effectiveWidth = Math.min(width, maxContentWidth);
-    const cardWidth = (effectiveWidth - (listPadding * 2) - ((numColumns - 1) * cardGap)) / numColumns;
+    const cardWidth = (width - (listPadding * 2) - ((numColumns - 1) * cardGap)) / numColumns;
 
     // Load initial data
     useEffect(() => {
@@ -243,7 +241,6 @@ const styles = StyleSheet.create({
     contentWrapper: {
         flex: 1,
         width: '100%',
-        maxWidth: 1000,
         alignSelf: 'center',
     },
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', zIndex: 10, justifyContent: 'space-between' },
