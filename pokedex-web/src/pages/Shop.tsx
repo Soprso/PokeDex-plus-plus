@@ -4,7 +4,7 @@ import { SHOP_ITEMS, type ShopItem } from '@/constants/shopItems';
 import { type DailyInteraction, type EconomyData, type Inventory } from '@/types';
 import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View, type ViewToken } from 'react-native';
+import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useColorScheme, useWindowDimensions, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigate } from 'react-router-dom';
 // const InteractionIcon = require('@/assets/images/pokeball.png');
@@ -23,6 +23,14 @@ export default function ShopScreen() {
     const [inventory, setInventory] = useState<Inventory>({});
     const [activeTab, setActiveTab] = useState<TabType>('effects');
     const [viewableItems, setViewableItems] = useState<Set<string>>(new Set());
+
+    const { width } = useWindowDimensions();
+    const numColumns = width > 768 ? 4 : 2;
+    const cardGap = 8;
+    const listPadding = 16;
+    const maxContentWidth = 1000;
+    const effectiveWidth = Math.min(width, maxContentWidth);
+    const cardWidth = (effectiveWidth - (listPadding * 2) - ((numColumns - 1) * cardGap)) / numColumns;
 
     // Load initial data
     useEffect(() => {
@@ -182,52 +190,62 @@ export default function ShopScreen() {
             </View>
 
             {/* List */}
-            <FlatList
-                data={filteredItems}
-                keyExtractor={(item) => item.id}
-                numColumns={2}
-                columnWrapperStyle={{ justifyContent: 'space-between' }}
-                contentContainerStyle={styles.scrollContent}
-                windowSize={5}
-                initialNumToRender={6}
-                maxToRenderPerBatch={6}
-                removeClippedSubviews={true}
-                onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
-                ListHeaderComponent={
-                    activeTab === 'items' ? (
-                        <View style={[styles.specialOffer, isDark && styles.specialOfferDark]}>
-                            <View style={styles.specialInfo}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                                    <Text style={[styles.specialTitle, isDark && styles.textDark]}>Buddy Interaction +1</Text>
-                                    <Ionicons name="heart" size={18} color="#e11d48" style={{ marginLeft: 6 }} />
+            <View style={styles.contentWrapper}>
+                <FlatList
+                    data={filteredItems}
+                    keyExtractor={(item) => item.id}
+                    numColumns={numColumns}
+                    key={numColumns}
+                    columnWrapperStyle={{ gap: cardGap }}
+                    contentContainerStyle={[styles.scrollContent, { padding: listPadding }]}
+                    windowSize={5}
+                    initialNumToRender={6}
+                    maxToRenderPerBatch={6}
+                    removeClippedSubviews={true}
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
+                    ListHeaderComponent={
+                        activeTab === 'items' ? (
+                            <View style={[styles.specialOffer, isDark && styles.specialOfferDark]}>
+                                <View style={styles.specialInfo}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                        <Text style={[styles.specialTitle, isDark && styles.textDark]}>Buddy Interaction +1</Text>
+                                        <Ionicons name="heart" size={18} color="#e11d48" style={{ marginLeft: 6 }} />
+                                    </View>
+                                    <Text style={styles.specialSub}>Get +1 Buddy Interaction for today.</Text>
                                 </View>
-                                <Text style={styles.specialSub}>Get +1 Buddy Interaction for today.</Text>
+                                <Pressable style={styles.buyButtonSmall} onPress={handleBuyInteraction}>
+                                    <Text style={styles.buyButtonText}>200</Text>
+                                    <Image source={typeof CoinIcon === 'string' ? { uri: CoinIcon } : CoinIcon} style={styles.coinIconSmall} />
+                                </Pressable>
                             </View>
-                            <Pressable style={styles.buyButtonSmall} onPress={handleBuyInteraction}>
-                                <Text style={styles.buyButtonText}>200</Text>
-                                <Image source={typeof CoinIcon === 'string' ? { uri: CoinIcon } : CoinIcon} style={styles.coinIconSmall} />
-                            </Pressable>
-                        </View>
-                    ) : null
-                }
-                renderItem={({ item }) => (
-                    <ShopItemCard
-                        item={item}
-                        count={inventory[item.id] || 0}
-                        isDark={isDark}
-                        onBuy={() => handleBuyItem(item)}
-                        shouldPlay={viewableItems.has(item.id)}
-                    />
-                )}
-            />
+                        ) : null
+                    }
+                    renderItem={({ item }) => (
+                        <ShopItemCard
+                            item={item}
+                            count={inventory[item.id] || 0}
+                            isDark={isDark}
+                            onBuy={() => handleBuyItem(item)}
+                            shouldPlay={viewableItems.has(item.id)}
+                            cardWidth={cardWidth}
+                        />
+                    )}
+                />
+            </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: '#fcfcfc' },
     containerDark: { backgroundColor: '#121212' },
+    contentWrapper: {
+        flex: 1,
+        width: '100%',
+        maxWidth: 1000,
+        alignSelf: 'center',
+    },
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', zIndex: 10, justifyContent: 'space-between' },
     headerDark: { backgroundColor: '#121212', borderBottomColor: 'rgba(255,255,255,0.05)' },
     backButton: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.03)', zIndex: 20 },

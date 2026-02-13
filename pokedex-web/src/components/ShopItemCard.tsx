@@ -18,14 +18,15 @@ interface ShopItemCardProps {
     isDark: boolean;
     onBuy: () => void;
     shouldPlay: boolean;
+    cardWidth: number;
 }
 
-export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay }: ShopItemCardProps) => {
+export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay, cardWidth }: ShopItemCardProps) => {
     const bgImage = TYPE_BACKGROUNDS['electric']; // Pikachu is Electric
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
 
     return (
-        <View style={[styles.itemCard, isDark && styles.itemCardDark] as any}>
+        <View style={[styles.itemCard, isDark && styles.itemCardDark, { width: cardWidth }] as any}>
             <ImageBackground
                 source={bgImage}
                 style={styles.cardBackground}
@@ -123,7 +124,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
 });
 
 const styles = StyleSheet.create({
-    itemCard: { width: '48%', height: 320, borderRadius: 24, overflow: 'hidden', marginBottom: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, position: 'relative', backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+    itemCard: { height: 320, borderRadius: 24, overflow: 'hidden', marginBottom: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, position: 'relative', backgroundColor: '#fff', borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
     itemCardDark: { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.05)' },
     cardBackground: { flex: 1, position: 'relative' },
     cardBackgroundImage: {
