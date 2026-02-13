@@ -125,7 +125,7 @@ export function PokemonGrid({
                             <Ionicons
                                 key={i}
                                 name="heart"
-                                size={10}
+                                size={14}
                                 color={buddy && i < buddy.level ? "#FF6B6B" : "rgba(0,0,0,0.1)"}
                                 style={{ opacity: buddy && i < buddy.level ? 1 : 0.5 }}
                             />
@@ -213,10 +213,10 @@ const styles = StyleSheet.create({
         top: 8,
         right: 8,
         alignItems: 'flex-end',
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        padding: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        padding: 6,
         borderRadius: 12,
-        zIndex: 100, // Ensure it's on top
+        zIndex: 100,
         elevation: 5,
     },
     watermark: {
@@ -227,12 +227,12 @@ const styles = StyleSheet.create({
     },
     heartsRow: {
         flexDirection: 'row',
-        gap: 2,
-        marginBottom: 2,
+        gap: 3,
+        marginBottom: 3,
     },
     bestBuddyBadge: {
-        width: 20,
-        height: 20,
+        width: 24,
+        height: 24,
     },
     imageContainer: {
         width: 120,
