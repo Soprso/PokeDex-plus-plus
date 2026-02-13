@@ -1070,20 +1070,26 @@ export default function Details() {
                 <View style={[styles.section, darkMode && styles.sectionDark]}>
                     <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Base Stats</Text>
                     {pokemon.stats.map((stat, index) => {
-                        const percent = Math.min(stat.base_stat, 150) / 150;
+                        // Max PokéAPI base stat is 255 (Blissey HP)
+                        const percent = Math.min(stat.base_stat, 255) / 255;
                         return (
                             <View key={stat.stat.name} style={styles.statRow}>
-                                <Text style={[styles.statName, { color: darkMode ? '#94a3b8' : '#64748b' }]}>{stat.stat.name.replace('-', ' ').toUpperCase()}</Text>
+                                <Text style={[styles.statName, { color: darkMode ? '#94a3b8' : '#64748b' }]}>
+                                    {stat.stat.name.replace('-', ' ').toUpperCase()}
+                                </Text>
                                 <View style={[styles.statBarBg, darkMode && { backgroundColor: '#334155' }]}>
                                     <Animated.View
                                         style={[
                                             styles.statBar,
                                             {
                                                 backgroundColor: colorsByType[mainType],
-                                                width: statAnims[index].interpolate({
+                                                // Using static percent for web reliability if Animated fails
+                                                width: `${percent * 100}%`,
+                                                // Maintain animation if needed, but the primary requirement is accuracy
+                                                opacity: statAnims[index] ? statAnims[index].interpolate({
                                                     inputRange: [0, 1],
-                                                    outputRange: ["0%", `${percent * 100}%`],
-                                                }),
+                                                    outputRange: [0, 1]
+                                                }) : 1
                                             },
                                         ]}
                                     />
@@ -1411,8 +1417,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255, 215, 0, 0.95)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
         borderRadius: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -1421,11 +1427,11 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     legendaryIcon: {
-        fontSize: 18,
-        marginRight: 4,
+        fontSize: 22,
+        marginRight: 6,
     },
     legendaryText: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '700',
         color: '#000',
         textTransform: 'uppercase',
@@ -1449,12 +1455,12 @@ const styles = StyleSheet.create({
     },
     hiddenBadge: {
         backgroundColor: '#9C27B0',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
         borderRadius: 12,
     },
     hiddenBadgeText: {
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: '700',
         color: '#fff',
         textTransform: 'uppercase',
@@ -1601,8 +1607,8 @@ const styles = StyleSheet.create({
     typeBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
         borderRadius: 20,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderWidth: 1,
@@ -1610,7 +1616,7 @@ const styles = StyleSheet.create({
     },
     typeText: {
         color: "#fff",
-        fontSize: 13,
+        fontSize: 15,
         fontWeight: "700",
         textTransform: "capitalize",
     },
@@ -1854,15 +1860,15 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     typeBadgeGrid: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
         borderRadius: 12,
-        minWidth: 80,
+        minWidth: 90,
         alignItems: 'center',
     },
     typeTextGrid: {
         color: '#fff',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '800',
         textTransform: 'uppercase',
     },
