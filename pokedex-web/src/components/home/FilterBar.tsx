@@ -1,5 +1,6 @@
 import { Ionicons } from '@/components/native/Icons';
 import { REGIONS } from '@/constants/regions';
+import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface FilterBarProps {
@@ -7,28 +8,66 @@ interface FilterBarProps {
     onSearchChange: (text: string) => void;
     selectedRegionIndex: number;
     onRegionSelect: (index: number) => void;
+    onClearAll: () => void;
     darkMode: boolean;
 }
 
-export function FilterBar({ searchQuery, onSearchChange, selectedRegionIndex, onRegionSelect, darkMode }: FilterBarProps) {
+export function FilterBar({ searchQuery, onSearchChange, selectedRegionIndex, onRegionSelect, onClearAll, darkMode }: FilterBarProps) {
+    const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
+
+    // Sync local state with prop (for external changes like "Clear All")
+    React.useEffect(() => {
+        setLocalSearchQuery(searchQuery);
+    }, [searchQuery]);
+
+    // Debounce the search change
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localSearchQuery !== searchQuery) {
+                onSearchChange(localSearchQuery);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [localSearchQuery, onSearchChange, searchQuery]);
+
     return (
         <View style={styles.container}>
             <View style={styles.contentWrapper}>
-                {/* Search Input */}
-                <View style={[styles.searchContainer, darkMode && styles.searchContainerDark]}>
-                    <Ionicons name="search" size={20} color={darkMode ? '#aaa' : '#666'} style={styles.searchIcon} />
-                    <TextInput
-                        style={[styles.searchInput, darkMode && styles.searchInputDark]}
-                        placeholder="Search Pokémon, ID, or Nickname..."
-                        placeholderTextColor={darkMode ? '#aaa' : '#999'}
-                        value={searchQuery}
-                        onChangeText={onSearchChange}
-                    />
-                    {searchQuery.length > 0 && (
-                        <Pressable onPress={() => onSearchChange('')} style={styles.clearButton}>
-                            <Ionicons name="close-circle" size={18} color={darkMode ? '#aaa' : '#ccc'} />
-                        </Pressable>
-                    )}
+                {/* Search Row */}
+                <View style={styles.searchRow}>
+                    {/* Search Input */}
+                    <View style={[styles.searchContainer, darkMode && styles.searchContainerDark]}>
+                        <Ionicons name="search" size={20} color={darkMode ? '#aaa' : '#666'} style={styles.searchIcon} />
+                        <TextInput
+                            style={[styles.searchInput, darkMode && styles.searchInputDark]}
+                            placeholder="Search Pokémon, ID, or Nickname..."
+                            placeholderTextColor={darkMode ? '#aaa' : '#999'}
+                            value={localSearchQuery}
+                            onChangeText={setLocalSearchQuery}
+                        />
+                        {localSearchQuery.length > 0 && (
+                            <Pressable onPress={() => {
+                                setLocalSearchQuery('');
+                                onSearchChange('');
+                            }} style={styles.clearButton}>
+                                <Ionicons name="close-circle" size={18} color={darkMode ? '#aaa' : '#ccc'} />
+                            </Pressable>
+                        )}
+                    </View>
+
+                    {/* Clear All Button */}
+                    <Pressable
+                        style={({ pressed }) => [
+                            styles.clearAllButton,
+                            darkMode && styles.clearAllButtonDark,
+                            pressed && { opacity: 0.8 }
+                        ]}
+                        onPress={onClearAll}
+                    >
+                        <Ionicons name="refresh" size={18} color={darkMode ? '#fff' : '#333'} style={styles.clearAllIcon} />
+                        <Text style={[styles.clearAllText, darkMode && styles.clearAllTextDark]}>Clear All</Text>
+                    </Pressable>
                 </View>
 
                 {/* Region Selector */}
@@ -66,8 +105,9 @@ export function FilterBar({ searchQuery, onSearchChange, selectedRegionIndex, on
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        paddingBottom: 15,
+        paddingBottom: 20,
         paddingTop: 15,
+        marginBottom: 10,
         backgroundColor: 'transparent',
     },
     contentWrapper: {
@@ -76,7 +116,14 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         paddingHorizontal: 20,
     },
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        gap: 12, // Gap between search and clear all
+    },
     searchContainer: {
+        flex: 1, // Take remaining space
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fff',
@@ -88,11 +135,38 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08, // Softer shadow
         shadowRadius: 8,
         elevation: 4,
-        marginBottom: 20, // Significant gap between search and regions
+        width: '100%', // Take full width of wrapper
+    },
+    clearAllButton: {
+        height: 50,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#f0f0f0',
-        width: '100%', // Take full width of wrapper
-        alignSelf: 'center', // Center the search bar
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    clearAllButtonDark: {
+        backgroundColor: '#2a2a2a',
+        borderColor: '#333',
+    },
+    clearAllIcon: {
+        marginRight: 8,
+    },
+    clearAllText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    clearAllTextDark: {
+        color: '#fff',
     },
     searchContainerDark: {
         backgroundColor: '#2a2a2a',
@@ -127,17 +201,17 @@ const styles = StyleSheet.create({
         gap: 20, // More space between chips
     },
     regionChip: {
+        height: 50,
         paddingHorizontal: 24,
-        paddingVertical: 12,
         borderRadius: 12,
         backgroundColor: '#fff',
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: '#f0f0f0',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
         minWidth: 90,
         alignItems: 'center',
         justifyContent: 'center',

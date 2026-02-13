@@ -159,7 +159,8 @@ export async function fetchPokemonBatch(
     signal?: AbortSignal,
     batchSize: number = 20,
     delayMs: number = 100,
-    onProgress?: (loaded: number, total: number) => void
+    onProgress?: (loaded: number, total: number) => void,
+    onBatchFetched?: (pokemon: Pokemon[]) => void
 ): Promise<Pokemon[]> {
     const results: Pokemon[] = [];
     const total = items.length;
@@ -175,6 +176,11 @@ export async function fetchPokemonBatch(
             const batchResults = await Promise.all(batchPromises);
             const validResults = batchResults.filter((p): p is Pokemon => p !== null);
             results.push(...validResults);
+
+            // Report batch fetched
+            if (onBatchFetched) {
+                onBatchFetched(validResults);
+            }
 
             // Report progress
             if (onProgress) {
