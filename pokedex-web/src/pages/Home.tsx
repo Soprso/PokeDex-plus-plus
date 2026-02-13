@@ -2,15 +2,17 @@ import { SafeAreaView } from '@/components/native/SafeAreaView';
 import { useUser } from '@clerk/clerk-react';
 // import { useNavigation } from '@react-navigation/native'; // REMOVED
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useNavigate } from 'react-router-dom'; // ADDED
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useNavigate, useSearchParams } from 'react-router-dom'; // UPDATED
 
 // Components
 import { FilterBar } from '@/components/home/FilterBar';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { PokemonGrid } from '@/components/home/PokemonGrid';
+import { PokemonGridSkeleton } from '@/components/home/PokemonGridSkeleton'; // ADDED
 import { RadialMenu } from '@/components/home/RadialMenu';
 import { ToastNotification } from '@/components/home/ToastNotification';
+import { AuthModal } from '@/components/home/modals/AuthModal'; // ADDED
 import { BuddyModal } from '@/components/home/modals/BuddyModal';
 import { BuddyProgressModal } from '@/components/home/modals/BuddyProgressModal';
 import { ComingSoonModal } from '@/components/home/modals/ComingSoonModal';
@@ -23,6 +25,7 @@ import { SortModal } from '@/components/home/modals/SortModal';
 // Hooks & Data
 import type { PokemonType } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
+import { useEconomySystem } from '@/hooks/useEconomySystem';
 import { calculateBuddyLevel, canGiveHeart, getHeartTracker, getRemainingHearts, getTodayDate } from '@/hooks/useHeartSystem';
 import { usePokemonData } from '@/hooks/usePokemonData';
 import type { BuddyData, DailyHeartTracker, PokemonWithNickname } from '@/types';
@@ -42,16 +45,62 @@ export default function HomeScreen() {
     return getHeartTracker(user?.unsafeMetadata);
   }, [user?.unsafeMetadata]);
 
+  // Load economy data from Clerk metadata
+  const economy = useMemo(() => {
+    const eco = (user?.unsafeMetadata.economy as any) || { balance: 0, streak: 0 };
+    console.log('Home: Economy Data:', eco, 'Metadata:', user?.unsafeMetadata);
+    return eco;
+  }, [user?.unsafeMetadata]);
+
+  // Economy System
+  const { checkDailyReward, rewardClaimed, resetRewardState } = useEconomySystem();
+
+  // Check daily reward on mount/auth
+  useEffect(() => {
+    if (isLoaded && user) {
+      checkDailyReward();
+    }
+  }, [isLoaded, user, checkDailyReward]);
+
+  // Show reward modal when claimed
+  useEffect(() => {
+    if (rewardClaimed && !modals.economy) {
+      console.log('Home: Opening Economy Modal for Daily Reward', rewardClaimed);
+      setModals(m => ({ ...m, economy: true }));
+    }
+  }, [rewardClaimed]);
+
   // Data State
   const { allPokemon, loading, refreshing, loadProgress, error, refetch } = usePokemonData();
 
-  // UI State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRegionIndex, setSelectedRegionIndex] = useState(0); // 0 = All
-  const [selectedTypes, setSelectedTypes] = useState<PokemonType[]>([]);
-  const [sortOption, setSortOption] = useState<'id-asc' | 'id-desc' | 'name-asc' | 'name-desc' | 'buddy-desc'>('id-asc');
+  // State Synchronization with URL Parameters
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Helpers to update search params
+  const updateParams = (updates: Record<string, string | null>) => {
+    setSearchParams(prev => {
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || value === '' || (key === 'r' && value === '0')) {
+          prev.delete(key);
+        } else {
+          prev.set(key, value);
+        }
+      });
+      return prev;
+    }, { replace: true });
+  };
+
+  // Derived Filter State from URL
+  const searchQuery = searchParams.get('q') || '';
+  const selectedRegionIndex = parseInt(searchParams.get('r') || '0', 10);
+  const selectedTypes = useMemo(() =>
+    (searchParams.get('t')?.split(',') || []).filter(Boolean) as PokemonType[]
+    , [searchParams]);
+  const sortOption = (searchParams.get('s') || 'id-asc') as any;
+
+  // Pagination is kept local but could be moved to URL if desired
+  const [displayCount, setDisplayCount] = useState(20);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [displayCount, setDisplayCount] = useState(20); // Pagination
 
   // Modals State
   const [modals, setModals] = useState({
@@ -181,6 +230,10 @@ export default function HomeScreen() {
   };
 
   const handleBuddyLongPress = (pokemon: PokemonWithNickname) => {
+    if (!user) {
+      setModals({ ...modals, auth: true });
+      return;
+    }
     setBuddyProgressTarget(pokemon);
     setModals({ ...modals, buddyProgress: true });
   };
@@ -191,8 +244,7 @@ export default function HomeScreen() {
     if (!isLoaded) return; // Still loading auth state
 
     if (!user) {
-      setToast({ visible: true, message: 'Please log in to give hearts to your Pokémon!', type: 'info' });
-      setTimeout(() => setModals({ ...modals, auth: true }), 1000); // Open auth modal after toast
+      setModals({ ...modals, auth: true });
       return;
     }
 
@@ -252,13 +304,30 @@ export default function HomeScreen() {
   };
 
   // Render
+  console.log('Home Render:', { loading, pokemonCount: allPokemon.length, displayedCount: displayedPokemon.length });
+
+  // Show skeleton if loading AND we have no data yet (initial load)
+  // OR if we are explicitly refreshing and want to clear the screen (optional, currently we keep data on refresh)
   if (loading && allPokemon.length === 0) {
+    console.log('Home: Rendering Skeleton');
     return (
-      <View style={[styles.container, styles.center, settings.darkMode && styles.darkContainer]}>
-        <ActivityIndicator size="large" color="#6366f1" />
-        <Text style={styles.loadingText}>Loading Pokédex...</Text>
-        <Text style={styles.loadingSubtext}>{loadProgress.loaded} / {loadProgress.total}</Text>
-      </View>
+      <SafeAreaView style={[styles.container, settings.darkMode ? styles.darkContainer : undefined]}>
+        {/* Header */}
+        <HomeHeader
+          balance={economy?.balance || 0}
+          onBuddyHelpPress={() => setModals({ ...modals, buddy: true })}
+          onWalletPress={() => setModals({ ...modals, economy: true })}
+          darkMode={settings.darkMode}
+        />
+        <FilterBar
+          searchQuery={searchQuery}
+          onSearchChange={(q) => updateParams({ q })}
+          selectedRegionIndex={selectedRegionIndex}
+          onRegionSelect={(r) => updateParams({ r: String(r) })}
+          darkMode={settings.darkMode}
+        />
+        <PokemonGridSkeleton darkMode={settings.darkMode} />
+      </SafeAreaView>
     );
   }
 
@@ -266,7 +335,7 @@ export default function HomeScreen() {
     <SafeAreaView style={[styles.container, settings.darkMode ? styles.darkContainer : undefined]}>
       {/* Header */}
       <HomeHeader
-        balance={100}
+        balance={economy?.balance || 0}
         onBuddyHelpPress={() => setModals({ ...modals, buddy: true })}
         onWalletPress={() => setModals({ ...modals, economy: true })}
         darkMode={settings.darkMode}
@@ -275,9 +344,9 @@ export default function HomeScreen() {
       {/* Filter Bar */}
       <FilterBar
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={(q) => updateParams({ q })}
         selectedRegionIndex={selectedRegionIndex}
-        onRegionSelect={setSelectedRegionIndex}
+        onRegionSelect={(r) => updateParams({ r: String(r) })}
         darkMode={settings.darkMode}
       />
 
@@ -323,9 +392,12 @@ export default function HomeScreen() {
         onClose={() => setModals({ ...modals, filter: false })}
         selectedTypes={selectedTypes}
         onToggleType={(t) => {
-          setSelectedTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+          const newTypes = selectedTypes.includes(t)
+            ? selectedTypes.filter(x => x !== t)
+            : [...selectedTypes, t];
+          updateParams({ t: newTypes.join(',') });
         }}
-        onClear={() => setSelectedTypes([])}
+        onClear={() => updateParams({ t: null })}
         onApply={() => setModals({ ...modals, filter: false })}
         darkMode={settings.darkMode}
       />
@@ -334,7 +406,7 @@ export default function HomeScreen() {
         visible={modals.sort}
         onClose={() => setModals({ ...modals, sort: false })}
         sortOption={sortOption}
-        onSortSelect={(o) => { setSortOption(o); setModals({ ...modals, sort: false }); }}
+        onSortSelect={(s) => { updateParams({ s }); setModals({ ...modals, sort: false }); }}
         darkMode={settings.darkMode}
       />
 
@@ -346,6 +418,16 @@ export default function HomeScreen() {
         darkMode={settings.darkMode}
       />
 
+      <AuthModal
+        visible={modals.auth}
+        onClose={() => setModals({ ...modals, auth: false })}
+        onProfilePress={() => {
+          setModals({ ...modals, auth: false });
+          navigate('/profile');
+        }}
+        darkMode={settings.darkMode}
+      />
+
       <ComingSoonModal
         visible={modals.comingSoon}
         onClose={() => setModals({ ...modals, comingSoon: false })}
@@ -354,12 +436,17 @@ export default function HomeScreen() {
 
       <EconomyModal
         visible={modals.economy}
-        onClose={() => setModals({ ...modals, economy: false })}
-        type="info"
-        title="Wallet"
-        message=""
-        balance={100}
-        streak={5}
+        onClose={() => {
+          setModals({ ...modals, economy: false });
+          resetRewardState(); // Clear reward state on close
+        }}
+        type={rewardClaimed ? 'reward' : 'info'}
+        title={rewardClaimed ? 'Daily Reward!' : 'Your Wallet'}
+        message={rewardClaimed
+          ? `You've earned ${rewardClaimed.amount} coins for logging in today!\n🔥 Current Streak: ${rewardClaimed.streak} Days`
+          : 'Manage your coins and view transactions.'}
+        balance={economy.balance}
+        streak={economy.streak}
         darkMode={settings.darkMode}
       />
 
@@ -397,23 +484,26 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
   darkContainer: {
     backgroundColor: '#121212',
   },
   center: {
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 18,
-    color: '#6366f1',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#333',
   },
   loadingSubtext: {
     marginTop: 8,
-    color: '#999',
-  }
+    fontSize: 14,
+    color: '#666',
+  },
 });
+
+

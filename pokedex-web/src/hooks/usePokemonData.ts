@@ -3,6 +3,7 @@ import type { PokemonWithNickname } from '@/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function usePokemonData() {
+    console.log('usePokemonData: Hook initialized');
     const [allPokemon, setAllPokemon] = useState<PokemonWithNickname[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -23,24 +24,32 @@ export function usePokemonData() {
                 setRefreshing(true);
             } else {
                 setLoading(true);
+                setAllPokemon([]); // FORCE skeleton on initial load
             }
+            console.log('usePokemonData: fetching started', { isRefresh });
             setError(null);
 
             const list = await fetchPokemonList(controller.signal);
-            const details = await fetchPokemonBatch(
-                list,
-                controller.signal,
-                30,
-                50,
-                (loaded, total) => {
-                    setLoadProgress({ loaded, total });
-                }
-            );
+
+            // Fetch details and enforce minimum delay in parallel
+            const [details] = await Promise.all([
+                fetchPokemonBatch(
+                    list,
+                    controller.signal,
+                    30,
+                    50,
+                    (loaded, total) => {
+                        setLoadProgress({ loaded, total });
+                    }
+                ),
+                new Promise(resolve => setTimeout(resolve, 1500)) // Minimum 1.5s loading time
+            ]);
 
             // Sort by ID
             details.sort((a, b) => a.id - b.id);
 
             setAllPokemon(details);
+            console.log('usePokemonData: Loaded pokemon details', details.length);
         } catch (err) {
             if (err instanceof Error && err.name === 'AbortError') {
                 return;

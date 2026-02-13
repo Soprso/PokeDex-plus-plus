@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text } from 'react-native';
+import { Ionicons } from '@/components/native/Icons';
+import { useEffect, useRef } from 'react';
+import { Animated, Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 interface ToastProps {
     visible: boolean;
@@ -9,46 +12,78 @@ interface ToastProps {
     onHide?: () => void;
 }
 
-export function ToastNotification({ visible, message, type = 'success', duration = 3000, onHide }: ToastProps) {
-    const [opacity] = useState(new Animated.Value(0));
+export function ToastNotification({ visible, message, type = 'success', duration = 1500, onHide }: ToastProps) {
+    const opacity = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(20)).current;
 
     useEffect(() => {
         if (visible) {
-            // Fade in
-            Animated.timing(opacity, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: false,
-            }).start();
-
-            // Auto hide after duration
-            const timer = setTimeout(() => {
+            // Animate In
+            Animated.parallel([
                 Animated.timing(opacity, {
-                    toValue: 0,
+                    toValue: 1,
                     duration: 300,
-                    useNativeDriver: false,
-                }).start(() => {
-                    onHide?.();
-                });
+                    useNativeDriver: Platform.OS !== 'web',
+                }),
+                Animated.spring(translateY, {
+                    toValue: 0,
+                    useNativeDriver: Platform.OS !== 'web',
+                    friction: 8,
+                }),
+            ]).start();
+
+            // Auto hide
+            const timer = setTimeout(() => {
+                hideToast();
             }, duration);
 
             return () => clearTimeout(timer);
+        } else {
+            // Ensure hidden state if props change rapidly
+            opacity.setValue(0);
+            translateY.setValue(20);
         }
-    }, [visible, duration, onHide, opacity]);
+    }, [visible, duration]);
+
+    const hideToast = () => {
+        Animated.parallel([
+            Animated.timing(opacity, {
+                toValue: 0,
+                duration: 250,
+                useNativeDriver: Platform.OS !== 'web',
+            }),
+            Animated.timing(translateY, {
+                toValue: 20,
+                duration: 250,
+                useNativeDriver: Platform.OS !== 'web',
+            }),
+        ]).start(() => {
+            onHide?.();
+        });
+    };
 
     if (!visible) return null;
 
-    const backgroundColor = {
-        success: '#4CAF50',
-        error: '#F44336',
-        info: '#2196F3',
+    const config = {
+        success: { backgroundColor: '#10B981', icon: 'checkmark-circle' }, // Emerald Green
+        error: { backgroundColor: '#EF4444', icon: 'alert-circle' }, // Red
+        info: { backgroundColor: '#3B82F6', icon: 'information-circle' }, // Blue
     }[type];
 
     return (
-        <Animated.View style={[styles.container, { opacity, backgroundColor }]}>
-            <Pressable onPress={onHide} style={styles.content}>
+        <Animated.View
+            style={[
+                styles.container,
+                {
+                    opacity,
+                    transform: [{ translateY }]
+                }
+            ]}
+        >
+            <View style={[styles.card, { backgroundColor: config.backgroundColor }]}>
+                <Ionicons name={config.icon as any} size={20} color="#fff" style={styles.icon} />
                 <Text style={styles.message}>{message}</Text>
-            </Pressable>
+            </View>
         </Animated.View>
     );
 }
@@ -56,27 +91,31 @@ export function ToastNotification({ visible, message, type = 'success', duration
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 100,
-        left: 20,
-        right: 20,
-        zIndex: 10000,
-        borderRadius: 12,
-        paddingHorizontal: 20,
-        paddingVertical: 14,
+        bottom: 40,
+        alignSelf: 'center',
+        zIndex: 9999,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 8,
-        elevation: 10,
+        elevation: 6,
     },
-    content: {
+    card: {
+        flexDirection: 'row',
         alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 50, // Pill shape
+        minWidth: 200,
+        justifyContent: 'center',
+    },
+    icon: {
+        marginRight: 8,
     },
     message: {
-        color: '#fff',
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '600',
+        color: '#fff',
         textAlign: 'center',
-        lineHeight: 20,
     },
 });

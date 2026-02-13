@@ -13,112 +13,145 @@ interface FilterBarProps {
 export function FilterBar({ searchQuery, onSearchChange, selectedRegionIndex, onRegionSelect, darkMode }: FilterBarProps) {
     return (
         <View style={styles.container}>
-            {/* Search Input */}
-            <View style={[styles.searchContainer, darkMode && styles.searchContainerDark]}>
-                <Ionicons name="search" size={20} color={darkMode ? '#aaa' : '#666'} style={styles.searchIcon} />
-                <TextInput
-                    style={[styles.searchInput, darkMode && styles.searchInputDark]}
-                    placeholder="Search Pokémon, ID, or Nickname..."
-                    placeholderTextColor={darkMode ? '#aaa' : '#999'}
-                    value={searchQuery}
-                    onChangeText={onSearchChange}
-                />
-                {searchQuery.length > 0 && (
-                    <Pressable onPress={() => onSearchChange('')} style={styles.clearButton}>
-                        <Ionicons name="close-circle" size={18} color={darkMode ? '#aaa' : '#ccc'} />
-                    </Pressable>
-                )}
-            </View>
+            <View style={styles.contentWrapper}>
+                {/* Search Input */}
+                <View style={[styles.searchContainer, darkMode && styles.searchContainerDark]}>
+                    <Ionicons name="search" size={20} color={darkMode ? '#aaa' : '#666'} style={styles.searchIcon} />
+                    <TextInput
+                        style={[styles.searchInput, darkMode && styles.searchInputDark]}
+                        placeholder="Search Pokémon, ID, or Nickname..."
+                        placeholderTextColor={darkMode ? '#aaa' : '#999'}
+                        value={searchQuery}
+                        onChangeText={onSearchChange}
+                    />
+                    {searchQuery.length > 0 && (
+                        <Pressable onPress={() => onSearchChange('')} style={styles.clearButton}>
+                            <Ionicons name="close-circle" size={18} color={darkMode ? '#aaa' : '#ccc'} />
+                        </Pressable>
+                    )}
+                </View>
 
-            {/* Region Selector */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.regionList}
-                style={styles.regionScroll}
-            >
-                {REGIONS.map((region, index) => (
-                    <Pressable
-                        key={region.name}
-                        style={[
-                            styles.regionChip,
-                            darkMode && styles.regionChipDark,
-                            selectedRegionIndex === index && styles.regionChipActive
-                        ]}
-                        onPress={() => onRegionSelect(index)}
-                    >
-                        <Text style={[
-                            styles.regionText,
-                            darkMode && styles.regionTextDark,
-                            selectedRegionIndex === index && styles.regionTextActive
-                        ]}>
-                            {region.name}
-                        </Text>
-                    </Pressable>
-                ))}
-            </ScrollView>
+                {/* Region Selector */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.regionList}
+                    style={styles.regionScroll}
+                >
+                    {REGIONS.map((region, index) => (
+                        <Pressable
+                            key={region.name}
+                            style={[
+                                styles.regionChip,
+                                darkMode && styles.regionChipDark,
+                                selectedRegionIndex === index && styles.regionChipActive
+                            ]}
+                            onPress={() => onRegionSelect(index)}
+                        >
+                            <Text style={[
+                                styles.regionText,
+                                darkMode && styles.regionTextDark,
+                                selectedRegionIndex === index && styles.regionTextActive
+                            ]}>
+                                {region.name}
+                            </Text>
+                        </Pressable>
+                    ))}
+                </ScrollView>
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        paddingHorizontal: 16,
-        paddingBottom: 8,
+        width: '100%',
+        paddingBottom: 15,
+        paddingTop: 15,
+        backgroundColor: 'transparent',
+    },
+    contentWrapper: {
+        width: '100%',
+        maxWidth: 1000, // Aligns both search and regions
+        alignSelf: 'center',
+        paddingHorizontal: 20,
     },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fff',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        height: 44,
+        borderRadius: 12, // Matches region buttons
+        paddingHorizontal: 24, // Matches region buttons horizontal padding
+        height: 50, // Taller, premium feel
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
-        marginBottom: 12,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08, // Softer shadow
+        shadowRadius: 8,
+        elevation: 4,
+        marginBottom: 20, // Significant gap between search and regions
+        borderWidth: 1,
+        borderColor: '#f0f0f0',
+        width: '100%', // Take full width of wrapper
+        alignSelf: 'center', // Center the search bar
     },
     searchContainerDark: {
-        backgroundColor: '#333',
+        backgroundColor: '#2a2a2a',
+        borderColor: '#333',
     },
     searchIcon: {
-        marginRight: 8,
+        marginRight: 12,
     },
     searchInput: {
         flex: 1,
         fontSize: 16,
+        fontWeight: '500',
         color: '#333',
         height: '100%',
-        outlineStyle: 'none', // Remove web outline
-    } as any, // outlineStyle is web only
+        outlineStyle: 'none',
+    } as any,
     searchInputDark: {
         color: '#fff',
     },
     clearButton: {
         padding: 4,
+        opacity: 0.6,
     },
     regionScroll: {
-        flexGrow: 0,
+        maxHeight: 60,
+        width: '100%', // Full width
     },
     regionList: {
-        gap: 8,
-        paddingRight: 16,
+        flexGrow: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        gap: 20, // More space between chips
     },
     regionChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 20,
-        backgroundColor: '#f0f0f0',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: '#fff',
         borderWidth: 1,
-        borderColor: 'transparent',
+        borderColor: '#e0e0e0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+        minWidth: 90,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     regionChipDark: {
-        backgroundColor: '#333',
+        backgroundColor: '#2a2a2a',
+        borderColor: '#444',
     },
     regionChipActive: {
-        backgroundColor: '#6366f1', // Indigo
+        backgroundColor: '#6366f1', // Primary brand color
+        borderColor: '#6366f1',
+        shadowColor: '#6366f1',
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
     },
     regionText: {
         fontSize: 14,
@@ -126,7 +159,7 @@ const styles = StyleSheet.create({
         color: '#666',
     },
     regionTextDark: {
-        color: '#ccc',
+        color: '#aaa',
     },
     regionTextActive: {
         color: '#fff',

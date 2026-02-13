@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig } from 'vite'
-// Touch to force restart 7
+// Touch to force restart 8
 
 // https://vite.dev/config/
 export default defineConfig({
