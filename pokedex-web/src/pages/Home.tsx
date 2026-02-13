@@ -84,7 +84,7 @@ export default function HomeScreen() {
   }, [rewardClaimed]);
 
   // Data State
-  const { allPokemon, loading, refreshing, loadProgress, error, refetch } = usePokemonData();
+  const { allPokemon, loading, refreshing, refetch } = usePokemonData();
 
   // State Synchronization with URL Parameters
   const [searchParams, setSearchParams] = useSearchParams();
@@ -517,6 +517,7 @@ export default function HomeScreen() {
         onClose={() => setModals({ ...modals, buddyProgress: false })}
         pokemon={buddyProgressTarget}
         buddyData={buddyProgressTarget ? (buddyData[buddyProgressTarget.id] || null) : null}
+        heartTracker={heartTracker}
         darkMode={settings.darkMode}
       />
 

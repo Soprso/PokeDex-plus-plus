@@ -1,5 +1,5 @@
 import { Ionicons } from '@/components/native/Icons';
-import type { BuddyData, PokemonWithNickname } from '@/types';
+import type { BuddyData, DailyHeartTracker, PokemonWithNickname } from '@/types';
 import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface BuddyProgressModalProps {
@@ -7,6 +7,7 @@ interface BuddyProgressModalProps {
     onClose: () => void;
     pokemon: PokemonWithNickname | null;
     buddyData: BuddyData | null;
+    heartTracker: DailyHeartTracker;
     darkMode: boolean;
 }
 
@@ -28,7 +29,7 @@ const LEVEL_NAMES = {
     4: 'Best Buddy',
 };
 
-export function BuddyProgressModal({ visible, onClose, pokemon, buddyData, darkMode }: BuddyProgressModalProps) {
+export function BuddyProgressModal({ visible, onClose, pokemon, buddyData, heartTracker, darkMode }: BuddyProgressModalProps) {
     if (!pokemon) {
         return null;
     }
@@ -75,14 +76,17 @@ export function BuddyProgressModal({ visible, onClose, pokemon, buddyData, darkM
     }
 
     const today = new Date().toISOString().split('T')[0];
-    const hasGivenHeartsToday = buddyData.lastHeartDate === today;
-    const heartsGivenToday = hasGivenHeartsToday ? buddyData.dailyHearts : 0;
-    const heartsLeftToday = Math.max(0, MAX_DAILY_HEARTS - heartsGivenToday);
+
+    // Global heart tracking
+    const totalHeartsGivenToday = heartTracker.date === today ? heartTracker.heartsGivenToday : 0;
+    const globalHeartsLeftToday = Math.max(0, MAX_DAILY_HEARTS - totalHeartsGivenToday);
+    const hasHeartedThisPokemonToday = heartTracker.date === today && heartTracker.pokemonHeartedToday.includes(pokemon.id);
 
     // Calculate days to Best Buddy
     const currentPoints = buddyData.points;
     const pointsNeeded = POINTS_PER_LEVEL[4] - currentPoints;
-    const daysRemaining = buddyData.level === 4 ? 0 : Math.ceil(pointsNeeded / MAX_DAILY_HEARTS);
+    // We assume 1 heart per day per Pokemon is the limit (since you can only heart a Pokemon once per day)
+    const daysRemaining = buddyData.level === 4 ? 0 : Math.ceil(pointsNeeded / 1);
 
     const levelName = LEVEL_NAMES[buddyData.level as 0 | 1 | 2 | 3 | 4] || 'Unknown';
     const isBestBuddy = buddyData.level === 4;
@@ -157,43 +161,51 @@ export function BuddyProgressModal({ visible, onClose, pokemon, buddyData, darkM
                             Today's Hearts
                         </Text>
                         <View style={styles.dailyHeartsContainer}>
-                            {/* Hearts Given Today */}
+                            {/* Global Daily Progress */}
                             <View style={[styles.heartStatBox, darkMode && styles.heartStatBoxDark]}>
                                 <View style={styles.heartsRow}>
                                     {[0, 1, 2].map((i) => (
                                         <Ionicons
                                             key={i}
-                                            name={i < heartsGivenToday ? "heart" : "heart-outline"}
+                                            name={i < totalHeartsGivenToday ? "heart" : "heart-outline"}
                                             size={16}
-                                            color={i < heartsGivenToday ? "#FF6B6B" : "#ccc"}
+                                            color={i < totalHeartsGivenToday ? "#FF6B6B" : "#ccc"}
                                         />
                                     ))}
                                 </View>
                                 <Text style={[styles.heartStatLabel, darkMode && styles.heartStatLabelDark]}>
-                                    Given: {heartsGivenToday} / {MAX_DAILY_HEARTS}
+                                    Total Done: {totalHeartsGivenToday} / {MAX_DAILY_HEARTS}
                                 </Text>
                             </View>
 
-                            {/* Hearts Left Today */}
+                            {/* Remaining Today */}
                             <View style={[styles.heartStatBox, darkMode && styles.heartStatBoxDark]}>
                                 <Text style={[styles.heartStatValue, darkMode && styles.heartStatValueDark]}>
-                                    {heartsLeftToday}
+                                    {globalHeartsLeftToday}
                                 </Text>
                                 <Text style={[styles.heartStatLabel, darkMode && styles.heartStatLabelDark]}>
-                                    Remaining
+                                    Hearts Left
                                 </Text>
                             </View>
                         </View>
 
-                        {/* Already Given Indicator */}
-                        {hasGivenHeartsToday && heartsGivenToday > 0 && (
-                            <View style={[styles.indicatorBox, darkMode && styles.indicatorBoxDark]}>
-                                <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
-                                <Text style={[styles.indicatorText, darkMode && styles.indicatorTextDark]}>
-                                    You've given {heartsGivenToday} {heartsGivenToday === 1 ? 'heart' : 'hearts'} to this Pokémon today
-                                </Text>
-                            </View>
-                        )}
+                        {/* This Pokemon's Status */}
+                        <View style={[styles.indicatorBox, darkMode && styles.indicatorBoxDark, !hasHeartedThisPokemonToday && { backgroundColor: '#f0f0f0' }]}>
+                            <Ionicons
+                                name={hasHeartedThisPokemonToday ? "checkmark-circle" : "ellipse-outline"}
+                                size={18}
+                                color={hasHeartedThisPokemonToday ? "#4CAF50" : "#999"}
+                            />
+                            <Text style={[
+                                styles.indicatorText,
+                                darkMode && styles.indicatorTextDark,
+                                !hasHeartedThisPokemonToday && { color: '#666' }
+                            ]}>
+                                {hasHeartedThisPokemonToday
+                                    ? `Already hearted ${pokemon.nickname || pokemon.name} today!`
+                                    : `You haven't hearted ${pokemon.nickname || pokemon.name} today.`}
+                            </Text>
+                        </View>
                     </View>
 
                     {/* Close Button */}
