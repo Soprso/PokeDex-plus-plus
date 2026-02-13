@@ -1,112 +1,111 @@
-import { useEffect } from 'react';
-import { Dimensions } from 'react-native';
-import Animated, {
-    Easing,
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withRepeat,
-    withSequence,
-    withTiming,
-} from 'react-native-reanimated';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-const { width } = Dimensions.get('window');
-const PARTICLE_COUNT = 12;
-const HERO_HEIGHT = 450; // Approximate hero section height
-const HERO_CENTER_X = width / 2;
-const HERO_CENTER_Y = HERO_HEIGHT / 2;
+const PARTICLE_COUNT = 15;
 
-// Generate sparkle particles around the Pokemon image area
-const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
-    const angle = (i / PARTICLE_COUNT) * Math.PI * 2;
-    const radius = 80 + Math.random() * 60; // Distance from center
+interface ParticleProps {
+    id: number;
+    delay: number;
+    duration: number;
+    size: number;
+    left: string;
+    top: string;
+}
+
+const particles: ParticleProps[] = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+    // Positioning sparkles within 20-80% of the image area
+    const left = 20 + Math.random() * 60;
+    const top = 20 + Math.random() * 60;
+
     return {
         id: i,
-        x: HERO_CENTER_X + Math.cos(angle) * radius,
-        y: HERO_CENTER_Y + Math.sin(angle) * radius,
-        size: 4 + Math.random() * 6,
-        delay: Math.random() * 3000,
+        left: `${left}%`,
+        top: `${top}%`,
+        size: 8 + Math.random() * 12,
+        delay: Math.random() * 2000,
         duration: 1500 + Math.random() * 1000,
     };
 });
 
-function ShinySparkle({ particle }: { particle: typeof particles[0] }) {
-    const opacity = useSharedValue(0);
-    const scale = useSharedValue(0);
-    const rotate = useSharedValue(0);
+function ShinySparkle({ particle }: { particle: ParticleProps }) {
+    const anim = useRef(new Animated.Value(0)).current;
+    const rotate = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Sparkle appears, grows, then fades out
-        opacity.value = withDelay(
-            particle.delay,
-            withRepeat(
-                withSequence(
-                    withTiming(1, { duration: particle.duration * 0.3, easing: Easing.out(Easing.ease) }),
-                    withTiming(1, { duration: particle.duration * 0.4 }),
-                    withTiming(0, { duration: particle.duration * 0.3, easing: Easing.in(Easing.ease) })
-                ),
-                -1
-            )
-        );
+        const createAnim = () => {
+            return Animated.sequence([
+                Animated.delay(particle.delay),
+                Animated.loop(
+                    Animated.parallel([
+                        Animated.sequence([
+                            Animated.timing(anim, {
+                                toValue: 1,
+                                duration: particle.duration * 0.4,
+                                useNativeDriver: false,
+                                easing: Easing.out(Easing.ease),
+                            }),
+                            Animated.timing(anim, {
+                                toValue: 0,
+                                duration: particle.duration * 0.6,
+                                useNativeDriver: false,
+                                easing: Easing.in(Easing.ease),
+                            }),
+                        ]),
+                        Animated.timing(rotate, {
+                            toValue: 1,
+                            duration: particle.duration,
+                            useNativeDriver: false,
+                            easing: Easing.linear,
+                        })
+                    ])
+                )
+            ]);
+        };
 
-        // Scale pulse
-        scale.value = withDelay(
-            particle.delay,
-            withRepeat(
-                withSequence(
-                    withTiming(1.2, { duration: particle.duration * 0.3, easing: Easing.out(Easing.ease) }),
-                    withTiming(1, { duration: particle.duration * 0.4 }),
-                    withTiming(0, { duration: particle.duration * 0.3 })
-                ),
-                -1
-            )
-        );
+        const animation = createAnim();
+        animation.start();
 
-        // Gentle rotation
-        rotate.value = withDelay(
-            particle.delay,
-            withRepeat(
-                withTiming(360, {
-                    duration: particle.duration,
-                    easing: Easing.linear,
-                }),
-                -1
-            )
-        );
+        return () => animation.stop();
     }, []);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [
-            { translateX: particle.x },
-            { translateY: particle.y },
-            { scale: scale.value },
-            { rotate: `${rotate.value}deg` },
-        ],
-        opacity: opacity.value,
-    }));
+    const rotation = rotate.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '180deg'],
+    });
 
-    // 4-pointed star sparkle
     const starPath = `
-        M ${particle.size} 0
-        L ${particle.size * 1.15} ${particle.size * 0.85}
-        L ${particle.size * 2} ${particle.size}
-        L ${particle.size * 1.15} ${particle.size * 1.15}
-        L ${particle.size} ${particle.size * 2}
-        L ${particle.size * 0.85} ${particle.size * 1.15}
-        L 0 ${particle.size}
-        L ${particle.size * 0.85} ${particle.size * 0.85}
+        M ${particle.size / 2} 0
+        L ${particle.size * 0.6} ${particle.size * 0.4}
+        L ${particle.size} ${particle.size / 2}
+        L ${particle.size * 0.6} ${particle.size * 0.6}
+        L ${particle.size / 2} ${particle.size}
+        L ${particle.size * 0.4} ${particle.size * 0.6}
+        L 0 ${particle.size / 2}
+        L ${particle.size * 0.4} ${particle.size * 0.4}
         Z
     `;
 
-    // Random sparkle colors (gold, white, light blue for shiny effect)
     const colors = ['#FFD700', '#FFFFFF', '#87CEEB', '#FFA500'];
     const color = colors[particle.id % colors.length];
 
     return (
-        <Animated.View style={[{ position: 'absolute' }, animatedStyle]}>
-            <Svg width={particle.size * 2} height={particle.size * 2}>
-                <Path d={starPath} fill={color} opacity={0.9} />
+        <Animated.View
+            style={[
+                styles.sparkle,
+                {
+                    left: particle.left,
+                    top: particle.top,
+                    opacity: anim,
+                    transform: [
+                        { scale: anim },
+                        { rotate: rotation }
+                    ],
+                }
+            ]}
+        >
+            <Svg width={particle.size} height={particle.size}>
+                <Path d={starPath} fill={color} />
             </Svg>
         </Animated.View>
     );
@@ -114,10 +113,18 @@ function ShinySparkle({ particle }: { particle: typeof particles[0] }) {
 
 export default function ShinyEffect() {
     return (
-        <>
+        <View style={StyleSheet.absoluteFill}>
             {particles.map((particle) => (
                 <ShinySparkle key={particle.id} particle={particle} />
             ))}
-        </>
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    sparkle: {
+        position: 'absolute',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+});

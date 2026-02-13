@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { ScrollView } from './ScrollView';
 import { View } from './View';
 
@@ -26,22 +26,46 @@ export interface FlatListProps<T> {
     onRefresh?: () => void; // Add for compatibility
 }
 
-export function FlatList<T>({
-    data,
-    renderItem,
-    keyExtractor,
-    ListHeaderComponent,
-    ListFooterComponent,
-    ListEmptyComponent,
-    contentContainerStyle,
-    style,
-    numColumns = 1,
-    horizontal,
-    columnWrapperStyle,
-    onEndReached,
-    onEndReachedThreshold,
-    ...props
-}: FlatListProps<T>) {
+export const FlatList = forwardRef(<T extends any>(
+    {
+        data,
+        renderItem,
+        keyExtractor,
+        ListHeaderComponent,
+        ListFooterComponent,
+        ListEmptyComponent,
+        contentContainerStyle,
+        style,
+        numColumns = 1,
+        horizontal,
+        columnWrapperStyle,
+        onEndReached,
+        onEndReachedThreshold,
+        ...props
+    }: FlatListProps<T>,
+    ref: React.Ref<any>
+) => {
+    const scrollViewRef = useRef<any>(null);
+
+    useImperativeHandle(ref, () => ({
+        scrollToIndex: ({ index, animated }: { index: number; animated?: boolean }) => {
+            const node = scrollViewRef.current;
+            if (node) {
+                const itemWidth = node.clientWidth; // Simple assumption for a carousel
+                node.scrollTo({
+                    left: index * itemWidth,
+                    behavior: animated ? 'smooth' : 'auto'
+                });
+            }
+        },
+        scrollToOffset: ({ offset, animated }: { offset: number; animated?: boolean }) => {
+            scrollViewRef.current?.scrollTo({
+                left: offset,
+                behavior: animated ? 'smooth' : 'auto'
+            });
+        },
+        getScrollableNode: () => scrollViewRef.current,
+    }));
 
     // ScrollView handles style flattening
     if (!data || data.length === 0) {
@@ -81,20 +105,44 @@ export function FlatList<T>({
 
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-        const threshold = (onEndReachedThreshold || 0.5) * clientHeight;
+        const { scrollLeft, scrollTop, scrollWidth, scrollHeight, clientHeight, clientWidth } = e.currentTarget;
 
-        // Check if we are near the bottom
-        if (scrollHeight - scrollTop - clientHeight <= threshold) {
-            onEndReached?.({ distanceFromEnd: scrollHeight - scrollTop - clientHeight });
+        // Normalize event for React Native compatibility
+        const normalizedEvent = {
+            nativeEvent: {
+                contentOffset: {
+                    x: scrollLeft,
+                    y: scrollTop
+                },
+                contentSize: {
+                    width: scrollWidth,
+                    height: scrollHeight
+                },
+                layoutMeasurement: {
+                    width: clientWidth,
+                    height: clientHeight
+                }
+            },
+            currentTarget: e.currentTarget,
+            target: e.target
+        };
+
+        const threshold = (onEndReachedThreshold || 0.5) * (horizontal ? clientWidth : clientHeight);
+        const scrollPos = horizontal ? scrollLeft : scrollTop;
+        const dimension = horizontal ? clientWidth : clientHeight;
+        const totalSize = horizontal ? scrollWidth : scrollHeight;
+
+        if (totalSize - scrollPos - dimension <= threshold) {
+            onEndReached?.({ distanceFromEnd: totalSize - scrollPos - dimension });
         }
 
-        // Pass through original onScroll if it exists
-        (props as any).onScroll?.(e);
+        // Pass through normalized event
+        (props as any).onScroll?.(normalizedEvent);
     };
 
     return (
         <ScrollView
+            ref={scrollViewRef}
             contentContainerStyle={contentContainerStyle}
             style={style}
             horizontal={horizontal}
@@ -106,4 +154,4 @@ export function FlatList<T>({
             {ListFooterComponent}
         </ScrollView>
     );
-}
+});

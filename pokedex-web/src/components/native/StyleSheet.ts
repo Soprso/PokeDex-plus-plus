@@ -16,12 +16,20 @@ export type ImageStyle = React.CSSProperties & {
 };
 export type StyleProp<T> = T | Array<T | undefined> | undefined;
 
-// Helper to convert React Native transform arrays to CSS strings
-function convertTransforms(style: any): any {
+// Helper to convert React Native styles to CSS-compatible values
+function convertNativeStyles(style: any): any {
     if (!style || typeof style !== 'object') return style;
 
-    if (Array.isArray(style.transform)) {
-        const transforms = style.transform.map((t: any) => {
+    const newStyle = { ...style };
+
+    // Handle lineHeight: React Native numbers are pixels, CSS numbers are multipliers
+    if (typeof newStyle.lineHeight === 'number') {
+        newStyle.lineHeight = `${newStyle.lineHeight}px`;
+    }
+
+    // Handle transforms
+    if (Array.isArray(newStyle.transform)) {
+        const transforms = newStyle.transform.map((t: any) => {
             const key = Object.keys(t)[0];
             const value = t[key];
 
@@ -45,10 +53,10 @@ function convertTransforms(style: any): any {
             return '';
         }).filter(Boolean).join(' ');
 
-        return { ...style, transform: transforms };
+        newStyle.transform = transforms;
     }
 
-    return style;
+    return newStyle;
 }
 
 // Rename to avoid conflict with global StyleSheet
@@ -58,7 +66,7 @@ export const NativeStyleSheet = {
         if (!style) return undefined as unknown as T;
         if (!Array.isArray(style)) {
             // Handle transform array conversion for single objects
-            return convertTransforms(style) as T;
+            return convertNativeStyles(style) as T;
         }
 
         const result: any = {};
@@ -69,7 +77,7 @@ export const NativeStyleSheet = {
             }
         }
         // Convert transform arrays to CSS strings after merging
-        return convertTransforms(result);
+        return convertNativeStyles(result);
     },
     absoluteFill: {
         position: 'absolute',
