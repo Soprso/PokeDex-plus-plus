@@ -48,8 +48,13 @@ export default function HomeScreen() {
   // Load economy data from Clerk metadata
   const economy = useMemo(() => {
     const eco = (user?.unsafeMetadata.economy as any) || { balance: 0, streak: 0 };
-    console.log('Home: Economy Data:', eco, 'Metadata:', user?.unsafeMetadata);
     return eco;
+  }, [user?.unsafeMetadata]);
+
+  // Load nicknames from Clerk metadata
+  const nicknames: Record<number, string> = useMemo(() => {
+    if (!user) return {};
+    return (user.unsafeMetadata.nicknames as Record<number, string>) || {};
   }, [user?.unsafeMetadata]);
 
   // Economy System
@@ -160,8 +165,15 @@ export default function HomeScreen() {
   });
 
   // Derived Data
+  const pokemonWithNicknames = useMemo(() => {
+    return allPokemon.map(p => ({
+      ...p,
+      nickname: nicknames[p.id] || p.nickname
+    }));
+  }, [allPokemon, nicknames]);
+
   const filteredPokemon = useMemo(() => {
-    let result = allPokemon;
+    let result = pokemonWithNicknames;
 
     // 1. Region Filter
     if (selectedRegionIndex >= 0 && !searchQuery) {
@@ -357,8 +369,12 @@ export default function HomeScreen() {
         pokemon={displayedPokemon}
         onPokemonPress={handlePokemonPress}
         onPokemonLongPress={(p) => {
+          if (!user) {
+            setModals({ ...modals, auth: true });
+            return;
+          }
           setNicknameTarget(p);
-          setTempNickname(p.nickname || '');
+          setTempNickname(nicknames[p.id] || p.nickname || '');
           setModals({ ...modals, nickname: true });
         }}
         onEndReached={handleLoadMore}
@@ -366,7 +382,7 @@ export default function HomeScreen() {
           displayCount < filteredPokemon.length ? <ActivityIndicator style={{ padding: 20 }} /> : <View style={{ height: 100 }} />
         }
         buddyData={buddyData}
-        nicknames={{}} // Placeholder
+        nicknames={nicknames}
         settings={settings}
         refreshing={refreshing}
         onRefresh={refetch}
@@ -457,9 +473,24 @@ export default function HomeScreen() {
         onClose={() => setModals({ ...modals, nickname: false })}
         nickname={tempNickname}
         onNicknameChange={setTempNickname}
-        onSave={() => {
-          // Save logic
-          setModals({ ...modals, nickname: false });
+        onSave={async () => {
+          if (!nicknameTarget || !user) return;
+          try {
+            await user.update({
+              unsafeMetadata: {
+                ...user.unsafeMetadata,
+                nicknames: {
+                  ...(user.unsafeMetadata.nicknames as Record<number, string> || {}),
+                  [nicknameTarget.id]: tempNickname
+                }
+              }
+            });
+            setToast({ visible: true, message: `Updated nickname for ${nicknameTarget.name}!`, type: 'success' });
+            setModals({ ...modals, nickname: false });
+          } catch (error) {
+            console.error('Failed to save nickname:', error);
+            setToast({ visible: true, message: 'Failed to save nickname.', type: 'error' });
+          }
         }}
         pokemonName={nicknameTarget?.name || 'Pokemon'}
         darkMode={settings.darkMode}
