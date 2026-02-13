@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    categoryBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(255, 255, 255, 0.7)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, zIndex: 100, elevation: 5 },
+    categoryBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(255, 255, 255, 0.7)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, zIndex: 100, elevation: 5 },
     categoryBadgeLegendary: { backgroundColor: 'rgba(255, 215, 0, 0.3)', borderColor: '#FFD700' },
     categoryBadgeMythical: { backgroundColor: 'rgba(147, 51, 234, 0.3)', borderColor: '#d8b4fe' },
     categoryText: { color: '#333', fontSize: 10, fontWeight: '800', letterSpacing: '0.5px' },
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     } as any,
-    effectIconOverlay: { position: 'absolute', top: 8, right: 8, opacity: 0.9, padding: 4, backgroundColor: 'rgba(255, 255, 255, 0.5)', borderRadius: 12, zIndex: 100 } as any,
+    effectIconOverlay: { position: 'absolute', top: 50, left: 12, opacity: 0.9, padding: 4, backgroundColor: 'rgba(255, 255, 255, 0.5)', borderRadius: 12, zIndex: 100 } as any,
     itemInfoOverlay: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -237,6 +237,6 @@ const styles = StyleSheet.create({
     buyButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f9ff', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#e0f2fe' } as any,
     buyButtonText: { fontWeight: '700', marginRight: 4, fontSize: 13, color: '#0284c7' } as any,
     coinIconSmall: { width: 14, height: 14 } as any,
-    ownedBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#22c55e', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#fff', zIndex: 120 } as any,
+    ownedBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#22c55e', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#fff', zIndex: 120 } as any,
     ownedText: { color: '#fff', fontSize: 10, fontWeight: '800' } as any,
 } as any);
