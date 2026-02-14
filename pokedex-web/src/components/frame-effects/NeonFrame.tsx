@@ -1,41 +1,40 @@
 import { StyleSheet, View } from '@/components/native';
 
-export const NeonFrame = ({ children }: { children?: React.ReactNode }) => {
+export const NeonFrame = ({ children, color = '#39FF14' }: { children?: React.ReactNode; color?: string }) => {
+    const shadowColor = color;
     return (
         <View style={{ flex: 1 }}>
             {children}
             <View style={[StyleSheet.absoluteFill, { zIndex: 99 }]} pointerEvents="none">
                 {/* Outer Glowing Border */}
-                <View style={styles.outerBorder}>
+                <View style={[styles.outerBorder, { borderColor: color }]}>
                     <style>
                         {`
-                        @keyframes neonPulse {
-                            0% { box-shadow: 0 0 5px #39FF14, inset 0 0 5px #39FF14; opacity: 1; border-width: 2px; }
-                            50% { box-shadow: 0 0 20px #39FF14, inset 0 0 10px #39FF14; opacity: 0.8; border-width: 3px; }
-                            100% { box-shadow: 0 0 5px #39FF14, inset 0 0 5px #39FF14; opacity: 1; border-width: 2px; }
+                        @keyframes neonPulse_${color.replace('#', '')} {
+                            0% { box-shadow: 0 0 5px ${color}, inset 0 0 5px ${color}; opacity: 1; border-width: 2px; }
+                            50% { box-shadow: 0 0 20px ${color}, inset 0 0 10px ${color}; opacity: 0.8; border-width: 3px; }
+                            100% { box-shadow: 0 0 5px ${color}, inset 0 0 5px ${color}; opacity: 1; border-width: 2px; }
                         }
                         `}
                     </style>
                 </View>
 
                 {/* Corner Accents */}
-                <Corner style={{ top: -2, left: -2 }} />
-                <Corner style={{ top: -2, right: -2, transform: [{ rotate: '90deg' }] }} />
-                <Corner style={{ bottom: -2, right: -2, transform: [{ rotate: '180deg' }] }} />
-                <Corner style={{ bottom: -2, left: -2, transform: [{ rotate: '270deg' }] }} />
+                <Corner style={{ top: -2, left: -2 }} color={color} shadowColor={shadowColor} />
+                <Corner style={{ top: -2, right: -2, transform: [{ rotate: '90deg' }] }} color={color} shadowColor={shadowColor} />
+                <Corner style={{ bottom: -2, right: -2, transform: [{ rotate: '180deg' }] }} color={color} shadowColor={shadowColor} />
+                <Corner style={{ bottom: -2, left: -2, transform: [{ rotate: '270deg' }] }} color={color} shadowColor={shadowColor} />
             </View>
         </View>
     );
 };
 
-const Corner = ({ style }: { style: any }) => (
+const Corner = ({ style, color, shadowColor }: { style: any; color: string; shadowColor: string }) => (
     <View style={[styles.cornerContainer as any, style]}>
-        <View style={styles.cornerLineH as any} />
-        <View style={styles.cornerLineV as any} />
+        <View style={[styles.cornerLineH as any, { backgroundColor: color, shadowColor: shadowColor }]} />
+        <View style={[styles.cornerLineV as any, { backgroundColor: color, shadowColor: shadowColor }]} />
     </View>
 );
-
-const NEON_GREEN = '#39FF14';
 
 const styles = StyleSheet.create({
     outerBorder: {
@@ -43,9 +42,9 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderRadius: 16,
         margin: 0,
-        borderColor: '#39FF14',
         backgroundColor: 'transparent',
-        animation: 'neonPulse 1.6s infinite ease-in-out',
+        // animation property is handled via class or inline style in web, 
+        // but since we are using react-native-web + custom style tag:
     } as any,
     cornerContainer: {
         position: 'absolute',
@@ -56,8 +55,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 0, left: 0,
         width: 16, height: 2,
-        backgroundColor: NEON_GREEN,
-        shadowColor: NEON_GREEN,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 4,
@@ -67,8 +64,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 0, left: 0,
         width: 2, height: 16,
-        backgroundColor: NEON_GREEN,
-        shadowColor: NEON_GREEN,
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 4,
