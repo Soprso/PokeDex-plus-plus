@@ -7,10 +7,13 @@ export interface ShopItem {
     price: number;
     category: ShopItemCategory;
     type: 'consumable' | 'effect' | 'frame';
+    currency?: 'coins' | 'usd'; // Default to 'coins'
+    rewardAmount?: number; // For coin bundles
     image?: any; // Placeholder for require()
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
+    // ... existing items ...
     {
         id: 'frame_gold',
         name: 'Gold Frame',
@@ -114,5 +117,36 @@ export const SHOP_ITEMS: ShopItem[] = [
         price: 5,
         category: 'normal',
         type: 'consumable',
+    },
+    // Coin Bundles
+    {
+        id: 'coins_small',
+        name: 'Handful of Coins',
+        description: '1,000 Dex Coins to start your journey.',
+        price: 5.00,
+        category: 'normal',
+        type: 'consumable',
+        currency: 'usd',
+        rewardAmount: 1000,
+    },
+    {
+        id: 'coins_medium',
+        name: 'Sack of Coins',
+        description: '2,000 Dex Coins. Great value!',
+        price: 10.00,
+        category: 'normal',
+        type: 'consumable',
+        currency: 'usd',
+        rewardAmount: 2000,
+    },
+    {
+        id: 'coins_large',
+        name: 'Chest of Coins',
+        description: '10,000 Dex Coins. For the serious collector.',
+        price: 25.00,
+        category: 'mythical', // Stylistic choice for highest tier
+        type: 'consumable',
+        currency: 'usd',
+        rewardAmount: 10000,
     },
 ];

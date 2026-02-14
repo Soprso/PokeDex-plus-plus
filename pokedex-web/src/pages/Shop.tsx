@@ -64,7 +64,7 @@ export default function ShopScreen() {
             return;
         }
 
-        if (balance < item.price) {
+        if (item.currency !== 'usd' && balance < item.price) {
             setModalConfig({
                 title: 'Insufficient Coins',
                 message: `You need ${item.price - balance} more Dex Coins to buy this ${item.name}!`
@@ -76,7 +76,9 @@ export default function ShopScreen() {
         setPendingItem(item);
         setModalConfig({
             title: 'Confirm Purchase',
-            message: `Would you like to buy "${item.name}" for ${item.price} Dex Coins?`
+            message: item.currency === 'usd'
+                ? `Buy "${item.name}" for $${item.price.toFixed(2)}?`
+                : `Would you like to buy "${item.name}" for ${item.price} Dex Coins?`
         });
         setModals(prev => ({ ...prev, confirm: true }));
     };
@@ -94,7 +96,7 @@ export default function ShopScreen() {
             const latestInventory = (currentMetadata.inventory as Inventory) || {};
             const item = pendingItem;
 
-            if (latestEconomy.balance < item.price) {
+            if (item.currency !== 'usd' && latestEconomy.balance < item.price) {
                 setModalConfig({
                     title: 'Insufficient Coins',
                     message: `Your balance updated. You need ${item.price - latestEconomy.balance} more Dex Coins.`
@@ -103,7 +105,19 @@ export default function ShopScreen() {
                 return;
             }
 
-            const newBalance = latestEconomy.balance - item.price;
+            let newBalance = latestEconomy.balance;
+
+            if (item.currency === 'usd') {
+                // Add coins for real money purchase
+                newBalance += (item.rewardAmount || 0);
+            } else {
+                // Deduct coins for clear standard purchase
+                newBalance -= item.price;
+            }
+
+            // Don't add consumables to inventory if they are instant-use (like coins)
+            // But we might want to track purchase history later. 
+            // For now, let's just add to inventory to track "times purchased"
             const newCount = (latestInventory[item.id] || 0) + 1;
             const newInventory = { ...latestInventory, [item.id]: newCount };
 
