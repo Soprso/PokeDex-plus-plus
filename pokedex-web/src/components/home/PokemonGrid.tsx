@@ -306,11 +306,19 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     nameText: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 14,
+        fontWeight: '800', // Extra bold
         color: '#333',
         textTransform: 'capitalize',
-        marginTop: 4,
+        marginTop: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        overflow: 'hidden',
+        textAlign: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
     },
     typesContainer: {
         flexDirection: 'row',
