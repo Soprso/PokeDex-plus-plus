@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 
 import authBg from '@/assets/images/auth_background.png';
-import pokeballAccent from '@/assets/images/pokeball_accent.png';
 
 // Simple OAuth shim since useOAuth is not directly in clerk-react the same way as clerk-expo 
 // or maybe it is? Checking docs... usage is complex. 
@@ -187,19 +186,18 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
                 <View style={[styles.modalContent, darkMode && styles.modalContentDark]}>
                     {/* Close Button */}
                     <Pressable style={styles.closeButton} onPress={handleClose}>
-                        <Ionicons name="close" size={28} color={darkMode ? '#fff' : '#000'} />
+                        <Ionicons name="close" size={24} color={darkMode ? '#fff' : '#000'} />
                     </Pressable>
 
                     {/* Peaceful Background - Subtle Atmosphere */}
-                    {/* Peaceful Background - Subtle Atmosphere */}
                     <Image
                         source={{ uri: authBg }}
-                        style={[styles.backgroundImage, { width: width, height: height * 0.4 }]}
+                        style={[styles.backgroundImage, { borderRadius: 24 }]} // Match container radius
                     />
 
-                    {/* Decorative Elements */}
+                    {/* Decorative Elements - Floating Pokeball */}
                     <Image
-                        source={{ uri: pokeballAccent }}
+                        source={{ uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png' }}
                         style={styles.accentImage}
                         resizeMode="contain"
                     />
@@ -348,7 +346,11 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
                                     onPress={handleGoogleAuth}
                                     disabled={loading}
                                 >
-                                    <Ionicons name="logo-google" size={20} color="#fff" />
+                                    <Image
+                                        source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/48px-Google_%22G%22_logo.svg.png' }}
+                                        style={{ width: 20, height: 20, marginRight: 10 }}
+                                        resizeMode="contain"
+                                    />
                                     <Text style={styles.oauthButtonText}>Continue with Google</Text>
                                 </Pressable>
 
@@ -383,102 +385,116 @@ export default function AuthModal({ visible, onClose, darkMode }: AuthModalProps
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     modalContent: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        paddingTop: 24,
-        paddingHorizontal: 28,
-        paddingBottom: 48,
-        height: '100%',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 24,
+        paddingTop: 40, // Increased
+        paddingHorizontal: 36, // Increased
+        paddingBottom: 56, // Increased
+        width: '90%',
+        maxWidth: 440, // Slightly wider
+        maxHeight: '90%',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
+        elevation: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.8)',
     },
     modalContentDark: {
-        backgroundColor: '#1a1a1a',
+        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     closeButton: {
-        alignSelf: 'flex-end',
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        zIndex: 20,
         padding: 8,
-        zIndex: 10,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 20,
     },
     backgroundImage: {
         position: 'absolute',
         width: '100%',
         height: '100%',
-        opacity: 0.08,
+        opacity: 0.05,
         top: 0,
         left: 0,
+        borderRadius: 24,
     },
     accentImage: {
         position: 'absolute',
-        bottom: 40,
-        right: 20,
-        width: 60,
-        height: 60,
-        opacity: 0.1,
+        top: -35,
+        alignSelf: 'center',
+        width: 90, // Larger
+        height: 90,
+        zIndex: 15,
     },
     headerSection: {
-        marginTop: 16,
-        marginBottom: 32,
-        paddingHorizontal: 8,
+        marginTop: 48, // More space
+        marginBottom: 36,
+        paddingHorizontal: 12,
+        alignItems: 'center',
     },
     headerTitle: {
-        fontSize: 24,
-        fontWeight: '600',
+        fontSize: 28, // Larger
+        fontWeight: '700',
         color: '#1a1a1a',
         textAlign: 'center',
-        marginBottom: 8,
-        letterSpacing: 0.3,
+        marginBottom: 10,
+        letterSpacing: 0.5,
     },
     headerTitleDark: {
         color: '#fff',
     },
     headerSubtitle: {
-        fontSize: 14,
+        fontSize: 16,
         color: '#666',
         textAlign: 'center',
-        lineHeight: 20,
+        lineHeight: 24,
         fontWeight: '400',
     },
     headerSubtitleDark: {
-        color: '#999',
+        color: '#aaa',
     },
     title: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: 'bold',
         color: '#000',
         marginBottom: 24,
         textAlign: 'center',
+        marginTop: 20,
     },
     titleDark: {
         color: '#fff',
     },
     scrollView: {
-        flex: 1,
+        width: '100%',
     },
     inputContainer: {
-        marginBottom: 24,
+        marginBottom: 24, // Increased spacing
     },
     label: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
-        marginBottom: 8,
+        color: '#444',
+        marginBottom: 10, // More space between label and input
+        marginLeft: 4,
     },
     labelDark: {
-        color: '#ddd',
+        color: '#ccc',
     },
     input: {
         backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 14,
+        paddingHorizontal: 18,
+        paddingVertical: 16,
         fontSize: 16,
         color: '#000',
         borderWidth: 1,
@@ -491,37 +507,47 @@ const styles = StyleSheet.create({
     },
     emailButton: {
         backgroundColor: '#007AFF',
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 16,
+        padding: 18, // Taller button
         alignItems: 'center',
-        marginTop: 8,
+        marginTop: 16,
+        shadowColor: '#007AFF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 4,
     },
     emailButtonText: {
         color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     buttonPressed: {
-        opacity: 0.7,
+        opacity: 0.9,
+        transform: [{ scale: 0.98 }],
     },
     buttonDisabled: {
-        opacity: 0.5,
+        opacity: 0.6,
     },
     toggleMode: {
-        marginTop: 16,
+        marginTop: 24,
+        marginBottom: 12,
         alignItems: 'center',
+        padding: 8,
     },
     toggleModeText: {
         color: '#007AFF',
-        fontSize: 14,
+        fontSize: 15,
+        fontWeight: '500',
     },
     toggleModeTextDark: {
-        color: '#4da6ff',
+        color: '#66b3ff',
     },
     divider: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 24,
+        marginVertical: 28, // More space around divider
     },
     dividerLine: {
         flex: 1,
@@ -532,41 +558,51 @@ const styles = StyleSheet.create({
         backgroundColor: '#444',
     },
     dividerText: {
-        marginHorizontal: 12,
+        marginHorizontal: 16,
         color: '#999',
-        fontSize: 14,
+        fontSize: 13,
+        fontWeight: '600',
+        textTransform: 'uppercase',
     },
     dividerTextDark: {
         color: '#666',
     },
     verificationText: {
-        fontSize: 14,
-        color: '#666',
+        fontSize: 15,
+        color: '#555',
         textAlign: 'center',
         marginBottom: 24,
-        lineHeight: 20,
+        lineHeight: 22,
+        marginTop: 10,
     },
     verificationTextDark: {
-        color: '#999',
+        color: '#bbb',
     },
     oauthButton: {
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 16,
+        padding: 18, // Taller button
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 1,
     },
     googleButton: {
-        backgroundColor: '#4285F4',
     },
     facebookButton: {
         backgroundColor: '#1877F2',
+        borderColor: '#1877F2',
     },
     oauthButtonText: {
-        color: '#fff',
+        color: '#333',
         fontSize: 16,
         fontWeight: '600',
-        marginLeft: 8,
     },
 });
