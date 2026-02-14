@@ -24,6 +24,12 @@ import bgMagmaStorm from '@/assets/card-effects/magma-storm.jpg';
 import bgNeonCyber from '@/assets/card-effects/neon-cyber.jpg';
 import bgRockTomb from '@/assets/card-effects/rock-tomb.jpg';
 
+// Coin Bundle Assets
+import imgChest from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/chest_of_coins_1771095764529.png';
+import bgCoins from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/coins_bg_1771095782639.png';
+import imgHandful from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/handful_of_coins_1771095479292.png';
+import imgSack from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/sack_of_coins_1771095749164.png';
+
 interface ShopItemCardProps {
     item: ShopItem;
     count: number;
@@ -50,7 +56,18 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
         }
     };
 
-    const bgImage = item.type === 'effect' ? getEffectBackground(item.id) : TYPE_BACKGROUNDS['electric'];
+    const bgImage = item.type === 'effect' ? getEffectBackground(item.id) : (
+        item.currency === 'usd' ? { uri: bgCoins } : TYPE_BACKGROUNDS['electric']
+    );
+
+    const getBundleImage = (id: string) => {
+        switch (id) {
+            case 'coins_small': return imgHandful;
+            case 'coins_medium': return imgSack;
+            case 'coins_large': return imgChest;
+            default: return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png';
+        }
+    };
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
 
     return (
@@ -93,20 +110,26 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                     {/* Image container */}
                     <View style={styles.imageContainer}>
                         <Image
-                            source={{ uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
+                            source={{ uri: item.currency === 'usd' ? getBundleImage(item.id) : 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
                             style={styles.previewImage}
                             resizeMode="contain"
                         />
                     </View>
 
                     {/* Name */}
-                    <Text style={styles.cardName}>Pikachu</Text>
+                    <Text style={styles.cardName}>{item.currency === 'usd' ? 'Coins' : 'Pikachu'}</Text>
 
                     {/* Types */}
                     <View style={styles.cardTypeContainer}>
-                        <View style={[styles.typePill, { backgroundColor: TYPE_COLORS['electric'] }]}>
-                            <Image source={TYPE_ICONS['electric']} style={styles.cardTypeIcon} />
-                        </View>
+                        {item.currency === 'usd' ? (
+                            <View style={[styles.typePill, { backgroundColor: '#FFD700' }]}>
+                                <Image source={CoinIcon} style={styles.cardTypeIcon} />
+                            </View>
+                        ) : (
+                            <View style={[styles.typePill, { backgroundColor: TYPE_COLORS['electric'] }]}>
+                                <Image source={TYPE_ICONS['electric']} style={styles.cardTypeIcon} />
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -137,9 +160,20 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
             <View style={[styles.itemInfoOverlay, isDark && styles.itemInfoOverlayDark] as any}>
                 <Text style={[styles.itemName, isDark && styles.textDark] as any}>{item.name}</Text>
                 <Text style={styles.itemDesc} numberOfLines={2}>{item.description}</Text>
-                <Pressable style={styles.buyButton} onPress={onBuy}>
-                    <Text style={styles.buyButtonText}>{item.price === 0 ? 'Free' : item.price}</Text>
-                    <Image source={CoinIcon} style={styles.coinIconSmall} />
+                <Pressable
+                    style={[
+                        styles.buyButton,
+                        item.currency === 'usd' && styles.buyButtonUSD
+                    ] as any}
+                    onPress={onBuy}
+                >
+                    <Text style={[
+                        styles.buyButtonText,
+                        item.currency === 'usd' && styles.buyButtonTextUSD
+                    ] as any}>
+                        {item.currency === 'usd' ? `$${item.price.toFixed(2)}` : (item.price === 0 ? 'Free' : item.price)}
+                    </Text>
+                    {item.currency !== 'usd' && <Image source={CoinIcon} style={styles.coinIconSmall} />}
                 </Pressable>
             </View>
         </View>
@@ -256,7 +290,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#6366f1',
         paddingHorizontal: 28,
         paddingVertical: 14,
-        marginTop: 8,
+        marginTop: 12,
+        marginBottom: 8,
+        marginRight: 4,
         borderRadius: 32,
         alignSelf: 'flex-end',
         borderWidth: 1,
@@ -267,7 +303,15 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 4,
     } as any,
+    buyButtonUSD: {
+        backgroundColor: '#10b981', // Emerald green for money
+        borderColor: '#059669',
+        shadowColor: '#10b981',
+        paddingHorizontal: 32,
+        paddingVertical: 16,
+    } as any,
     buyButtonText: { fontWeight: '800', marginRight: 6, fontSize: 22, color: '#fff' } as any,
+    buyButtonTextUSD: { marginRight: 0 } as any,
     coinIconSmall: { width: 26, height: 26 } as any,
     ownedBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#22c55e', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', zIndex: 120, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 4 } as any,
     ownedText: { color: '#fff', fontSize: 12, fontWeight: '900' } as any,
