@@ -2,6 +2,7 @@ import SkeletonPokemonDetails from "@/components/SkeletonPokemonDetails";
 import TypeEffectOverlay from "@/components/TypeEffectOverlay";
 import { LinearGradient, SafeAreaView } from '@/components/native';
 import ShinyEffect from "@/components/type-effects/ShinyEffect";
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React, { useEffect, useRef, useState } from "react";
 import { FiArrowLeft, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import {
@@ -377,25 +378,9 @@ export default function Details() {
     const [hasEvolution, setHasEvolution] = useState(true);
     const [abilities, setAbilities] = useState<Ability[]>([]);
     const [speciesInfo, setSpeciesInfo] = useState<SpeciesInfo | null>(null);
-    const [settings, setSettings] = useState({ darkMode: false });
+    const darkMode = useColorScheme() === 'dark';
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
-
-    // Load settings from localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem('pokedex-settings');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                setSettings(parsed);
-            } catch (e) {
-                console.error('Failed to parse settings:', e);
-            }
-        }
-    }, []);
-
-    const darkMode = settings.darkMode;
-
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scrollX = useRef(new Animated.Value(0)).current;

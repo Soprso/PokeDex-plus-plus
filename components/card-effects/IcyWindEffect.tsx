@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@/components/native/Icons';
 import React, { useEffect, useMemo } from 'react';
 import { DimensionValue, Image, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { GlowBorder } from './index';
 
-const BACKGROUND_IMAGE = require('@/assets/card-effects/icy-wind.jpg');
+import BACKGROUND_IMAGE from '@/assets/card-effects/icy-wind.jpg';
 
 const IceParticle = ({ delay, xPos, scale, duration }: { delay: number; xPos: DimensionValue; scale: number; duration: number }) => {
     const translateY = useSharedValue(-20);
