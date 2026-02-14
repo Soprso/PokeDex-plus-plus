@@ -4,13 +4,15 @@ import { SHOP_ITEMS, type ShopItem } from '@/constants/shopItems';
 import { type DailyInteraction, type EconomyData, type Inventory } from '@/types';
 import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useColorScheme, useWindowDimensions, View, type ViewToken } from 'react-native';
+import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigate } from 'react-router-dom';
 // const InteractionIcon = require('@/assets/images/pokeball.png');
 import coinIcon from '@/assets/images/dex-coin.png';
 import { EconomyModal } from '@/components/home/modals/EconomyModal';
 const CoinIcon = coinIcon;
+
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type TabType = 'effects' | 'frames' | 'items';
 

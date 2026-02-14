@@ -1,5 +1,5 @@
 import type { IconBaseProps } from 'react-icons';
-import { IoMdAdd, IoMdArrowBack, IoMdArrowDown, IoMdArrowUp, IoMdCamera, IoMdCart, IoMdCheckmark, IoMdClose, IoMdCreate, IoMdDownload, IoMdFlash, IoMdFlashOff, IoMdGlobe, IoMdHeart, IoMdHome, IoMdImages, IoMdPerson, IoMdReverseCamera, IoMdSearch, IoMdSettings, IoMdShare, IoMdSwap, IoMdText, IoMdTrash } from "react-icons/io";
+import { IoMdAdd, IoMdArrowBack, IoMdArrowDown, IoMdArrowUp, IoMdCamera, IoMdCart, IoMdCheckmark, IoMdClose, IoMdCreate, IoMdDownload, IoMdFlash, IoMdFlashOff, IoMdGlobe, IoMdHeart, IoMdHome, IoMdImages, IoMdPerson, IoMdReverseCamera, IoMdSearch, IoMdSettings, IoMdShare, IoMdSnow, IoMdSwap, IoMdText, IoMdTrash } from "react-icons/io";
 import { MdFilterList } from "react-icons/md";
 
 export const Ionicons = (props: { name: string; size?: number; color?: string; style?: any }) => {
@@ -41,6 +41,7 @@ export const Ionicons = (props: { name: string; size?: number; color?: string; s
         case 'arrow-up': return <IoMdArrowUp {...iconProps} />;
         case 'arrow-down': return <IoMdArrowDown {...iconProps} />;
         case 'text': return <IoMdText {...iconProps} />;
+        case 'snow': return <IoMdSnow {...iconProps} />;
         case 'alert-circle': return <span style={{ color, fontSize: size }}>!</span>;
         default: return null;
     }
