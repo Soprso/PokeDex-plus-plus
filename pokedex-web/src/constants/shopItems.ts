@@ -114,7 +114,7 @@ export const SHOP_ITEMS: ShopItem[] = [
         id: 'buddy_interaction',
         name: 'Buddy Interaction',
         description: 'Get +1 Buddy Interaction for today.',
-        price: 5,
+        price: 200,
         category: 'normal',
         type: 'consumable',
     },

@@ -25,10 +25,9 @@ import bgNeonCyber from '@/assets/card-effects/neon-cyber.jpg';
 import bgRockTomb from '@/assets/card-effects/rock-tomb.jpg';
 
 // Coin Bundle Assets
-import imgChest from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/chest_of_coins_1771095764529.png';
-import bgCoins from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/coins_bg_1771095782639.png';
-import imgHandful from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/handful_of_coins_1771095479292.png';
-import imgSack from '/home/shadowmonarch/.gemini/antigravity/brain/47369331-c68c-438c-a025-655e3d64eb77/sack_of_coins_1771095749164.png';
+import imgChest from '@/assets/images/shop/coins_large.png';
+import imgSack from '@/assets/images/shop/coins_medium.png';
+import imgHandful from '@/assets/images/shop/coins_small.png';
 
 interface ShopItemCardProps {
     item: ShopItem;
@@ -39,7 +38,7 @@ interface ShopItemCardProps {
     cardWidth: number;
 }
 
-export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay, cardWidth }: ShopItemCardProps) => {
+export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth }: ShopItemCardProps) => {
     const getEffectBackground = (id: string) => {
         switch (id) {
             case 'extra_love': return bgExtraLove;
@@ -57,7 +56,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
     };
 
     const bgImage = item.type === 'effect' ? getEffectBackground(item.id) : (
-        item.currency === 'usd' ? { uri: bgCoins } : TYPE_BACKGROUNDS['electric']
+        item.currency === 'usd' ? undefined : TYPE_BACKGROUNDS['electric']
     );
 
     const getBundleImage = (id: string) => {
@@ -71,10 +70,15 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
 
     return (
-        <View style={[styles.itemCard, isDark && styles.itemCardDark, { width: cardWidth }] as any}>
+        <View style={[
+            styles.itemCard,
+            isDark && styles.itemCardDark,
+            item.currency === 'usd' && (isDark ? styles.usdCardDark : styles.usdCard),
+            { width: cardWidth }
+        ] as any}>
             <ImageBackground
                 source={bgImage}
-                style={styles.cardBackground}
+                style={[styles.cardBackground, item.currency === 'usd' && { backgroundColor: isDark ? '#0f172a' : '#1e293b' }]}
                 imageStyle={styles.cardBackgroundImage}
             >
                 {/* Watermark */}
@@ -110,8 +114,11 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                     {/* Image container */}
                     <View style={styles.imageContainer}>
                         <Image
-                            source={{ uri: item.currency === 'usd' ? getBundleImage(item.id) : 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
-                            style={styles.previewImage}
+                            source={item.currency === 'usd' ? getBundleImage(item.id) : { uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
+                            style={[
+                                styles.previewImage,
+                                item.currency === 'usd' && { mixBlendMode: 'screen' } as any
+                            ]}
                             resizeMode="contain"
                         />
                     </View>
@@ -145,8 +152,12 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                     ] as any}>{item.category.toUpperCase()}</Text>
                 </View>
 
-                {/* Owned Badge */}
-                {count > 0 && <View style={styles.ownedBadge}><Text style={styles.ownedText}>{count}</Text></View>}
+                {/* Owned Badge - Hide for USD items as they are consumables/currency */}
+                {count > 0 && item.currency !== 'usd' && (
+                    <View style={styles.ownedBadge}>
+                        <Text style={styles.ownedText}>{count}</Text>
+                    </View>
+                )}
 
                 {/* Effects Overlay - Static icon if not special effect */}
                 {!isSpecialEffect && item.type === 'effect' && (
@@ -288,29 +299,48 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#6366f1',
-        paddingHorizontal: 28,
-        paddingVertical: 14,
+        paddingHorizontal: 30,
+        paddingVertical: 15,
         marginTop: 12,
         marginBottom: 8,
-        marginRight: 4,
-        borderRadius: 32,
+        marginRight: 6,
+        borderRadius: 40,
         alignSelf: 'flex-end',
-        borderWidth: 1,
-        borderColor: '#4f46e5',
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.2)',
         shadowColor: '#6366f1',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 6,
     } as any,
     buyButtonUSD: {
         backgroundColor: '#10b981', // Emerald green for money
-        borderColor: '#059669',
+        borderColor: 'rgba(255,255,255,0.3)',
         shadowColor: '#10b981',
-        paddingHorizontal: 32,
-        paddingVertical: 16,
+        paddingHorizontal: 48,
+        paddingVertical: 22,
+        marginVertical: 14,
+        marginRight: 20,
     } as any,
-    buyButtonText: { fontWeight: '800', marginRight: 6, fontSize: 22, color: '#fff' } as any,
+    usdCard: {
+        borderColor: '#334155',
+        backgroundColor: '#1e293b',
+    } as any,
+    usdCardDark: {
+        borderColor: '#1e293b',
+        backgroundColor: '#0f172a',
+    } as any,
+    buyButtonText: {
+        fontWeight: '900',
+        marginRight: 6,
+        fontSize: 24,
+        color: '#fff',
+        letterSpacing: -0.5,
+        textShadowColor: 'rgba(0,0,0,0.2)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 3,
+    } as any,
     buyButtonTextUSD: { marginRight: 0 } as any,
     coinIconSmall: { width: 26, height: 26 } as any,
     ownedBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#22c55e', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', zIndex: 120, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 4 } as any,
