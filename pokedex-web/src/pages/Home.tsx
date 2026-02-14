@@ -627,7 +627,10 @@ export default function HomeScreen() {
         visible={modals.buddy}
         onClose={() => setModals({ ...modals, buddy: false })}
         isSignedIn={!!user}
-        onSignIn={() => setModals({ ...modals, auth: true })}
+        onSignIn={() => {
+          setModals({ ...modals, buddy: false });
+          navigate('/profile');
+        }}
         darkMode={settings.darkMode}
       />
 
