@@ -68,28 +68,54 @@ export function PokemonGrid({
         const frameId = cardFrames[item.id];
 
         const renderEffect = () => {
-            switch (effectId) {
-                case 'extra_love': return <ExtraLoveEffect />;
-                case 'effect_neon_cyber': return <NeonCyberEffect />;
-                case 'effect_ghostly_mist': return <GhostlyMistEffect />;
-                case 'effect_golden_glory': return <GoldenGloryEffect />;
-                case 'effect_icy_wind': return <IcyWindEffect />;
-                case 'effect_magma_storm': return <MagmaStormEffect />;
-                case 'effect_frenzy_plant': return <FrenzyPlantEffect />;
-                case 'effect_bubble_beam': return <BubbleBeamEffect />;
-                case 'effect_air_slash': return <AirSlashEffect />;
-                case 'effect_rock_tomb': return <RockTombEffect />;
-                case 'effect_best_buddy': return <ShineOverlay />;
-                default: return null;
+            // Priority: Manual Effect > Buddy Effect
+            if (effectId && effectId !== 'none') {
+                switch (effectId) {
+                    case 'extra_love': return <ExtraLoveEffect />;
+                    case 'effect_neon_cyber': return <NeonCyberEffect />;
+                    case 'effect_ghostly_mist': return <GhostlyMistEffect />;
+                    case 'effect_golden_glory': return <GoldenGloryEffect />;
+                    case 'effect_icy_wind': return <IcyWindEffect />;
+                    case 'effect_magma_storm': return <MagmaStormEffect />;
+                    case 'effect_frenzy_plant': return <FrenzyPlantEffect />;
+                    case 'effect_bubble_beam': return <BubbleBeamEffect />;
+                    case 'effect_air_slash': return <AirSlashEffect />;
+                    case 'effect_rock_tomb': return <RockTombEffect />;
+                    case 'effect_best_buddy': return <ShineOverlay color="rgba(255, 215, 0, 0.4)" />;
+                    default: return null;
+                }
             }
+
+            // Automatic Buddy Effects
+            if (buddy) {
+                if (buddy.level === 4) {
+                    return <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2000} diagonal />;
+                } else if (buddy.level === 3) {
+                    return <ShineOverlay color="rgba(229, 228, 226, 0.4)" duration={2500} diagonal />;
+                }
+            }
+            return null;
         };
 
         const renderFrame = (children: React.ReactNode) => {
-            switch (frameId) {
-                case 'frame_gold': return <GoldFrame>{children}</GoldFrame>;
-                case 'frame_neon': return <NeonFrame>{children}</NeonFrame>;
-                default: return children;
+            // Priority: Manual Frame > Buddy Frame
+            if (frameId && frameId !== 'none') {
+                switch (frameId) {
+                    case 'frame_gold': return <GoldFrame>{children}</GoldFrame>;
+                    case 'frame_neon': return <NeonFrame>{children}</NeonFrame>;
+                    default: return children;
+                }
             }
+
+            // Automatic Buddy Frames
+            if (buddy) {
+                if (buddy.level === 4) {
+                    return <GoldFrame>{children}</GoldFrame>;
+                } else if (buddy.level >= 2) {
+                    return <NeonFrame color="#00f2ff">{children}</NeonFrame>;
+                }
+            }
+            return children;
         };
 
         return (
