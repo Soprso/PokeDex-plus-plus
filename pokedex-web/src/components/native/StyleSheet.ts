@@ -22,6 +22,45 @@ function convertNativeStyles(style: any): any {
 
     const newStyle = { ...style };
 
+    // Handle shorthands
+    if (newStyle.paddingHorizontal !== undefined) {
+        newStyle.paddingLeft = newStyle.paddingHorizontal;
+        newStyle.paddingRight = newStyle.paddingHorizontal;
+        delete newStyle.paddingHorizontal;
+    }
+    if (newStyle.paddingVertical !== undefined) {
+        newStyle.paddingTop = newStyle.paddingVertical;
+        newStyle.paddingBottom = newStyle.paddingVertical;
+        delete newStyle.paddingVertical;
+    }
+    if (newStyle.marginHorizontal !== undefined) {
+        newStyle.marginLeft = newStyle.marginHorizontal;
+        newStyle.marginRight = newStyle.marginHorizontal;
+        delete newStyle.marginHorizontal;
+    }
+    if (newStyle.marginVertical !== undefined) {
+        newStyle.marginTop = newStyle.marginVertical;
+        newStyle.marginBottom = newStyle.marginVertical;
+        delete newStyle.marginVertical;
+    }
+
+    // Handle shadows
+    if (newStyle.shadowColor || newStyle.shadowOffset || newStyle.shadowRadius) {
+        const color = newStyle.shadowColor || 'rgba(0,0,0,0.5)';
+        const offset = newStyle.shadowOffset || { width: 0, height: 0 };
+        const radius = newStyle.shadowRadius || 0;
+        // Simple conversion to box-shadow - opacity not easily handled for all color formats without complex parser
+
+        // Simple conversion to box-shadow
+        newStyle.boxShadow = `${offset.width}px ${offset.height}px ${radius}px ${color}`;
+
+        delete newStyle.shadowColor;
+        delete newStyle.shadowOffset;
+        delete newStyle.shadowOpacity;
+        delete newStyle.shadowRadius;
+        delete newStyle.elevation;
+    }
+
     // Handle lineHeight: React Native numbers are pixels, CSS numbers are multipliers
     if (typeof newStyle.lineHeight === 'number') {
         newStyle.lineHeight = `${newStyle.lineHeight}px`;

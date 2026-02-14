@@ -1,7 +1,7 @@
 import { Ionicons } from '@/components/native/Icons';
 import { REGIONS } from '@/constants/regions';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface FilterBarProps {
     searchQuery: string;
@@ -15,68 +15,48 @@ interface FilterBarProps {
 export function FilterBar({ searchQuery, onSearchChange, selectedRegionIndex, onRegionSelect, onClearAll, darkMode }: FilterBarProps) {
     const [localSearchQuery, setLocalSearchQuery] = React.useState(searchQuery);
 
-    // Sync local state with prop (for external changes like "Clear All")
     React.useEffect(() => {
         setLocalSearchQuery(searchQuery);
     }, [searchQuery]);
 
-    // Debounce the search change
     React.useEffect(() => {
         const timer = setTimeout(() => {
             if (localSearchQuery !== searchQuery) {
                 onSearchChange(localSearchQuery);
             }
         }, 300);
-
         return () => clearTimeout(timer);
     }, [localSearchQuery, onSearchChange, searchQuery]);
 
     return (
         <View style={styles.container}>
             <View style={styles.contentWrapper}>
-                {/* Search Row */}
                 <View style={styles.searchRow}>
-                    {/* Search Input */}
                     <View style={[styles.searchContainer, darkMode && styles.searchContainerDark]}>
-                        <Ionicons name="search" size={20} color={darkMode ? '#aaa' : '#666'} style={styles.searchIcon} />
+                        <Ionicons name="search" size={18} color={darkMode ? '#aaa' : '#666'} style={styles.searchIcon} />
                         <TextInput
                             style={[styles.searchInput, darkMode && styles.searchInputDark]}
-                            placeholder="Search Pokémon, ID, or Nickname..."
+                            placeholder="Search Pokémon..."
                             placeholderTextColor={darkMode ? '#aaa' : '#999'}
                             value={localSearchQuery}
                             onChangeText={setLocalSearchQuery}
                         />
                         {localSearchQuery.length > 0 && (
-                            <Pressable onPress={() => {
-                                setLocalSearchQuery('');
-                                onSearchChange('');
-                            }} style={styles.clearButton}>
-                                <Ionicons name="close-circle" size={18} color={darkMode ? '#aaa' : '#ccc'} />
+                            <Pressable onPress={() => { setLocalSearchQuery(''); onSearchChange(''); }} style={styles.clearButton}>
+                                <Ionicons name="close-circle" size={16} color={darkMode ? '#aaa' : '#ccc'} />
                             </Pressable>
                         )}
                     </View>
 
-                    {/* Clear All Button */}
                     <Pressable
-                        style={({ pressed }) => [
-                            styles.clearAllButton,
-                            darkMode && styles.clearAllButtonDark,
-                            pressed && { opacity: 0.8 }
-                        ]}
+                        style={[styles.clearAllButton, darkMode && styles.clearAllButtonDark]}
                         onPress={onClearAll}
                     >
-                        <Ionicons name="refresh" size={18} color={darkMode ? '#fff' : '#333'} style={styles.clearAllIcon} />
-                        <Text style={[styles.clearAllText, darkMode && styles.clearAllTextDark]}>Clear All</Text>
+                        <Text style={[styles.clearAllText, darkMode && styles.clearAllTextDark]}>Clear</Text>
                     </Pressable>
                 </View>
 
-                {/* Region Selector */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.regionList}
-                    style={styles.regionScroll}
-                >
+                <View style={styles.regionList}>
                     {REGIONS.map((region, index) => (
                         <Pressable
                             key={region.name}
@@ -96,7 +76,7 @@ export function FilterBar({ searchQuery, onSearchChange, selectedRegionIndex, on
                             </Text>
                         </Pressable>
                     ))}
-                </ScrollView>
+                </View>
             </View>
         </View>
     );
@@ -105,80 +85,45 @@ export function FilterBar({ searchQuery, onSearchChange, selectedRegionIndex, on
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        paddingBottom: 20,
-        paddingTop: 15,
-        marginBottom: 10,
+        paddingVertical: 10,
         backgroundColor: 'transparent',
     },
     contentWrapper: {
         width: '100%',
-        maxWidth: 1000, // Aligns both search and regions
+        maxWidth: 800,
         alignSelf: 'center',
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
     },
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
-        gap: 12, // Gap between search and clear all
+        marginBottom: 12,
+        gap: 8,
     },
     searchContainer: {
-        flex: 1, // Take remaining space
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fff',
-        borderRadius: 12, // Matches region buttons
-        paddingHorizontal: 24, // Matches region buttons horizontal padding
-        height: 50, // Taller, premium feel
+        borderRadius: 10,
+        paddingHorizontal: 16,
+        height: 40,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08, // Softer shadow
-        shadowRadius: 8,
-        elevation: 4,
-        width: '100%', // Take full width of wrapper
-    },
-    clearAllButton: {
-        height: 50,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#f0f0f0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    clearAllButtonDark: {
-        backgroundColor: '#2a2a2a',
-        borderColor: '#333',
-    },
-    clearAllIcon: {
-        marginRight: 8,
-    },
-    clearAllText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    clearAllTextDark: {
-        color: '#fff',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
     },
     searchContainerDark: {
         backgroundColor: '#2a2a2a',
         borderColor: '#333',
     },
     searchIcon: {
-        marginRight: 12,
+        marginRight: 8,
     },
     searchInput: {
         flex: 1,
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: 14,
         color: '#333',
         height: '100%',
         outlineStyle: 'none',
@@ -187,48 +132,53 @@ const styles = StyleSheet.create({
         color: '#fff',
     },
     clearButton: {
-        padding: 4,
-        opacity: 0.6,
+        padding: 2,
     },
-    regionScroll: {
-        maxHeight: 60,
-        width: '100%', // Full width
-    },
-    regionList: {
-        flexGrow: 1,
-        justifyContent: 'center',
-        paddingHorizontal: 16,
-        gap: 20, // More space between chips
-    },
-    regionChip: {
-        height: 50,
-        paddingHorizontal: 24,
-        borderRadius: 12,
+    clearAllButton: {
+        height: 40,
         backgroundColor: '#fff',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#f0f0f0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 4,
-        minWidth: 90,
-        alignItems: 'center',
+    },
+    clearAllButtonDark: {
+        backgroundColor: '#2a2a2a',
+        borderColor: '#333',
+    },
+    clearAllText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#666',
+    },
+    clearAllTextDark: {
+        color: '#aaa',
+    },
+    regionList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'center',
+        gap: 8,
+    },
+    regionChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 15,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#eee',
     },
     regionChipDark: {
         backgroundColor: '#2a2a2a',
         borderColor: '#444',
     },
     regionChipActive: {
-        backgroundColor: '#6366f1', // Primary brand color
+        backgroundColor: '#6366f1',
         borderColor: '#6366f1',
-        shadowColor: '#6366f1',
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
     },
     regionText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
         color: '#666',
     },
