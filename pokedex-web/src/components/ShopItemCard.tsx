@@ -52,14 +52,6 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
 
     const bgImage = item.type === 'effect' ? getEffectBackground(item.id) : TYPE_BACKGROUNDS['electric'];
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
-    const useWhiteText = [
-        'effect_neon_cyber',
-        'effect_ghostly_mist',
-        'effect_golden_glory',
-        'effect_icy_wind',
-        'effect_magma_storm',
-        'effect_frenzy_plant'
-    ].includes(item.id);
 
     return (
         <View style={[styles.itemCard, isDark && styles.itemCardDark, { width: cardWidth }] as any}>
@@ -96,7 +88,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                 {/* Card Content Structure from PokemonGrid */}
                 <View style={styles.cardContent}>
                     {/* ID */}
-                    <Text style={[styles.cardId, useWhiteText && { color: '#fff', opacity: 0.8 }] as any}>#025</Text>
+                    <Text style={styles.cardId}>#025</Text>
 
                     {/* Image container */}
                     <View style={styles.imageContainer}>
@@ -108,7 +100,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                     </View>
 
                     {/* Name */}
-                    <Text style={[styles.cardName, useWhiteText && { color: '#fff' }] as any}>Pikachu</Text>
+                    <Text style={styles.cardName}>Pikachu</Text>
 
                     {/* Types */}
                     <View style={styles.cardTypeContainer}>
@@ -208,11 +200,19 @@ const styles = StyleSheet.create({
         color: '#999',
     } as any,
     cardName: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 14,
+        fontWeight: '800',
         color: '#333',
         textTransform: 'capitalize',
-        marginTop: 4,
+        marginTop: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.85)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        overflow: 'hidden',
+        textAlign: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
     } as any,
     cardTypeContainer: {
         flexDirection: 'row',
@@ -254,8 +254,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#6366f1',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
+        paddingHorizontal: 28,
+        paddingVertical: 14,
+        marginTop: 8,
         borderRadius: 32,
         alignSelf: 'flex-end',
         borderWidth: 1,
