@@ -81,7 +81,7 @@ export function PokemonGrid({
                     case 'effect_bubble_beam': return <BubbleBeamEffect />;
                     case 'effect_air_slash': return <AirSlashEffect />;
                     case 'effect_rock_tomb': return <RockTombEffect />;
-                    case 'effect_best_buddy': return <ShineOverlay color="rgba(255, 215, 0, 0.4)" />;
+                    case 'effect_best_buddy': return <ShineOverlay type="gold" />;
                     default: return null;
                 }
             }
@@ -89,9 +89,9 @@ export function PokemonGrid({
             // Automatic Buddy Effects
             if (buddy) {
                 if (buddy.level === 4) {
-                    return <ShineOverlay color="rgba(255, 215, 0, 0.5)" duration={2000} diagonal />;
+                    return <ShineOverlay type="gold" duration={2000} />;
                 } else if (buddy.level === 3) {
-                    return <ShineOverlay color="rgba(229, 228, 226, 0.4)" duration={2500} diagonal />;
+                    return <ShineOverlay type="platinum" duration={2500} />;
                 }
             }
             return null;
