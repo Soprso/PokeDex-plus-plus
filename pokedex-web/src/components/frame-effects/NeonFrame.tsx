@@ -1,26 +1,29 @@
 import { StyleSheet, View } from '@/components/native';
 
-export const NeonFrame = () => {
+export const NeonFrame = ({ children }: { children?: React.ReactNode }) => {
     return (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="none">
-            {/* Outer Glowing Border */}
-            <View style={styles.outerBorder}>
-                <style>
-                    {`
-                    @keyframes neonPulse {
-                        0% { box-shadow: 0 0 5px #39FF14, inset 0 0 5px #39FF14; opacity: 1; border-width: 2px; }
-                        50% { box-shadow: 0 0 20px #39FF14, inset 0 0 10px #39FF14; opacity: 0.8; border-width: 3px; }
-                        100% { box-shadow: 0 0 5px #39FF14, inset 0 0 5px #39FF14; opacity: 1; border-width: 2px; }
-                    }
-                    `}
-                </style>
-            </View>
+        <View style={{ flex: 1 }}>
+            {children}
+            <View style={[StyleSheet.absoluteFill, { zIndex: 99 }]} pointerEvents="none">
+                {/* Outer Glowing Border */}
+                <View style={styles.outerBorder}>
+                    <style>
+                        {`
+                        @keyframes neonPulse {
+                            0% { box-shadow: 0 0 5px #39FF14, inset 0 0 5px #39FF14; opacity: 1; border-width: 2px; }
+                            50% { box-shadow: 0 0 20px #39FF14, inset 0 0 10px #39FF14; opacity: 0.8; border-width: 3px; }
+                            100% { box-shadow: 0 0 5px #39FF14, inset 0 0 5px #39FF14; opacity: 1; border-width: 2px; }
+                        }
+                        `}
+                    </style>
+                </View>
 
-            {/* Corner Accents */}
-            <Corner style={{ top: -2, left: -2 }} />
-            <Corner style={{ top: -2, right: -2, transform: [{ rotate: '90deg' }] }} />
-            <Corner style={{ bottom: -2, right: -2, transform: [{ rotate: '180deg' }] }} />
-            <Corner style={{ bottom: -2, left: -2, transform: [{ rotate: '270deg' }] }} />
+                {/* Corner Accents */}
+                <Corner style={{ top: -2, left: -2 }} />
+                <Corner style={{ top: -2, right: -2, transform: [{ rotate: '90deg' }] }} />
+                <Corner style={{ bottom: -2, right: -2, transform: [{ rotate: '180deg' }] }} />
+                <Corner style={{ bottom: -2, left: -2, transform: [{ rotate: '270deg' }] }} />
+            </View>
         </View>
     );
 };
