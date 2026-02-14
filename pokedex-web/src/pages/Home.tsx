@@ -26,6 +26,7 @@ import type { CardEffects, Inventory } from '@/types';
 // Hooks & Data
 import type { PokemonType } from '@/constants/pokemonTypes';
 import { REGIONS } from '@/constants/regions';
+import { SHOP_ITEMS } from '@/constants/shopItems';
 import { useEconomySystem } from '@/hooks/useEconomySystem';
 import { calculateBuddyLevel, canGiveHeart, getHeartTracker, getRemainingHearts, getTodayDate } from '@/hooks/useHeartSystem';
 import { usePokemonData } from '@/hooks/usePokemonData';
@@ -354,107 +355,128 @@ export default function HomeScreen() {
     setModals({ ...modals, styleConfirmation: true });
   };
 
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const finalizeStyleApplication = async () => {
-    if (!user || !nicknameTarget || !styleConfirmationTarget) return;
-    const { type, itemId } = styleConfirmationTarget;
-    const pokemonId = nicknameTarget.id;
-
-    const currentStyles = type === 'effect' ? cardEffects : cardFrames;
-    const unlockedList = (type === 'effect' ? unlockedEffects[pokemonId] : unlockedFrames[pokemonId]) || [];
-    const count = inventory[itemId] || 0;
-
-    // Actually Consume
-    const newCount = count - 1;
-    const newInventory = { ...inventory, [itemId]: newCount };
-    if (newInventory[itemId] === 0) delete newInventory[itemId];
-
-    const metadataKey = type === 'effect' ? 'cardEffects' : 'cardFrames';
-    const unlockedKey = type === 'effect' ? 'unlockedCardEffects' : 'unlockedCardFrames';
-
-    const updatedStyles = { ...currentStyles, [pokemonId]: itemId };
-    const updatedUnlocked = {
-      ...(type === 'effect' ? unlockedEffects : unlockedFrames),
-      [pokemonId]: [...unlockedList, itemId]
-    };
+    if (!user || !nicknameTarget || !styleConfirmationTarget || isProcessing) return;
+    setIsProcessing(true);
 
     try {
+      const { type, itemId } = styleConfirmationTarget;
+      const pokemonId = nicknameTarget.id;
+
+      // Read latest data from metadata
+      const currentMetadata = user.unsafeMetadata;
+      const latestInventory = (currentMetadata.inventory as Inventory) || {};
+      const latestEffects = (currentMetadata.cardEffects as CardEffects) || {};
+      const latestFrames = (currentMetadata.cardFrames as Record<number, string>) || {};
+      const latestUnlockedEffects = (currentMetadata.unlockedCardEffects as Record<number, string[]>) || {};
+      const latestUnlockedFrames = (currentMetadata.unlockedCardFrames as Record<number, string[]>) || {};
+
+      const count = latestInventory[itemId] || 0;
+      if (count <= 0) {
+        setToast({ visible: true, message: `You no longer have this ${type} in your inventory.`, type: 'error' });
+        setModals(prev => ({ ...prev, styleConfirmation: false }));
+        return;
+      }
+
+      // Actually Consume
+      const newCount = count - 1;
+      const newInventory = { ...latestInventory, [itemId]: newCount };
+      if (newInventory[itemId] === 0) delete newInventory[itemId];
+
+      const metadataKey = type === 'effect' ? 'cardEffects' : 'cardFrames';
+      const unlockedKey = type === 'effect' ? 'unlockedCardEffects' : 'unlockedCardFrames';
+
+      const currentStyles = type === 'effect' ? latestEffects : latestFrames;
+      const unlockedList = (type === 'effect' ? latestUnlockedEffects[pokemonId] : latestUnlockedFrames[pokemonId]) || [];
+
+      const updatedStyles = { ...currentStyles, [pokemonId]: itemId };
+      const updatedUnlocked = {
+        ...(type === 'effect' ? latestUnlockedEffects : latestUnlockedFrames),
+        [pokemonId]: [...unlockedList, itemId]
+      };
+
       await user.update({
         unsafeMetadata: {
-          ...user.unsafeMetadata,
+          ...currentMetadata,
           inventory: newInventory,
           [metadataKey]: updatedStyles,
           [unlockedKey]: updatedUnlocked
         }
       });
       setToast({ visible: true, message: `${styleConfirmationTarget.itemName} unlocked and applied!`, type: 'success' });
+      setModals(prev => ({ ...prev, styleConfirmation: false }));
     } catch (e) {
       console.error('Failed to apply style:', e);
       setToast({ visible: true, message: 'Transaction failed. Please try again.', type: 'error' });
+    } finally {
+      setIsProcessing(false);
+      setStyleConfirmationTarget(null);
     }
   };
 
   // Handle heart click
   const handleHeartClick = async (pokemon: PokemonWithNickname) => {
-    // Check if user is logged in
-    if (!isLoaded) return; // Still loading auth state
+    if (!user || isProcessing) return;
+    setIsProcessing(true);
 
-    if (!user) {
-      setModals({ ...modals, auth: true });
-      return;
-    }
-
-    // Check if can give heart
-    const check = canGiveHeart(heartTracker, pokemon.id);
-    if (!check.can) {
-      setToast({ visible: true, message: check.reason || 'Cannot give heart', type: 'error' });
-      return;
-    }
-
-    // Calculate new buddy data
-    const existing = buddyData[pokemon.id];
-    const newPoints = (existing?.points || 0) + 1;
-    const newLevel = calculateBuddyLevel(newPoints);
-    const today = getTodayDate();
-
-    const newBuddyData: BuddyData = {
-      pokemonId: pokemon.id,
-      level: newLevel,
-      points: newPoints,
-      consecutiveDays: existing ? (existing.lastInteractionDate === today ? existing.consecutiveDays : existing.consecutiveDays + 1) : 1,
-      lastInteractionDate: today,
-      lastHeartDate: today,
-      dailyHearts: (existing?.lastHeartDate === today ? existing.dailyHearts : 0) + 1,
-      achievedBestBuddyDate: newLevel === 4 && existing?.level !== 4 ? today : existing?.achievedBestBuddyDate,
-    };
-
-    // Update Clerk metadata
     try {
+      // Check if can give heart (read latest tracker)
+      const currentMetadata = user.unsafeMetadata;
+      const latestTracker = getHeartTracker(currentMetadata);
+
+      const check = canGiveHeart(latestTracker, pokemon.id);
+      if (!check.can) {
+        setToast({ visible: true, message: check.reason || 'Cannot give heart', type: 'error' });
+        return;
+      }
+
+      // Calculate new buddy data
+      const existing = buddyData[pokemon.id];
+      const newPoints = (existing?.points || 0) + 1;
+      const newLevel = calculateBuddyLevel(newPoints);
+      const today = getTodayDate();
+
+      const newBuddyData: BuddyData = {
+        pokemonId: pokemon.id,
+        level: newLevel,
+        points: newPoints,
+        consecutiveDays: existing ? (existing.lastInteractionDate === today ? existing.consecutiveDays : existing.consecutiveDays + 1) : 1,
+        lastInteractionDate: today,
+        lastHeartDate: today,
+        dailyHearts: (existing?.lastHeartDate === today ? existing.dailyHearts : 0) + 1,
+        achievedBestBuddyDate: newLevel === 4 && existing?.level !== 4 ? today : existing?.achievedBestBuddyDate,
+      };
+
       await user.update({
         unsafeMetadata: {
-          ...user.unsafeMetadata,
+          ...currentMetadata,
           buddyData: {
-            ...(user.unsafeMetadata.buddyData as Record<number, BuddyData>),
+            ...(currentMetadata.buddyData as Record<number, BuddyData>),
             [pokemon.id]: newBuddyData,
           },
           dailyHeartTracker: {
             date: today,
-            heartsGivenToday: heartTracker.heartsGivenToday + 1,
-            pokemonHeartedToday: [...heartTracker.pokemonHeartedToday, pokemon.id],
+            heartsGivenToday: latestTracker.heartsGivenToday + 1,
+            pokemonHeartedToday: [...latestTracker.pokemonHeartedToday, pokemon.id],
           },
         },
       });
 
       // Show success toast
-      const heartsLeft = getRemainingHearts(heartTracker) - 1;
+      const heartsLeft = getRemainingHearts(latestTracker) - 1;
       const heartText = heartsLeft === 1 ? 'heart' : 'hearts';
       setToast({
         visible: true,
-        message: `Gave 1 ❤️ to ${pokemon.nickname || pokemon.name}! ${heartsLeft} ${heartText} left for today.`,
+        message: `Heart given to ${pokemon.nickname || pokemon.name}! (${heartsLeft} ${heartText} left today)`,
         type: 'success'
       });
-    } catch (error) {
-      console.error('Failed to give heart:', error);
-      setToast({ visible: true, message: 'Failed to give heart. Please try again.', type: 'error' });
+    } catch (e) {
+      console.error('Failed to update heart tracker:', e);
+      setToast({ visible: true, message: 'Failed to update heart. Please try again.', type: 'error' });
+    } finally {
+      setIsProcessing(false);
     }
   };
 

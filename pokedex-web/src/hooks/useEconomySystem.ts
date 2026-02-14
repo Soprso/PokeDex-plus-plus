@@ -7,9 +7,11 @@ const DAILY_REWARD_AMOUNT = 50;
 export function useEconomySystem() {
     const { user, isLoaded } = useUser();
     const [rewardClaimed, setRewardClaimed] = useState<{ claimed: boolean; amount: number; streak: number } | null>(null);
+    const [isClaiming, setIsClaiming] = useState(false);
 
     const checkDailyReward = useCallback(async () => {
-        if (!isLoaded || !user) return;
+        if (!isLoaded || !user || isClaiming) return;
+        setIsClaiming(true);
 
         const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
         const economy = (user.unsafeMetadata.economy as EconomyData) || {
@@ -53,8 +55,10 @@ export function useEconomySystem() {
             });
         } catch (error) {
             console.error('Failed to claim daily reward:', error);
+        } finally {
+            setIsClaiming(false);
         }
-    }, [isLoaded, user]);
+    }, [isLoaded, user, isClaiming]);
 
     return {
         checkDailyReward,

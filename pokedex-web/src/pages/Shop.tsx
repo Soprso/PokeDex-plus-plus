@@ -81,30 +81,44 @@ export default function ShopScreen() {
         setModals(prev => ({ ...prev, confirm: true }));
     };
 
+    const [isProcessing, setIsProcessing] = useState(false);
+
     const finalizePurchase = async () => {
-        if (!user || !pendingItem) return;
-
-        const item = pendingItem;
-        const newBalance = balance - item.price;
-        const newCount = (inventory[item.id] || 0) + 1;
-        const newInventory = { ...inventory, [item.id]: newCount };
-
-        // Handle Buddy Interaction special logic
-        let newInteraction = null;
-        if (item.id === 'buddy_interaction') {
-            const todayInteraction = (user.unsafeMetadata.todayInteraction as DailyInteraction) || { date: '', heartsGiven: 0, pokemonIds: [] };
-            newInteraction = { ...todayInteraction, heartsGiven: Math.max(0, todayInteraction.heartsGiven - 1) };
-        }
-
-        // Optimistic Update
-        setBalance(newBalance);
-        setInventory(newInventory);
+        if (!user || !pendingItem || isProcessing) return;
+        setIsProcessing(true);
 
         try {
+            // Read latest data from metadata to avoid stale state
+            const currentMetadata = user.unsafeMetadata;
+            const latestEconomy = (currentMetadata.economy as EconomyData) || { balance: 0, streak: 1 };
+            const latestInventory = (currentMetadata.inventory as Inventory) || {};
+            const item = pendingItem;
+
+            if (latestEconomy.balance < item.price) {
+                setModalConfig({
+                    title: 'Insufficient Coins',
+                    message: `Your balance updated. You need ${item.price - latestEconomy.balance} more Dex Coins.`
+                });
+                setModals(prev => ({ ...prev, insufficient: true, confirm: false }));
+                return;
+            }
+
+            const newBalance = latestEconomy.balance - item.price;
+            const newCount = (latestInventory[item.id] || 0) + 1;
+            const newInventory = { ...latestInventory, [item.id]: newCount };
+
+            // Handle Buddy Interaction special logic
+            let newInteraction = null;
+            if (item.id === 'buddy_interaction') {
+                const todayInteraction = (currentMetadata.todayInteraction as DailyInteraction) || { date: '', heartsGiven: 0, pokemonIds: [] };
+                newInteraction = { ...todayInteraction, heartsGiven: Math.max(0, todayInteraction.heartsGiven - 1) };
+            }
+
+            // Perform Update
             const updates: any = {
-                ...user.unsafeMetadata,
+                ...currentMetadata,
                 economy: {
-                    ...(user.unsafeMetadata.economy as EconomyData),
+                    ...latestEconomy,
                     balance: newBalance,
                 },
                 inventory: newInventory,
@@ -115,17 +129,21 @@ export default function ShopScreen() {
             }
 
             await user.update({ unsafeMetadata: updates });
+
+            // Success - state will sync via useEffect, but we can set local state for snappiness
+            setBalance(newBalance);
+            setInventory(newInventory);
+            setModals(prev => ({ ...prev, confirm: false }));
+
         } catch (error) {
             console.error('Purchase failed', error);
-            // Rollback
-            setBalance(balance);
-            setInventory(inventory);
             setModalConfig({
                 title: 'Purchase Failed',
                 message: 'Something went wrong during the transaction. Please try again.'
             });
-            setModals(prev => ({ ...prev, error: true }));
+            setModals(prev => ({ ...prev, error: true, confirm: false }));
         } finally {
+            setIsProcessing(false);
             setPendingItem(null);
         }
     };
