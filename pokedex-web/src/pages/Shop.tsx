@@ -184,8 +184,8 @@ export default function ShopScreen() {
 
             {/* Header */}
             <View style={[styles.header, isDark && styles.headerDark]}>
-                <Pressable onPress={() => navigate(-1)} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={isDark ? "#fff" : "#333"} />
+                <Pressable onPress={() => navigate('/')} style={styles.backButton}>
+                    <Ionicons name="home" size={24} color={isDark ? "#fff" : "#333"} />
                 </Pressable>
 
                 <View style={styles.titleContainer} pointerEvents="none">
