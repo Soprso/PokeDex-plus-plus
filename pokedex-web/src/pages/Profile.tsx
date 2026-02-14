@@ -207,25 +207,47 @@ export default function ProfileScreen() {
                         <View style={styles.backButton} />
                     </View>
 
-                    <View style={styles.signedOutContainer}>
-                        <View style={[styles.iconCircle, darkMode && styles.iconCircleDark]}>
-                            <Ionicons name="person" size={60} color={darkMode ? '#fff' : '#555'} />
+                    <View style={styles.contentWrapper}>
+                        <View style={[styles.glassCard, darkMode && styles.glassCardDark]}>
+                            {/* Icon */}
+                            <View style={[styles.iconCircle, darkMode && styles.iconCircleDark]}>
+                                <Image
+                                    source={{ uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png' }}
+                                    style={{ width: 60, height: 60, opacity: 0.8 }}
+                                    resizeMode="contain"
+                                />
+                            </View>
+
+                            {/* Text */}
+                            <Text style={[styles.signedOutTitle, darkMode && styles.signedOutTitleDark]}>
+                                Welcome Trainer!
+                            </Text>
+                            <Text style={[styles.signedOutSubtitle, darkMode && styles.textDark]}>
+                                Join the community to track your Pokédex, build your team, and compete with others.
+                            </Text>
+
+                            {/* Buttons */}
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.signInButton,
+                                    pressed && styles.signInButtonPressed,
+                                ]}
+                                onPress={() => setAuthModalOpen(true)}
+                            >
+                                <Ionicons name="log-in-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                                <Text style={styles.signInButtonText}>Sign In / Sign Up</Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.secondaryButton,
+                                    pressed && { backgroundColor: 'rgba(0,0,0,0.05)' }
+                                ]}
+                                onPress={() => navigate('/')}
+                            >
+                                <Text style={[styles.secondaryButtonText, darkMode && styles.textDark]}>Return to Pokédex</Text>
+                            </Pressable>
                         </View>
-                        <Text style={[styles.signedOutTitle, darkMode && styles.signedOutTitleDark]}>
-                            Welcome Trainer!
-                        </Text>
-                        <Text style={[styles.signedOutSubtitle, darkMode && styles.textDark]}>
-                            Sign in to access your profile, save your team, and track your progress.
-                        </Text>
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.signInButton,
-                                pressed && styles.signInButtonPressed,
-                            ]}
-                            onPress={() => setAuthModalOpen(true)}
-                        >
-                            <Text style={styles.signInButtonText}>Sign In / Sign Up</Text>
-                        </Pressable>
                     </View>
                 </SafeAreaView>
                 <AuthModal
@@ -654,19 +676,65 @@ const styles = StyleSheet.create({
     signedOutTitleDark: {
         color: '#fff',
     },
+    contentWrapper: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    glassCard: {
+        width: '100%',
+        maxWidth: 400,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: 24,
+        padding: 32,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.5)',
+    },
+    glassCardDark: {
+        backgroundColor: 'rgba(30, 30, 30, 0.9)',
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
     signInButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
         backgroundColor: '#007AFF',
         paddingHorizontal: 32,
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 16,
+        width: '100%',
+        shadowColor: '#007AFF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+        marginBottom: 16,
     },
     signInButtonPressed: {
-        opacity: 0.8,
+        opacity: 0.9,
+        transform: [{ scale: 0.98 }],
     },
     signInButtonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: 'bold',
+    },
+    secondaryButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+    },
+    secondaryButtonText: {
+        fontSize: 16,
+        color: '#666',
+        fontWeight: '500',
     },
     homeButton: {
         backgroundColor: '#FF3B30', // Pokedex Red
