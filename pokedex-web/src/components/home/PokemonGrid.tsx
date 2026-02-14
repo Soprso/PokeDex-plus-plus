@@ -1,8 +1,9 @@
 import bestBuddyImage from '@/assets/images/best-buddy.png';
-import pokeballWatermark from '@/assets/images/pokeball_decorative.png'; // Watermark
+import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect, ShineOverlay } from '@/components/card-effects';
+import { GoldFrame, NeonFrame } from '@/components/frame-effects';
 import { Ionicons } from '@/components/native/Icons';
 import { TYPE_BACKGROUNDS, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
-import type { BuddyData, PokemonWithNickname } from '@/types';
+import type { BuddyData, CardEffects, PokemonWithNickname } from '@/types';
 import React from 'react';
 import { FlatList, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
@@ -25,6 +26,8 @@ interface PokemonGridProps {
     onRefresh?: () => void;
     onBuddyLongPress: (pokemon: PokemonWithNickname) => void;
     onBuddyHeartClick: (pokemon: PokemonWithNickname) => void;
+    cardEffects?: CardEffects;
+    cardFrames?: Record<number, string>;
 }
 
 export function PokemonGrid({
@@ -39,7 +42,9 @@ export function PokemonGrid({
     refreshing,
     onRefresh,
     onBuddyLongPress,
-    onBuddyHeartClick
+    onBuddyHeartClick,
+    cardEffects = {},
+    cardFrames = {}
 }: PokemonGridProps) {
     const { width } = useWindowDimensions();
     const numColumns = width > 768 ? 4 : 2;
@@ -58,6 +63,34 @@ export function PokemonGrid({
         // Background logic
         const type = item.types[0];
         const bgImage = TYPE_BACKGROUNDS[type] || TYPE_BACKGROUNDS['default'];
+
+        const effectId = cardEffects[item.id];
+        const frameId = cardFrames[item.id];
+
+        const renderEffect = () => {
+            switch (effectId) {
+                case 'extra_love': return <ExtraLoveEffect />;
+                case 'effect_neon_cyber': return <NeonCyberEffect />;
+                case 'effect_ghostly_mist': return <GhostlyMistEffect />;
+                case 'effect_golden_glory': return <GoldenGloryEffect />;
+                case 'effect_icy_wind': return <IcyWindEffect />;
+                case 'effect_magma_storm': return <MagmaStormEffect />;
+                case 'effect_frenzy_plant': return <FrenzyPlantEffect />;
+                case 'effect_bubble_beam': return <BubbleBeamEffect />;
+                case 'effect_air_slash': return <AirSlashEffect />;
+                case 'effect_rock_tomb': return <RockTombEffect />;
+                case 'effect_best_buddy': return <ShineOverlay />;
+                default: return null;
+            }
+        };
+
+        const renderFrame = (children: React.ReactNode) => {
+            switch (frameId) {
+                case 'frame_gold': return <GoldFrame>{children}</GoldFrame>;
+                case 'frame_neon': return <NeonFrame>{children}</NeonFrame>;
+                default: return children;
+            }
+        };
 
         return (
             <View style={[
@@ -78,31 +111,32 @@ export function PokemonGrid({
                         style={styles.cardBackground}
                         imageStyle={styles.cardBackgroundImage}
                     >
-                        {/* Watermark */}
-                        <Image source={{ uri: pokeballWatermark }} style={styles.watermark} resizeMode="contain" />
+                        {renderFrame(
+                            <>
+                                {renderEffect()}
+                                <View style={styles.cardContent}>
+                                    {/* ID */}
+                                    <Text style={styles.idText}>#{String(item.id).padStart(3, '0')}</Text>
 
-                        {/* Card Content - Minus Badge */}
-                        <View style={styles.cardContent}>
-                            {/* ID */}
-                            <Text style={styles.idText}>#{String(item.id).padStart(3, '0')}</Text>
-
-                            {/* Image container */}
-                            <View style={styles.imageContainer}>
-                                <Image source={{ uri: imageUrl }} style={styles.pokemonImage} resizeMode="contain" />
-                            </View>
-
-                            {/* Name */}
-                            <Text style={styles.nameText} numberOfLines={1}>{displayName}</Text>
-
-                            {/* Types */}
-                            <View style={styles.typesContainer}>
-                                {item.types.map(t => (
-                                    <View key={t} style={[styles.typePill, { backgroundColor: TYPE_COLORS[t] }]}>
-                                        <Image source={TYPE_ICONS[t]} style={styles.typeIcon} />
+                                    {/* Image container */}
+                                    <View style={styles.imageContainer}>
+                                        <Image source={{ uri: imageUrl }} style={styles.pokemonImage} resizeMode="contain" />
                                     </View>
-                                ))}
-                            </View>
-                        </View>
+
+                                    {/* Name */}
+                                    <Text style={styles.nameText} numberOfLines={1}>{displayName}</Text>
+
+                                    {/* Types */}
+                                    <View style={styles.typesContainer}>
+                                        {item.types.map(t => (
+                                            <View key={t} style={[styles.typePill, { backgroundColor: TYPE_COLORS[t] }]}>
+                                                <Image source={TYPE_ICONS[t]} style={styles.typeIcon} />
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            </>
+                        )}
                     </ImageBackground>
                 </Pressable>
 

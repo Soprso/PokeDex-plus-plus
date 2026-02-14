@@ -4,7 +4,7 @@ import { SHOP_ITEMS, type ShopItem } from '@/constants/shopItems';
 import { type DailyInteraction, type EconomyData, type Inventory } from '@/types';
 import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewToken } from 'react-native';
+import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigate } from 'react-router-dom';
 // const InteractionIcon = require('@/assets/images/pokeball.png');
@@ -27,9 +27,17 @@ export default function ShopScreen() {
     const [viewableItems, setViewableItems] = useState<Set<string>>(new Set());
     const [balance, setBalance] = useState(0);
     const [streak, setStreak] = useState(1);
-    const [modals, setModals] = useState({ economy: false });
+    const [modals, setModals] = useState({
+        economy: false,
+        confirm: false,
+        error: false,
+        insufficient: false
+    });
+    const [pendingItem, setPendingItem] = useState<ShopItem | null>(null);
+    const [modalConfig, setModalConfig] = useState({ title: '', message: '' });
 
     const { width } = useWindowDimensions();
+    // ... rest of the code for dimensions ...
     const numColumns = width > 768 ? 4 : 2;
     const cardGap = 8;
     const listPadding = 16;
@@ -46,78 +54,79 @@ export default function ShopScreen() {
         }
     }, [user?.id, user?.unsafeMetadata]);
 
-    const handleBuyItem = async (item: ShopItem) => {
+    const handleBuyItem = (item: ShopItem) => {
         if (!user) {
-            Alert.alert('Sign In Required', 'You must be signed in to purchase items.');
-            return;
-        }
-        if (balance < item.price) {
-            Alert.alert('Insufficient Funds', 'You need more Dex Coins to buy this!');
+            setModalConfig({
+                title: 'Sign In Required',
+                message: 'You must be signed in to purchase items. Please log in to your account.'
+            });
+            setModals(prev => ({ ...prev, error: true }));
             return;
         }
 
-        // Optimistic Update
+        if (balance < item.price) {
+            setModalConfig({
+                title: 'Insufficient Coins',
+                message: `You need ${item.price - balance} more Dex Coins to buy this ${item.name}!`
+            });
+            setModals(prev => ({ ...prev, insufficient: true }));
+            return;
+        }
+
+        setPendingItem(item);
+        setModalConfig({
+            title: 'Confirm Purchase',
+            message: `Would you like to buy "${item.name}" for ${item.price} Dex Coins?`
+        });
+        setModals(prev => ({ ...prev, confirm: true }));
+    };
+
+    const finalizePurchase = async () => {
+        if (!user || !pendingItem) return;
+
+        const item = pendingItem;
         const newBalance = balance - item.price;
         const newCount = (inventory[item.id] || 0) + 1;
         const newInventory = { ...inventory, [item.id]: newCount };
 
+        // Handle Buddy Interaction special logic
+        let newInteraction = null;
+        if (item.id === 'buddy_interaction') {
+            const todayInteraction = (user.unsafeMetadata.todayInteraction as DailyInteraction) || { date: '', heartsGiven: 0, pokemonIds: [] };
+            newInteraction = { ...todayInteraction, heartsGiven: Math.max(0, todayInteraction.heartsGiven - 1) };
+        }
+
+        // Optimistic Update
         setBalance(newBalance);
         setInventory(newInventory);
 
-        // Save to Clerk
         try {
-            await user.update({
-                unsafeMetadata: {
-                    ...user.unsafeMetadata,
-                    economy: {
-                        ...(user.unsafeMetadata.economy as EconomyData),
-                        balance: newBalance,
-                    },
-                    inventory: newInventory,
+            const updates: any = {
+                ...user.unsafeMetadata,
+                economy: {
+                    ...(user.unsafeMetadata.economy as EconomyData),
+                    balance: newBalance,
                 },
-            });
-            Alert.alert('Purchase Successful!', `You bought ${item.name}.`);
+                inventory: newInventory,
+            };
+
+            if (newInteraction) {
+                updates.todayInteraction = newInteraction;
+            }
+
+            await user.update({ unsafeMetadata: updates });
         } catch (error) {
             console.error('Purchase failed', error);
-            Alert.alert('Error', 'Transaction failed. Please try again.');
-        }
-    };
-
-    const handleBuyInteraction = async () => {
-        if (!user) return;
-        const price = 200;
-
-        if (balance < price) {
-            Alert.alert('Insufficient Funds', 'You need 200 Dex Coins!');
-            return;
-        }
-
-        const todayInteraction = (user.unsafeMetadata.todayInteraction as DailyInteraction) || { date: '', heartsGiven: 0, pokemonIds: [] };
-
-        if (todayInteraction.heartsGiven <= 0) {
-            Alert.alert('Full Energy', 'You haven\'t used your daily interactions yet!');
-            return;
-        }
-
-        const newBalance = balance - price;
-        const newInteraction = { ...todayInteraction, heartsGiven: todayInteraction.heartsGiven - 1 };
-
-        setBalance(newBalance);
-
-        try {
-            await user.update({
-                unsafeMetadata: {
-                    ...user.unsafeMetadata,
-                    economy: {
-                        ...(user.unsafeMetadata.economy as EconomyData),
-                        balance: newBalance,
-                    },
-                    todayInteraction: newInteraction,
-                },
+            // Rollback
+            setBalance(balance);
+            setInventory(inventory);
+            setModalConfig({
+                title: 'Purchase Failed',
+                message: 'Something went wrong during the transaction. Please try again.'
             });
-            Alert.alert('Energy Restored!', 'You can interact with one more buddy today!');
-        } catch (error) {
-            Alert.alert('Error', 'Transaction failed.');
+            setModals(prev => ({ ...prev, error: true }));
+        } finally {
+            setPendingItem(null);
         }
     };
 
@@ -213,23 +222,7 @@ export default function ShopScreen() {
                     removeClippedSubviews={true}
                     onViewableItemsChanged={onViewableItemsChanged}
                     viewabilityConfig={viewabilityConfig}
-                    ListHeaderComponent={
-                        activeTab === 'items' ? (
-                            <View style={[styles.specialOffer, isDark && styles.specialOfferDark]}>
-                                <View style={styles.specialInfo}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                                        <Text style={[styles.specialTitle, isDark && styles.textDark]}>Buddy Interaction +1</Text>
-                                        <Ionicons name="heart" size={18} color="#e11d48" style={{ marginLeft: 6 }} />
-                                    </View>
-                                    <Text style={styles.specialSub}>Get +1 Buddy Interaction for today.</Text>
-                                </View>
-                                <Pressable style={styles.buyButtonSmall} onPress={handleBuyInteraction}>
-                                    <Text style={styles.buyButtonText}>200</Text>
-                                    <Image source={typeof CoinIcon === 'string' ? { uri: CoinIcon } : CoinIcon} style={styles.coinIconSmall} />
-                                </Pressable>
-                            </View>
-                        ) : null
-                    }
+                    ListHeaderComponent={null}
                     renderItem={({ item }) => (
                         <ShopItemCard
                             item={item}
@@ -250,6 +243,30 @@ export default function ShopScreen() {
                 type="info"
                 title="Your Wallet"
                 message="Manage your coins and view transactions."
+                balance={balance}
+                streak={streak}
+                darkMode={isDark}
+            />
+
+            <EconomyModal
+                visible={modals.confirm}
+                onClose={() => setModals({ ...modals, confirm: false })}
+                type="confirm"
+                title={modalConfig.title}
+                message={modalConfig.message}
+                balance={balance}
+                streak={streak}
+                darkMode={isDark}
+                onAction={finalizePurchase}
+                actionLabel="Buy Now"
+            />
+
+            <EconomyModal
+                visible={modals.error || modals.insufficient}
+                onClose={() => setModals({ ...modals, error: false, insufficient: false })}
+                type="error"
+                title={modalConfig.title}
+                message={modalConfig.message}
                 balance={balance}
                 streak={streak}
                 darkMode={isDark}
@@ -361,13 +378,4 @@ const styles = StyleSheet.create({
     },
 
     scrollContent: { padding: 16, paddingBottom: 40 },
-
-    specialOffer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
-    specialOfferDark: { backgroundColor: '#1e1e1e', borderColor: 'rgba(255,255,255,0.05)' },
-    specialInfo: { flex: 1 },
-    specialTitle: { fontSize: 16, fontWeight: '700', letterSpacing: -0.3 },
-    specialSub: { fontSize: 13, color: '#888', marginTop: 2 },
-    buyButtonSmall: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f9ff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e0f2fe' },
-    buyButtonText: { fontWeight: '700', marginRight: 6, fontSize: 13, color: '#0284c7' },
-    coinIconSmall: { width: 14, height: 14 },
 });

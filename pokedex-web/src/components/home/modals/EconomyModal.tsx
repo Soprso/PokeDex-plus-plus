@@ -7,33 +7,56 @@ import { Image, ImageBackground, Modal, Pressable, StyleSheet, Text, View } from
 interface EconomyModalProps {
     visible: boolean;
     onClose: () => void;
-    type: 'info' | 'reward' | 'error';
+    type: 'info' | 'reward' | 'error' | 'confirm';
     title: string;
     message: string;
     balance: number;
     streak: number;
     darkMode: boolean;
     onAction?: () => void;
+    actionLabel?: string;
 }
 
-export function EconomyModal({ visible, onClose, type, title, message, balance, streak, darkMode, onAction }: EconomyModalProps) {
+export function EconomyModal({ visible, onClose, type, title, message, balance, streak, darkMode, onAction, actionLabel }: EconomyModalProps) {
+    const isError = type === 'error';
+    const isConfirm = type === 'confirm';
+
     return (
         <Modal visible={visible} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={onClose}>
             <View style={styles.centeredModalOverlay}>
-                <View style={[styles.modalContent, styles.economyModalContent, darkMode && styles.modalContentDark, type === 'reward' && styles.economyModalReward]}>
+                <View style={[
+                    styles.modalContent,
+                    styles.economyModalContent,
+                    darkMode && styles.modalContentDark,
+                    type === 'reward' && styles.economyModalReward,
+                    isError && styles.economyModalError
+                ]}>
 
                     {/* Header */}
                     <View style={styles.headerWrapper}>
                         <ImageBackground
                             source={{ uri: dexWalletImage }}
-                            style={[styles.economyModalHeader, type === 'reward' ? styles.economyModalHeaderReward : styles.economyModalHeaderInfo, darkMode && styles.economyModalHeaderDark]}
+                            style={[
+                                styles.economyModalHeader,
+                                type === 'reward' ? styles.economyModalHeaderReward : styles.economyModalHeaderInfo,
+                                isError && styles.economyModalHeaderError,
+                                isConfirm && styles.economyModalHeaderConfirm,
+                                darkMode && styles.economyModalHeaderDark
+                            ]}
                             resizeMode="cover"
                         >
-                            <ShineOverlay color="rgba(255, 215, 0, 0.4)" duration={3000} />
-                            <GlowBorder color="#FFD700" borderWidth={2} cornerRadius={24} style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} />
+                            <ShineOverlay color={isError ? "rgba(239, 68, 68, 0.4)" : "rgba(255, 215, 0, 0.4)"} duration={3000} />
+                            <GlowBorder color={isError ? "#ef4444" : "#FFD700"} borderWidth={2} cornerRadius={24} style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} />
 
                             <View style={styles.rewardIconContainer}>
-                                <Image source={{ uri: dexCoinImage }} style={type === 'reward' ? styles.rewardCoinIconLarge : styles.rewardCoinIcon} />
+                                {isError ? (
+                                    <Ionicons name="alert-circle" size={80} color="#ef4444" />
+                                ) : isConfirm ? (
+                                    <Ionicons name="cart" size={80} color="#6366f1" />
+                                ) : (
+                                    <Image source={{ uri: dexCoinImage }} style={type === 'reward' ? styles.rewardCoinIconLarge : styles.rewardCoinIcon} />
+                                )}
+
                                 {type === 'reward' && (
                                     <View style={styles.rewardBadgeContainer}>
                                         <Ionicons name="gift" size={20} color="#fff" />
@@ -47,7 +70,7 @@ export function EconomyModal({ visible, onClose, type, title, message, balance, 
                             <Text style={[
                                 styles.economyModalTitle,
                                 {
-                                    marginTop: type === 'info' ? 8 : 16,
+                                    marginTop: (type === 'info' || isError || isConfirm) ? 8 : 16,
                                     color: darkMode ? '#fff' : '#000',
                                     textShadowColor: darkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.3)',
                                     textShadowRadius: 4
@@ -60,31 +83,54 @@ export function EconomyModal({ visible, onClose, type, title, message, balance, 
 
                     {/* Body */}
                     <View style={styles.body}>
-                        {type !== 'info' && (
-                            <Text style={[styles.messageText, darkMode && styles.messageTextDark]}>
-                                {message.replace(/🔥 Current Streak: \d+ Days/, '')}
-                            </Text>
-                        )}
+                        <Text style={[styles.messageText, darkMode && styles.messageTextDark]}>
+                            {message.replace(/🔥 Current Streak: \d+ Days/, '')}
+                        </Text>
 
                         {(type === 'info' || message.includes('Streak')) && (
                             <StreakCard streak={streak} darkMode={darkMode} />
                         )}
 
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.button,
-                                darkMode && styles.buttonDark,
-                                pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-                            ]}
-                            onPress={() => {
-                                if (onAction) onAction();
-                                onClose();
-                            }}
-                        >
-                            <Text style={[styles.buttonText, darkMode && styles.buttonTextDark]}>
-                                {type === 'reward' ? 'Claim Reward' : 'Got it'}
-                            </Text>
-                        </Pressable>
+                        {isConfirm ? (
+                            <View style={styles.buttonRow}>
+                                <Pressable
+                                    style={[styles.button, styles.cancelButton, darkMode && styles.cancelButtonDark]}
+                                    onPress={onClose}
+                                >
+                                    <Text style={[styles.buttonText, styles.cancelButtonText, darkMode && styles.cancelButtonTextDark]}>
+                                        Cancel
+                                    </Text>
+                                </Pressable>
+                                <Pressable
+                                    style={[styles.button, styles.confirmButton]}
+                                    onPress={() => {
+                                        if (onAction) onAction();
+                                        onClose();
+                                    }}
+                                >
+                                    <Text style={styles.buttonText}>
+                                        {actionLabel || 'Confirm'}
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        ) : (
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.button,
+                                    isError && styles.errorButton,
+                                    darkMode && styles.buttonDark,
+                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                                ]}
+                                onPress={() => {
+                                    if (onAction) onAction();
+                                    onClose();
+                                }}
+                            >
+                                <Text style={[styles.buttonText, darkMode && styles.buttonTextDark]}>
+                                    {type === 'reward' ? 'Claim Reward' : 'Got it'}
+                                </Text>
+                            </Pressable>
+                        )}
                     </View>
                 </View>
             </View>
@@ -257,6 +303,47 @@ const styles = StyleSheet.create({
     },
     buttonTextDark: {
         color: '#000',
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+        marginTop: 16,
+    },
+    cancelButton: {
+        flex: 1,
+        backgroundColor: '#f1f5f9',
+        shadowColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        marginTop: 0,
+    },
+    cancelButtonDark: {
+        backgroundColor: '#333',
+        borderColor: '#444',
+    },
+    cancelButtonText: {
+        color: '#64748b',
+    },
+    cancelButtonTextDark: {
+        color: '#94a3b8',
+    },
+    confirmButton: {
+        flex: 1,
+        marginTop: 0,
+    },
+    errorButton: {
+        backgroundColor: '#ef4444',
+        shadowColor: '#ef4444',
+    },
+    economyModalError: {
+        borderColor: '#ef4444',
+    },
+    economyModalHeaderError: {
+        backgroundColor: '#fef2f2',
+    },
+    economyModalHeaderConfirm: {
+        backgroundColor: '#eef2ff',
     },
     // Streak Card Styles
     streakCard: {

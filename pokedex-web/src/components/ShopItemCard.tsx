@@ -131,7 +131,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, shouldPlay
                 </View>
 
                 {/* Owned Badge */}
-                {count > 0 && <View style={styles.ownedBadge}><Text style={styles.ownedText}>x{count}</Text></View>}
+                {count > 0 && <View style={styles.ownedBadge}><Text style={styles.ownedText}>{count}</Text></View>}
 
                 {/* Effects Overlay - Static icon if not special effect */}
                 {!isSpecialEffect && item.type === 'effect' && (
@@ -268,6 +268,6 @@ const styles = StyleSheet.create({
     } as any,
     buyButtonText: { fontWeight: '800', marginRight: 6, fontSize: 22, color: '#fff' } as any,
     coinIconSmall: { width: 26, height: 26 } as any,
-    ownedBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#22c55e', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#fff', zIndex: 120 } as any,
-    ownedText: { color: '#fff', fontSize: 10, fontWeight: '800' } as any,
+    ownedBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#22c55e', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', zIndex: 120, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 4 } as any,
+    ownedText: { color: '#fff', fontSize: 12, fontWeight: '900' } as any,
 } as any);

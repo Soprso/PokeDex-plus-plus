@@ -1,19 +1,22 @@
 import { StyleSheet, View } from '@/components/native';
 
-export const GoldFrame = () => {
+export const GoldFrame = ({ children }: { children?: React.ReactNode }) => {
     return (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="none">
-            {/* Outer Gold Border */}
-            <View style={styles.outerBorder} />
+        <View style={{ flex: 1 }}>
+            {children}
+            <View style={[StyleSheet.absoluteFill, { zIndex: 99 }]} pointerEvents="none">
+                {/* Outer Gold Border */}
+                <View style={styles.outerBorder} />
 
-            {/* Inner Gold Border */}
-            <View style={styles.innerBorder} />
+                {/* Inner Gold Border */}
+                <View style={styles.innerBorder} />
 
-            {/* Corner Ornaments */}
-            <Corner style={{ top: -3, left: -3 }} />
-            <Corner style={{ top: -3, right: -3, transform: [{ rotate: '90deg' }] }} />
-            <Corner style={{ bottom: -3, right: -3, transform: [{ rotate: '180deg' }] }} />
-            <Corner style={{ bottom: -3, left: -3, transform: [{ rotate: '270deg' }] }} />
+                {/* Corner Ornaments */}
+                <Corner style={{ top: -3, left: -3 }} />
+                <Corner style={{ top: -3, right: -3, transform: [{ rotate: '90deg' }] }} />
+                <Corner style={{ bottom: -3, right: -3, transform: [{ rotate: '180deg' }] }} />
+                <Corner style={{ bottom: -3, left: -3, transform: [{ rotate: '270deg' }] }} />
+            </View>
         </View>
     );
 };

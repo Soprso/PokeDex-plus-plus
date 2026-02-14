@@ -15,12 +15,13 @@ import { ToastNotification } from '@/components/home/ToastNotification';
 import { AuthModal } from '@/components/home/modals/AuthModal'; // ADDED
 import { BuddyModal } from '@/components/home/modals/BuddyModal';
 import { BuddyProgressModal } from '@/components/home/modals/BuddyProgressModal';
+import { CardStyleModal } from '@/components/home/modals/CardStyleModal';
 import { ComingSoonModal } from '@/components/home/modals/ComingSoonModal';
 import { EconomyModal } from '@/components/home/modals/EconomyModal';
 import { FilterModal } from '@/components/home/modals/FilterModal';
-import { NicknameModal } from '@/components/home/modals/NicknameModal';
 import { SettingsModal } from '@/components/home/modals/SettingsModal';
 import { SortModal } from '@/components/home/modals/SortModal';
+import type { CardEffects, Inventory } from '@/types';
 
 // Hooks & Data
 import type { PokemonType } from '@/constants/pokemonTypes';
@@ -64,6 +65,32 @@ export default function HomeScreen() {
   useEffect(() => {
     setLocalNicknames(nicknames);
   }, [nicknames]);
+
+  // Load Inventory & Style Data from Clerk
+  const inventory: Inventory = useMemo(() => {
+    if (!user) return {};
+    return (user.unsafeMetadata.inventory as Inventory) || {};
+  }, [user?.unsafeMetadata]);
+
+  const cardEffects: CardEffects = useMemo(() => {
+    if (!user) return {};
+    return (user.unsafeMetadata.cardEffects as CardEffects) || {};
+  }, [user?.unsafeMetadata]);
+
+  const cardFrames: Record<number, string> = useMemo(() => {
+    if (!user) return {};
+    return (user.unsafeMetadata.cardFrames as Record<number, string>) || {};
+  }, [user?.unsafeMetadata]);
+
+  const unlockedEffects: Record<number, string[]> = useMemo(() => {
+    if (!user) return {};
+    return (user.unsafeMetadata.unlockedCardEffects as Record<number, string[]>) || {};
+  }, [user?.unsafeMetadata]);
+
+  const unlockedFrames: Record<number, string[]> = useMemo(() => {
+    if (!user) return {};
+    return (user.unsafeMetadata.unlockedCardFrames as Record<number, string[]>) || {};
+  }, [user?.unsafeMetadata]);
 
   // Economy System
   const { checkDailyReward, rewardClaimed, resetRewardState } = useEconomySystem();
@@ -126,7 +153,14 @@ export default function HomeScreen() {
     nickname: false,
     auth: false,
     comingSoon: false,
+    styleConfirmation: false,
   });
+
+  const [styleConfirmationTarget, setStyleConfirmationTarget] = useState<{
+    type: 'effect' | 'frame';
+    itemId: string;
+    itemName: string;
+  } | null>(null);
 
   // Settings State - Load from localStorage on mount
   const [settings, setSettings] = useState(() => {
@@ -258,6 +292,107 @@ export default function HomeScreen() {
     setModals({ ...modals, buddyProgress: true });
   };
 
+  const handleApplyStyle = async (type: 'effect' | 'frame', itemId: string) => {
+    if (!user || !nicknameTarget) return;
+    const pokemonId = nicknameTarget.id;
+
+    const currentStyles = type === 'effect' ? cardEffects : cardFrames;
+    const activeId = currentStyles[pokemonId] || 'none';
+
+    if (activeId === itemId) return;
+
+    // Reset logic
+    if (itemId === 'default') {
+      const metadataKey = type === 'effect' ? 'cardEffects' : 'cardFrames';
+      const updatedStyles = { ...currentStyles, [pokemonId]: 'none' };
+
+      try {
+        await user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            [metadataKey]: updatedStyles
+          }
+        });
+        setToast({ visible: true, message: `${type.charAt(0).toUpperCase() + type.slice(1)} removed.`, type: 'info' });
+      } catch (e) {
+        console.error('Failed to reset style:', e);
+      }
+      return;
+    }
+
+    // Unlock/Apply Logic
+    const unlockedList = (type === 'effect' ? unlockedEffects[pokemonId] : unlockedFrames[pokemonId]) || [];
+    const isUnlocked = unlockedList.includes(itemId);
+
+    if (isUnlocked) {
+      const metadataKey = type === 'effect' ? 'cardEffects' : 'cardFrames';
+      const updatedStyles = { ...currentStyles, [pokemonId]: itemId };
+      try {
+        await user.update({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            [metadataKey]: updatedStyles
+          }
+        });
+      } catch (e) {
+        console.error('Failed to apply unlocked style:', e);
+      }
+      return;
+    }
+
+    // Consume Inventory to Unlock - Show Confirmation First
+    const item = SHOP_ITEMS.find(i => i.id === itemId);
+    if (!item) return;
+
+    const count = inventory[itemId] || 0;
+    if (count <= 0) {
+      setToast({ visible: true, message: `You need to purchase this ${type} in the shop first.`, type: 'error' });
+      return;
+    }
+
+    setStyleConfirmationTarget({ type, itemId, itemName: item.name });
+    setModals({ ...modals, styleConfirmation: true });
+  };
+
+  const finalizeStyleApplication = async () => {
+    if (!user || !nicknameTarget || !styleConfirmationTarget) return;
+    const { type, itemId } = styleConfirmationTarget;
+    const pokemonId = nicknameTarget.id;
+
+    const currentStyles = type === 'effect' ? cardEffects : cardFrames;
+    const unlockedList = (type === 'effect' ? unlockedEffects[pokemonId] : unlockedFrames[pokemonId]) || [];
+    const count = inventory[itemId] || 0;
+
+    // Actually Consume
+    const newCount = count - 1;
+    const newInventory = { ...inventory, [itemId]: newCount };
+    if (newInventory[itemId] === 0) delete newInventory[itemId];
+
+    const metadataKey = type === 'effect' ? 'cardEffects' : 'cardFrames';
+    const unlockedKey = type === 'effect' ? 'unlockedCardEffects' : 'unlockedCardFrames';
+
+    const updatedStyles = { ...currentStyles, [pokemonId]: itemId };
+    const updatedUnlocked = {
+      ...(type === 'effect' ? unlockedEffects : unlockedFrames),
+      [pokemonId]: [...unlockedList, itemId]
+    };
+
+    try {
+      await user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          inventory: newInventory,
+          [metadataKey]: updatedStyles,
+          [unlockedKey]: updatedUnlocked
+        }
+      });
+      setToast({ visible: true, message: `${styleConfirmationTarget.itemName} unlocked and applied!`, type: 'success' });
+    } catch (e) {
+      console.error('Failed to apply style:', e);
+      setToast({ visible: true, message: 'Transaction failed. Please try again.', type: 'error' });
+    }
+  };
+
   // Handle heart click
   const handleHeartClick = async (pokemon: PokemonWithNickname) => {
     // Check if user is logged in
@@ -320,6 +455,34 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Failed to give heart:', error);
       setToast({ visible: true, message: 'Failed to give heart. Please try again.', type: 'error' });
+    }
+  };
+
+  const handleSaveNickname = async () => {
+    if (!nicknameTarget || !user) return;
+    try {
+      const newNames = {
+        ...(user.unsafeMetadata.nicknames as Record<number, string> || {}),
+        [nicknameTarget.id]: tempNickname
+      };
+
+      // 1. Optimistic Update
+      setLocalNicknames(newNames);
+      setModals({ ...modals, nickname: false });
+
+      // 2. Persistent Update
+      await user.update({
+        unsafeMetadata: {
+          ...user.unsafeMetadata,
+          nicknames: newNames
+        }
+      });
+      setToast({ visible: true, message: `Updated nickname for ${nicknameTarget.name}!`, type: 'success' });
+    } catch (error) {
+      console.error('Failed to save nickname:', error);
+      setToast({ visible: true, message: 'Failed to save nickname.', type: 'error' });
+      // Revert on failure
+      setLocalNicknames(nicknames);
     }
   };
 
@@ -396,6 +559,8 @@ export default function HomeScreen() {
         onRefresh={refetch}
         onBuddyLongPress={handleBuddyLongPress}
         onBuddyHeartClick={handleHeartClick}
+        cardEffects={cardEffects}
+        cardFrames={cardFrames}
       />
 
       {/* Radial Menu */}
@@ -472,45 +637,40 @@ export default function HomeScreen() {
         message={rewardClaimed
           ? `You've earned ${rewardClaimed.amount} coins for logging in today!\n🔥 Current Streak: ${rewardClaimed.streak} Days`
           : 'Manage your coins and view transactions.'}
-        balance={economy.balance}
         streak={economy.streak}
+        balance={economy.balance}
         darkMode={settings.darkMode}
       />
 
-      <NicknameModal
+      <EconomyModal
+        visible={modals.styleConfirmation}
+        onClose={() => setModals({ ...modals, styleConfirmation: false })}
+        type="confirm"
+        title="Apply Style?"
+        message={`${nicknameTarget?.nickname || nicknameTarget?.name} will get ${styleConfirmationTarget?.itemName} effect permanently. Do you want to use it?`}
+        balance={economy.balance}
+        streak={economy.streak}
+        darkMode={settings.darkMode}
+        onAction={finalizeStyleApplication}
+        actionLabel="Apply"
+      />
+
+      <CardStyleModal
         visible={modals.nickname}
         onClose={() => setModals({ ...modals, nickname: false })}
         nickname={tempNickname}
         onNicknameChange={setTempNickname}
-        onSave={async () => {
-          if (!nicknameTarget || !user) return;
-          try {
-            const newNames = {
-              ...(user.unsafeMetadata.nicknames as Record<number, string> || {}),
-              [nicknameTarget.id]: tempNickname
-            };
-
-            // 1. Optimistic Update
-            setLocalNicknames(newNames);
-            setModals({ ...modals, nickname: false });
-
-            // 2. Persistent Update
-            await user.update({
-              unsafeMetadata: {
-                ...user.unsafeMetadata,
-                nicknames: newNames
-              }
-            });
-            setToast({ visible: true, message: `Updated nickname for ${nicknameTarget.name}!`, type: 'success' });
-          } catch (error) {
-            console.error('Failed to save nickname:', error);
-            setToast({ visible: true, message: 'Failed to save nickname.', type: 'error' });
-            // Revert on failure
-            setLocalNicknames(nicknames);
-          }
-        }}
+        onSaveNickname={handleSaveNickname}
         pokemonName={nicknameTarget?.name || 'Pokemon'}
+        pokemonId={nicknameTarget?.id || 0}
         darkMode={settings.darkMode}
+        inventory={inventory}
+        unlockedEffects={nicknameTarget ? unlockedEffects[nicknameTarget.id] || [] : []}
+        unlockedFrames={nicknameTarget ? unlockedFrames[nicknameTarget.id] || [] : []}
+        activeEffect={nicknameTarget ? cardEffects[nicknameTarget.id] || 'none' : 'none'}
+        activeFrame={nicknameTarget ? cardFrames[nicknameTarget.id] || 'none' : 'none'}
+        onApplyStyle={handleApplyStyle}
+        onGoToShop={() => navigate('/shop')}
       />
 
       <BuddyProgressModal
