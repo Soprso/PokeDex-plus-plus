@@ -36,9 +36,11 @@ interface ShopItemCardProps {
     onBuy: () => void;
     shouldPlay: boolean;
     cardWidth: number;
+    selectedCurrency: string;
+    currencySymbol: string;
 }
 
-export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth }: ShopItemCardProps) => {
+export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth, selectedCurrency, currencySymbol }: ShopItemCardProps) => {
     const getEffectBackground = (id: string) => {
         switch (id) {
             case 'extra_love': return bgExtraLove;
@@ -68,6 +70,10 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth 
         }
     };
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
+
+    const displayPrice = selectedCurrency === 'INR' && item.currency === 'usd'
+        ? Math.round(item.price * 83)
+        : item.price.toFixed(2);
 
     return (
         <View style={[
@@ -182,7 +188,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth 
                         styles.buyButtonText,
                         item.currency === 'usd' && styles.buyButtonTextUSD
                     ] as any}>
-                        {item.currency === 'usd' ? `$${item.price.toFixed(2)}` : (item.price === 0 ? 'Free' : item.price)}
+                        {item.currency === 'usd' ? `${currencySymbol}${displayPrice}` : (item.price === 0 ? 'Free' : item.price)}
                     </Text>
                     {item.currency !== 'usd' && <Image source={CoinIcon} style={styles.coinIconSmall} />}
                 </Pressable>

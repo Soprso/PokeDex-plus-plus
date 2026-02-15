@@ -1,7 +1,7 @@
 import { Ionicons } from '@/components/native/Icons';
 import { ShopItemCard } from '@/components/ShopItemCard';
 import { SHOP_ITEMS, type ShopItem } from '@/constants/shopItems';
-import { type DailyInteraction, type EconomyData, type Inventory } from '@/types';
+import { type EconomyData, type Inventory } from '@/types';
 import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewToken } from 'react-native';
@@ -43,7 +43,20 @@ export default function ShopScreen() {
     const listPadding = 16;
     const cardWidth = (width - (listPadding * 2) - ((numColumns - 1) * cardGap)) / numColumns;
 
-    // Load initial data
+    const [userCountry, setUserCountry] = useState('US');
+    const [selectedCurrency, setSelectedCurrency] = useState('USD');
+    const [isDetectingCurrency, setIsDetectingCurrency] = useState(true);
+
+    const CURRENCY_MAP: Record<string, string> = {
+        'INR': '₹',
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£'
+    };
+
+    const UPI_COUNTRIES = ['IN'];
+
+    // Load initial data and Detect Global Context
     useEffect(() => {
         if (user) {
             const economy = (user.unsafeMetadata.economy as EconomyData) || { balance: 0, streak: 1 };
@@ -52,6 +65,35 @@ export default function ShopScreen() {
             setStreak(economy.streak || 1);
             setInventory(userInventory);
         }
+
+        const detectGlobalContext = async () => {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+
+                if (data.country) {
+                    setUserCountry(data.country);
+                }
+
+                if (data.currency && CURRENCY_MAP[data.currency]) {
+                    setSelectedCurrency(data.currency);
+                } else if (data.country === 'IN') {
+                    setSelectedCurrency('INR');
+                } else {
+                    // Fallback to Timezone heuristic for India if API fails specific details
+                    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const isIndiaTz = tz.includes('Calcutta') || tz.includes('Kolkata') || tz.includes('Asia/Mumbai');
+                    setSelectedCurrency(isIndiaTz ? 'INR' : 'USD');
+                }
+            } catch (err) {
+                console.warn('Location detection failed, defaulting to USD', err);
+                setSelectedCurrency('USD');
+            } finally {
+                setIsDetectingCurrency(false);
+            }
+        };
+
+        detectGlobalContext();
     }, [user?.id, user?.unsafeMetadata]);
 
     const handleBuyItem = (item: ShopItem) => {
@@ -73,11 +115,16 @@ export default function ShopScreen() {
             return;
         }
 
+        const symbol = selectedCurrency === 'INR' ? '₹' : '$';
+        const displayPrice = selectedCurrency === 'INR' && item.currency === 'usd'
+            ? Math.round(item.price * 83)
+            : item.price.toFixed(2);
+
         setPendingItem(item);
         setModalConfig({
             title: 'Confirm Purchase',
             message: item.currency === 'usd'
-                ? `Buy "${item.name}" for $${item.price.toFixed(2)}?`
+                ? `Buy "${item.name}" for ${symbol}${displayPrice}?`
                 : `Would you like to buy "${item.name}" for ${item.price} Dex Coins?`
         });
         setModals(prev => ({ ...prev, confirm: true }));
@@ -87,16 +134,90 @@ export default function ShopScreen() {
 
     const finalizePurchase = async () => {
         if (!user || !pendingItem || isProcessing) return;
-        setIsProcessing(true);
 
+        const item = pendingItem;
+
+        // USD Purchase via Razorpay
+        if (item.currency === 'usd') {
+            setIsProcessing(true);
+            const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+            if (!rzpKey) {
+                setModalConfig({ title: 'Config Error', message: 'Razorpay Key is missing.' });
+                setModals(m => ({ ...m, error: true, confirm: false }));
+                setIsProcessing(false);
+                return;
+            }
+
+            const amount = selectedCurrency === 'INR' ? Math.round(item.price * 83) : item.price;
+            const options = {
+                key: rzpKey,
+                amount: Math.round(amount * 100), // In paise/cents
+                currency: selectedCurrency === 'INR' ? 'INR' : 'USD',
+                name: 'PokeDex Plus Plus',
+                description: `Purchase ${item.name}`,
+                image: coinIcon,
+                handler: async function () {
+                    // On success, update metadata
+                    try {
+                        const currentMetadata = user.unsafeMetadata;
+                        const latestEconomy = (currentMetadata.economy as EconomyData) || { balance: 0, streak: 1 };
+                        const latestInventory = (currentMetadata.inventory as Inventory) || {};
+
+                        const newBalance = latestEconomy.balance + (item.rewardAmount || 0);
+                        const newInventory = { ...latestInventory, [item.id]: (latestInventory[item.id] || 0) + 1 };
+
+                        await user.update({
+                            unsafeMetadata: {
+                                ...currentMetadata,
+                                economy: { ...latestEconomy, balance: newBalance },
+                                inventory: newInventory
+                            }
+                        });
+
+                        setBalance(newBalance);
+                        setInventory(newInventory);
+                        setModals(prev => ({ ...prev, confirm: false }));
+                    } catch (err) {
+                        console.error('Failed to update balance after payment', err);
+                    } finally {
+                        setIsProcessing(false);
+                        setPendingItem(null);
+                    }
+                },
+                prefill: {
+                    name: user.fullName || '',
+                    email: user.primaryEmailAddress?.emailAddress || '',
+                },
+                theme: {
+                    color: '#6366f1',
+                },
+                modal: {
+                    ondismiss: function () {
+                        setIsProcessing(false);
+                    }
+                },
+                method: {
+                    netbanking: true,
+                    card: true,
+                    upi: UPI_COUNTRIES.includes(userCountry),
+                    wallet: false,
+                }
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+            rzp.open();
+            return;
+        }
+
+        // Standard Coin Purchase
+        setIsProcessing(true);
         try {
-            // Read latest data from metadata to avoid stale state
             const currentMetadata = user.unsafeMetadata;
             const latestEconomy = (currentMetadata.economy as EconomyData) || { balance: 0, streak: 1 };
             const latestInventory = (currentMetadata.inventory as Inventory) || {};
-            const item = pendingItem;
 
-            if (item.currency !== 'usd' && latestEconomy.balance < item.price) {
+            if (latestEconomy.balance < item.price) {
                 setModalConfig({
                     title: 'Insufficient Coins',
                     message: `Your balance updated. You need ${item.price - latestEconomy.balance} more Dex Coins.`
@@ -105,50 +226,20 @@ export default function ShopScreen() {
                 return;
             }
 
-            let newBalance = latestEconomy.balance;
+            const newBalance = latestEconomy.balance - item.price;
+            const newInventory = { ...latestInventory, [item.id]: (latestInventory[item.id] || 0) + 1 };
 
-            if (item.currency === 'usd') {
-                // Add coins for real money purchase
-                newBalance += (item.rewardAmount || 0);
-            } else {
-                // Deduct coins for clear standard purchase
-                newBalance -= item.price;
-            }
+            await user.update({
+                unsafeMetadata: {
+                    ...currentMetadata,
+                    economy: { ...latestEconomy, balance: newBalance },
+                    inventory: newInventory
+                }
+            });
 
-            // Don't add consumables to inventory if they are instant-use (like coins)
-            // But we might want to track purchase history later. 
-            // For now, let's just add to inventory to track "times purchased"
-            const newCount = (latestInventory[item.id] || 0) + 1;
-            const newInventory = { ...latestInventory, [item.id]: newCount };
-
-            // Handle Buddy Interaction special logic
-            let newInteraction = null;
-            if (item.id === 'buddy_interaction') {
-                const todayInteraction = (currentMetadata.todayInteraction as DailyInteraction) || { date: '', heartsGiven: 0, pokemonIds: [] };
-                newInteraction = { ...todayInteraction, heartsGiven: Math.max(0, todayInteraction.heartsGiven - 1) };
-            }
-
-            // Perform Update
-            const updates: any = {
-                ...currentMetadata,
-                economy: {
-                    ...latestEconomy,
-                    balance: newBalance,
-                },
-                inventory: newInventory,
-            };
-
-            if (newInteraction) {
-                updates.todayInteraction = newInteraction;
-            }
-
-            await user.update({ unsafeMetadata: updates });
-
-            // Success - state will sync via useEffect, but we can set local state for snappiness
             setBalance(newBalance);
             setInventory(newInventory);
             setModals(prev => ({ ...prev, confirm: false }));
-
         } catch (error) {
             console.error('Purchase failed', error);
             setModalConfig({
@@ -161,6 +252,7 @@ export default function ShopScreen() {
             setPendingItem(null);
         }
     };
+
 
     const filteredItems = SHOP_ITEMS.filter(item => {
         if (activeTab === 'effects') return item.type === 'effect';
@@ -179,10 +271,11 @@ export default function ShopScreen() {
         setViewableItems(visibleIds);
     }, []);
 
+    const currencySymbol = CURRENCY_MAP[selectedCurrency] || '$';
+
     return (
         <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-
-            {/* Header */}
+            {/* ... header ... */}
             <View style={[styles.header, isDark && styles.headerDark]}>
                 <Pressable onPress={() => navigate('/')} style={styles.backButton}>
                     <Ionicons name="home" size={24} color={isDark ? "#fff" : "#333"} />
@@ -263,6 +356,8 @@ export default function ShopScreen() {
                             onBuy={() => handleBuyItem(item)}
                             shouldPlay={viewableItems.has(item.id)}
                             cardWidth={cardWidth}
+                            selectedCurrency={selectedCurrency}
+                            currencySymbol={currencySymbol}
                         />
                     )}
                 />
