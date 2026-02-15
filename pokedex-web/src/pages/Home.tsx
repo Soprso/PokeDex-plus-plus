@@ -661,6 +661,8 @@ export default function HomeScreen() {
         streak={economy.streak}
         balance={economy.balance}
         darkMode={settings.darkMode}
+        isSignedIn={!!user}
+        onSignIn={() => setModals(prev => ({ ...prev, auth: true }))}
       />
 
       <EconomyModal

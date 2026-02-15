@@ -15,9 +15,24 @@ interface EconomyModalProps {
     darkMode: boolean;
     onAction?: () => void;
     actionLabel?: string;
+    isSignedIn?: boolean;
+    onSignIn?: () => void;
 }
 
-export function EconomyModal({ visible, onClose, type, title, message, balance, streak, darkMode, onAction, actionLabel }: EconomyModalProps) {
+export function EconomyModal({
+    visible,
+    onClose,
+    type,
+    title,
+    message,
+    balance,
+    streak,
+    darkMode,
+    onAction,
+    actionLabel,
+    isSignedIn = true,
+    onSignIn
+}: EconomyModalProps) {
     const isError = type === 'error';
     const isConfirm = type === 'confirm';
 
@@ -87,11 +102,35 @@ export function EconomyModal({ visible, onClose, type, title, message, balance, 
                             {message.replace(/🔥 Current Streak: \d+ Days/, '')}
                         </Text>
 
+                        {!isSignedIn && (
+                            <View style={[styles.loginIncentive, darkMode && styles.loginIncentiveDark]}>
+                                <Ionicons name="information-circle-outline" size={20} color={darkMode ? "#60a5fa" : "#2563eb"} />
+                                <Text style={[styles.loginIncentiveText, darkMode && styles.loginIncentiveTextDark]}>
+                                    Sign in to start earning coins, maintaining streaks, and participating in events!
+                                </Text>
+                            </View>
+                        )}
+
                         {(type === 'info' || message.includes('Streak')) && (
                             <StreakCard streak={streak} darkMode={darkMode} />
                         )}
 
-                        {isConfirm ? (
+                        {!isSignedIn ? (
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.button,
+                                    styles.loginButton,
+                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                                ]}
+                                onPress={() => {
+                                    onClose();
+                                    if (onSignIn) onSignIn();
+                                }}
+                            >
+                                <Ionicons name="log-in" size={20} color="#fff" style={{ marginRight: 8 }} />
+                                <Text style={styles.buttonText}>Sign In to Get Rewards</Text>
+                            </Pressable>
+                        ) : isConfirm ? (
                             <View style={styles.buttonRow}>
                                 <Pressable
                                     style={[styles.button, styles.cancelButton, darkMode && styles.cancelButtonDark]}
@@ -427,5 +466,34 @@ const styles = StyleSheet.create({
         color: '#666',
         marginTop: 8,
         textAlign: 'center',
+    },
+    loginIncentive: {
+        flexDirection: 'row',
+        backgroundColor: '#eff6ff',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 20,
+        alignItems: 'center',
+        gap: 10,
+        borderWidth: 1,
+        borderColor: '#dbeafe',
+    },
+    loginIncentiveDark: {
+        backgroundColor: '#1E293B',
+        borderColor: '#334155',
+    },
+    loginIncentiveText: {
+        fontSize: 13,
+        color: '#1e40af',
+        flex: 1,
+        lineHeight: 18,
+        fontWeight: '500',
+    },
+    loginIncentiveTextDark: {
+        color: '#93c5fd',
+    },
+    loginButton: {
+        flexDirection: 'row',
+        backgroundColor: '#2563eb',
     },
 });
