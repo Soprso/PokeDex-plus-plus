@@ -94,7 +94,7 @@ export default function HomeScreen() {
   }, [user?.unsafeMetadata]);
 
   // Economy System
-  const { checkDailyReward, rewardClaimed, resetRewardState } = useEconomySystem();
+  const { checkDailyReward, rewardClaimed, debugSetStreak, resetRewardState } = useEconomySystem();
 
   // Check daily reward on mount/auth
   useEffect(() => {
@@ -616,6 +616,7 @@ export default function HomeScreen() {
         onClose={() => setModals({ ...modals, settings: false })}
         settings={settings}
         onUpdateSetting={(k, v) => setSettings({ ...settings, [k]: v })}
+        onDebugSetStreak={debugSetStreak}
       />
 
       <FilterModal

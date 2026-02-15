@@ -14,9 +14,10 @@ interface SettingsModalProps {
         gridLayout: boolean;
     };
     onUpdateSetting: (key: string, value: boolean) => void;
+    onDebugSetStreak?: (streak: number) => void;
 }
 
-export function SettingsModal({ visible, onClose, settings, onUpdateSetting }: SettingsModalProps) {
+export function SettingsModal({ visible, onClose, settings, onUpdateSetting, onDebugSetStreak }: SettingsModalProps) {
     return (
         <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen" onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
@@ -68,6 +69,25 @@ export function SettingsModal({ visible, onClose, settings, onUpdateSetting }: S
                             onValueChange={(val) => onUpdateSetting('gridLayout', val)}
                             darkMode={settings.darkMode}
                         />
+
+                        {onDebugSetStreak && (
+                            <View style={styles.debugSection}>
+                                <Text style={[styles.debugTitle, settings.darkMode && styles.modalTitleDark]}>Debug Tools</Text>
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.debugButton,
+                                        pressed && { opacity: 0.8 }
+                                    ]}
+                                    onPress={() => {
+                                        onDebugSetStreak(6);
+                                        onClose();
+                                    }}
+                                >
+                                    <Ionicons name="flash" size={18} color="#fff" />
+                                    <Text style={styles.debugButtonText}>Simulate 6-Day Streak</Text>
+                                </Pressable>
+                            </View>
+                        )}
                     </ScrollView>
                     <Pressable
                         style={({ pressed }) => [
@@ -170,5 +190,34 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#333',
+    },
+    debugSection: {
+        marginTop: 20,
+        paddingTop: 20,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.1)',
+        width: '100%',
+    },
+    debugTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#666',
+        marginBottom: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+    },
+    debugButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FF6B6B',
+        padding: 12,
+        borderRadius: 12,
+        gap: 8,
+    },
+    debugButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
     },
 });

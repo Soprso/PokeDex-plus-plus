@@ -47,7 +47,7 @@ export function useEconomySystem() {
                         ...economy,
                         balance: newBalance,
                         lastDailyRewardDate: today,
-                        streak: newStreak,
+                        streak: isBonusDay ? 0 : newStreak,
                     },
                 },
             });
@@ -64,9 +64,33 @@ export function useEconomySystem() {
         }
     }, [isLoaded, user, isClaiming]);
 
+    const debugSetStreak = useCallback(async (streak: number) => {
+        if (!user) return;
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toLocaleDateString('en-CA');
+
+        try {
+            await user.update({
+                unsafeMetadata: {
+                    ...user.unsafeMetadata,
+                    economy: {
+                        ...(user.unsafeMetadata.economy as any),
+                        streak: streak,
+                        lastDailyRewardDate: yesterdayStr
+                    }
+                }
+            });
+            console.log(`Debug: Streak set to ${streak}, last reward date set to ${yesterdayStr}`);
+        } catch (error) {
+            console.error('Debug: Failed to set streak:', error);
+        }
+    }, [user]);
+
     return {
         checkDailyReward,
         rewardClaimed,
+        debugSetStreak,
         resetRewardState: () => setRewardClaimed(null),
     };
 }
