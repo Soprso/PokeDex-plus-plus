@@ -9,6 +9,7 @@ import {
     View
 } from 'react-native';
 
+import bestBuddyBadge from '@/assets/images/best-buddy.png';
 import buddySystemImg from '@/assets/images/buddy-system.png';
 import dexCoinImg from '@/assets/images/dex-coin.png';
 
@@ -18,22 +19,48 @@ interface WelcomeModalProps {
     darkMode: boolean;
 }
 
+interface SlideDetail {
+    label: string;
+    value: string;
+    icon: string;
+    showBadge?: boolean;
+}
+
+interface Slide {
+    title: string;
+    subtitle: string;
+    description: string;
+    icon: string;
+    color: string;
+    image?: any;
+    details?: SlideDetail[];
+}
+
 export function WelcomeModal({ visible, onClose, darkMode }: WelcomeModalProps) {
     const [currentSlide, setCurrentSlide] = useState(0);
 
-    const slides = [
+    const slides: Slide[] = [
         {
             title: "Welcome Trainer!",
             subtitle: "Your Journey Begins",
-            description: "Master the Pokédex++ and bond with your Pokémon! Our Buddy System rewards friendship with powerful rewards:",
-            details: [
-                { label: "Good Buddy", value: "Day 1 (1 Heart)", icon: "heart-outline" },
-                { label: "Great Buddy", value: "Day 4 (Neon Glow)", icon: "heart-half" },
-                { label: "Ultra Buddy", value: "Day 11 (Platinum Shine)", icon: "heart" },
-                { label: "Best Buddy", value: "Day 21 (Gold + Badge)", icon: "ribbon" }
-            ],
+            description: "Master the Pokédex++ and build the ultimate collection! Discover a world where and your Pokémon grow together.",
+            icon: "star",
             color: "#FFD700",
             image: buddySystemImg
+        },
+        {
+            title: "Buddy System",
+            subtitle: "Bond & Grow",
+            description: "Interact with your Pokémon to earn friendship hearts. Each tier unlocks unique visual enhancements and special badges:",
+            details: [
+                { label: "Good Buddy (1 Heart)", value: "Friendship begins with your Pokémon.", icon: "heart-outline" },
+                { label: "Great Buddy (4 Hearts)", value: "Unlocks the Blue Neon Glow effect.", icon: "heart-half" },
+                { label: "Ultra Buddy (11 Hearts)", value: "Unlocks the Platinum Shine effect.", icon: "heart" },
+                { label: "Best Buddy (21 Hearts)", value: "Golden Shine + Best Buddy Badge.", icon: "ribbon", showBadge: true }
+            ],
+            icon: "heart",
+            color: "#ef4444",
+            // image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/soothe-bell.png" // Removed to give space
         },
         {
             title: "Master the Controls",
@@ -95,14 +122,16 @@ export function WelcomeModal({ visible, onClose, darkMode }: WelcomeModalProps) 
                         <Ionicons name="close" size={24} color={darkMode ? '#fff' : '#000'} />
                     </Pressable>
 
-                    {/* Image Section */}
-                    <View style={styles.imageSection}>
-                        <Image
-                            source={typeof slide.image === 'string' ? { uri: slide.image } : slide.image}
-                            style={styles.heroImage}
-                            resizeMode="contain"
-                        />
-                    </View>
+                    {/* Image Section - Only show if no details or explicitly allowed */}
+                    {slide.image && !slide.details && (
+                        <View style={styles.imageSection}>
+                            <Image
+                                source={typeof slide.image === 'string' ? { uri: slide.image } : slide.image}
+                                style={styles.heroImage}
+                                resizeMode="contain"
+                            />
+                        </View>
+                    )}
 
                     {/* Content Section */}
                     <View style={styles.contentSection}>
@@ -122,7 +151,15 @@ export function WelcomeModal({ visible, onClose, darkMode }: WelcomeModalProps) 
                                             <Ionicons name={detail.icon as any} size={16} color={slide.color} />
                                         </View>
                                         <View>
-                                            <Text style={[styles.detailLabel, darkMode && styles.textWhite]}>{detail.label}</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                <Text style={[styles.detailLabel, darkMode && styles.textWhite]}>{detail.label}</Text>
+                                                {detail.showBadge && (
+                                                    <Image
+                                                        source={typeof bestBuddyBadge === 'string' ? { uri: bestBuddyBadge } : bestBuddyBadge}
+                                                        style={styles.badgeImage}
+                                                    />
+                                                )}
+                                            </View>
                                             <Text style={[styles.detailValue, darkMode && styles.textGray]}>{detail.value}</Text>
                                         </View>
                                     </View>
@@ -229,6 +266,7 @@ const styles = StyleSheet.create({
     },
     contentSection: {
         padding: 30,
+        paddingTop: 40,
         alignItems: 'center',
         flex: 1,
     },
@@ -317,8 +355,9 @@ const styles = StyleSheet.create({
     },
     detailsContainer: {
         width: '100%',
-        marginTop: 20,
-        gap: 8,
+        marginTop: 24,
+        gap: 12,
+        flex: 1,
     },
     detailRow: {
         flexDirection: 'row',
@@ -347,5 +386,9 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#666',
         fontWeight: '500',
+    },
+    badgeImage: {
+        width: 16,
+        height: 16,
     },
 });

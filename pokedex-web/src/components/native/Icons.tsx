@@ -1,6 +1,7 @@
 import type { IconBaseProps } from 'react-icons';
-import { IoMdAdd, IoMdArrowBack, IoMdArrowDown, IoMdArrowUp, IoMdCamera, IoMdCart, IoMdCheckmark, IoMdClose, IoMdCreate, IoMdDownload, IoMdFlash, IoMdFlashOff, IoMdGlobe, IoMdHeart, IoMdHome, IoMdImages, IoMdPerson, IoMdReverseCamera, IoMdSearch, IoMdSettings, IoMdShare, IoMdSnow, IoMdSwap, IoMdText, IoMdTrash } from "react-icons/io";
+import { IoMdAdd, IoMdArrowBack, IoMdArrowForward, IoMdCamera, IoMdCart, IoMdCheckmark, IoMdClose, IoMdCreate, IoMdDownload, IoMdFingerPrint, IoMdFlash, IoMdFlashOff, IoMdGift, IoMdGlobe, IoMdHeart, IoMdHeartEmpty, IoMdHeartHalf, IoMdHome, IoMdImages, IoMdPerson, IoMdReverseCamera, IoMdRibbon, IoMdRocket, IoMdSearch, IoMdSettings, IoMdShare, IoMdStar, IoMdSwap, IoMdTrash } from "react-icons/io";
 import { MdFilterList } from "react-icons/md";
+
 
 export const Ionicons = (props: { name: string; size?: number; color?: string; style?: any }) => {
     const { name, size = 24, color = 'black', style } = props;
@@ -35,13 +36,17 @@ export const Ionicons = (props: { name: string; size?: number; color?: string; s
         case 'flash-off': return <IoMdFlashOff {...iconProps} />;
         case 'camera-reverse': return <IoMdReverseCamera {...iconProps} />;
         case 'heart': return <IoMdHeart {...iconProps} />;
+        case 'heart-outline': return <IoMdHeartEmpty {...iconProps} />;
+        case 'heart-half': return <IoMdHeartHalf {...iconProps} />;
+        case 'star': return <IoMdStar {...iconProps} />;
+        case 'finger-print': return <IoMdFingerPrint {...iconProps} />;
+        case 'gift': return <IoMdGift {...iconProps} />;
+        case 'rocket': return <IoMdRocket {...iconProps} />;
+        case 'arrow-forward': return <IoMdArrowForward {...iconProps} />;
+        case 'ribbon': return <IoMdRibbon {...iconProps} />;
         case 'filter': return <MdFilterList {...iconProps} />;
         case 'planet': return <IoMdGlobe {...iconProps} />;
         case 'swap-vertical': return <IoMdSwap {...iconProps} />;
-        case 'arrow-up': return <IoMdArrowUp {...iconProps} />;
-        case 'arrow-down': return <IoMdArrowDown {...iconProps} />;
-        case 'text': return <IoMdText {...iconProps} />;
-        case 'snow': return <IoMdSnow {...iconProps} />;
         case 'alert-circle': return <span style={{ color, fontSize: size }}>!</span>;
         default: return null;
     }
