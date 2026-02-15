@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     imageSection: {
-        height: '45%',
+        height: '40%',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 40,
@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
     contentSection: {
         padding: 30,
         paddingTop: 40,
+        paddingBottom: 40,
         alignItems: 'center',
         flex: 1,
     },
