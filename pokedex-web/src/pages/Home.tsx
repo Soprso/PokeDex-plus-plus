@@ -20,6 +20,7 @@ import { EconomyModal } from '@/components/home/modals/EconomyModal';
 import { FilterModal } from '@/components/home/modals/FilterModal';
 import { SettingsModal } from '@/components/home/modals/SettingsModal';
 import { SortModal } from '@/components/home/modals/SortModal';
+import { WelcomeModal } from '@/components/home/modals/WelcomeModal'; // ADDED
 import AuthModal from '@/modals/auth'; // UPDATED to use real auth modal directly
 import type { CardEffects, Inventory } from '@/types';
 
@@ -34,7 +35,7 @@ import type { BuddyData, DailyHeartTracker, PokemonWithNickname } from '@/types'
 
 export default function HomeScreen() {
   const navigate = useNavigate(); // CHANGED
-  const { user, isLoaded } = useUser(); // Clerk authentication
+  const { user } = useUser(); // Clerk authentication
 
   // Load buddy data from Clerk metadata
   const buddyData: Record<number, BuddyData> = useMemo(() => {
@@ -98,10 +99,27 @@ export default function HomeScreen() {
 
   // Check daily reward on mount/auth
   useEffect(() => {
-    if (isLoaded && user) {
+    if (user) {
       checkDailyReward();
     }
-  }, [isLoaded, user, checkDailyReward]);
+  }, [user]);
+
+  // Welcome Modal Logic for New Users
+  useEffect(() => {
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeModal');
+    if (!hasSeenWelcome) {
+      // Small delay to ensure smooth initial render
+      const timer = setTimeout(() => {
+        setModals(prev => ({ ...prev, welcome: true }));
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCloseWelcome = () => {
+    setModals(prev => ({ ...prev, welcome: false }));
+    localStorage.setItem('hasSeenWelcomeModal', 'true');
+  };
 
   // Show reward modal when claimed
   useEffect(() => {
@@ -155,6 +173,7 @@ export default function HomeScreen() {
     auth: false,
     comingSoon: false,
     styleConfirmation: false,
+    welcome: false,
   });
 
   const [styleConfirmationTarget, setStyleConfirmationTarget] = useState<{
@@ -676,6 +695,12 @@ export default function HomeScreen() {
         darkMode={settings.darkMode}
         onAction={finalizeStyleApplication}
         actionLabel="Apply"
+      />
+
+      <WelcomeModal
+        visible={modals.welcome}
+        onClose={handleCloseWelcome}
+        darkMode={settings.darkMode}
       />
 
       <CardStyleModal
