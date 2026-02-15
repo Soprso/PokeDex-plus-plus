@@ -14,10 +14,10 @@ interface SettingsModalProps {
         gridLayout: boolean;
     };
     onUpdateSetting: (key: string, value: boolean) => void;
-    onDebugSetStreak?: (streak: number) => void;
+    // onDebugSetStreak?: (streak: number) => void;
 }
 
-export function SettingsModal({ visible, onClose, settings, onUpdateSetting, onDebugSetStreak }: SettingsModalProps) {
+export function SettingsModal({ visible, onClose, settings, onUpdateSetting /*, onDebugSetStreak */ }: SettingsModalProps) {
     return (
         <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen" onRequestClose={onClose}>
             <View style={styles.modalOverlay}>
@@ -69,7 +69,7 @@ export function SettingsModal({ visible, onClose, settings, onUpdateSetting, onD
                             onValueChange={(val) => onUpdateSetting('gridLayout', val)}
                             darkMode={settings.darkMode}
                         />
-
+                        {/* 
                         {onDebugSetStreak && (
                             <View style={styles.debugSection}>
                                 <Text style={[styles.debugTitle, settings.darkMode && styles.modalTitleDark]}>Debug Tools</Text>
@@ -88,6 +88,7 @@ export function SettingsModal({ visible, onClose, settings, onUpdateSetting, onD
                                 </Pressable>
                             </View>
                         )}
+                        */}
                     </ScrollView>
                     <Pressable
                         style={({ pressed }) => [

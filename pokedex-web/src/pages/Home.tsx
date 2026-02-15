@@ -616,7 +616,7 @@ export default function HomeScreen() {
         onClose={() => setModals({ ...modals, settings: false })}
         settings={settings}
         onUpdateSetting={(k, v) => setSettings({ ...settings, [k]: v })}
-        onDebugSetStreak={debugSetStreak}
+      /* onDebugSetStreak={debugSetStreak} */
       />
 
       <FilterModal
