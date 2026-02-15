@@ -3,6 +3,8 @@ import { useUser } from '@clerk/clerk-react';
 import { useCallback, useState } from 'react';
 
 const DAILY_REWARD_AMOUNT = 50;
+const STREAK_BONUS = 350;
+const STREAK_INTERVAL = 7;
 
 export function useEconomySystem() {
     const { user, isLoaded } = useUser();
@@ -33,7 +35,9 @@ export function useEconomySystem() {
         const isConsecutive = economy.lastDailyRewardDate === yesterday.toLocaleDateString('en-CA');
 
         const newStreak = isConsecutive ? (economy.streak || 0) + 1 : 1;
-        const newBalance = (economy.balance || 0) + DAILY_REWARD_AMOUNT;
+        const isBonusDay = newStreak > 0 && newStreak % STREAK_INTERVAL === 0;
+        const rewardAmount = DAILY_REWARD_AMOUNT + (isBonusDay ? STREAK_BONUS : 0);
+        const newBalance = (economy.balance || 0) + rewardAmount;
 
         try {
             await user.update({
@@ -50,7 +54,7 @@ export function useEconomySystem() {
 
             setRewardClaimed({
                 claimed: true,
-                amount: DAILY_REWARD_AMOUNT,
+                amount: rewardAmount,
                 streak: newStreak,
             });
         } catch (error) {
