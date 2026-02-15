@@ -9,10 +9,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'; // UPDATED
 import { FilterBar } from '@/components/home/FilterBar';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { PokemonGrid } from '@/components/home/PokemonGrid';
-import { PokemonGridSkeleton } from '@/components/home/PokemonGridSkeleton'; // ADDED
+import { PokemonGridSkeleton } from '@/components/home/PokemonGridSkeleton';
 import { RadialMenu } from '@/components/home/RadialMenu';
 import { ToastNotification } from '@/components/home/ToastNotification';
-import { BuddyModal } from '@/components/home/modals/BuddyModal';
 import { BuddyProgressModal } from '@/components/home/modals/BuddyProgressModal';
 import { CardStyleModal } from '@/components/home/modals/CardStyleModal';
 import { ComingSoonModal } from '@/components/home/modals/ComingSoonModal';
@@ -20,8 +19,8 @@ import { EconomyModal } from '@/components/home/modals/EconomyModal';
 import { FilterModal } from '@/components/home/modals/FilterModal';
 import { SettingsModal } from '@/components/home/modals/SettingsModal';
 import { SortModal } from '@/components/home/modals/SortModal';
-import { WelcomeModal } from '@/components/home/modals/WelcomeModal'; // ADDED
-import AuthModal from '@/modals/auth'; // UPDATED to use real auth modal directly
+import { WelcomeModal } from '@/components/home/modals/WelcomeModal';
+import AuthModal from '@/modals/auth';
 import type { CardEffects, Inventory } from '@/types';
 
 // Hooks & Data
@@ -539,7 +538,7 @@ export default function HomeScreen() {
         {/* Header */}
         <HomeHeader
           balance={economy?.balance || 0}
-          onBuddyHelpPress={() => setModals({ ...modals, buddy: true })}
+          onBuddyHelpPress={() => setModals({ ...modals, welcome: true })}
           onWalletPress={() => setModals({ ...modals, economy: true })}
           darkMode={settings.darkMode}
         />
@@ -561,7 +560,7 @@ export default function HomeScreen() {
       {/* Header */}
       <HomeHeader
         balance={economy?.balance || 0}
-        onBuddyHelpPress={() => setModals({ ...modals, buddy: true })}
+        onBuddyHelpPress={() => setModals({ ...modals, welcome: true })}
         onWalletPress={() => setModals({ ...modals, economy: true })}
         darkMode={settings.darkMode}
       />
@@ -639,17 +638,6 @@ export default function HomeScreen() {
         onClose={() => setModals({ ...modals, sort: false })}
         sortOption={sortOption}
         onSortSelect={(s) => { updateParams({ s }); setModals({ ...modals, sort: false }); }}
-        darkMode={settings.darkMode}
-      />
-
-      <BuddyModal
-        visible={modals.buddy}
-        onClose={() => setModals({ ...modals, buddy: false })}
-        isSignedIn={!!user}
-        onSignIn={() => {
-          setModals({ ...modals, buddy: false });
-          navigate('/profile');
-        }}
         darkMode={settings.darkMode}
       />
 

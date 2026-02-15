@@ -23,33 +23,38 @@ export function WelcomeModal({ visible, onClose, darkMode }: WelcomeModalProps) 
 
     const slides = [
         {
-            title: "Welcome to Pokédex++",
-            subtitle: "Your Ultimate Companion",
-            description: "Discover the world of Pokémon with advanced tracking and our unique Buddy System. Bond with your favorite Pokémon to unlock special effects!",
-            icon: "star",
+            title: "Welcome Trainer!",
+            subtitle: "Your Journey Begins",
+            description: "Master the Pokédex++ and bond with your Pokémon! Our Buddy System rewards friendship with powerful rewards:",
+            details: [
+                { label: "Good Buddy", value: "Day 1 (1 Heart)", icon: "heart-outline" },
+                { label: "Great Buddy", value: "Day 4 (Neon Glow)", icon: "heart-half" },
+                { label: "Ultra Buddy", value: "Day 11 (Platinum Shine)", icon: "heart" },
+                { label: "Best Buddy", value: "Day 21 (Gold + Badge)", icon: "ribbon" }
+            ],
             color: "#FFD700",
             image: buddySystemImg
         },
         {
             title: "Master the Controls",
-            subtitle: "Interactive Experience",
-            description: "Long-press on a Pokémon's heart to view friendship progress. Click a card to see deep stats, types, and hidden abilities.",
+            subtitle: "Interactive collection",
+            description: "Long-press on a heart to see buddy progress. Tap any Pokémon to see deep stats, types, and hidden abilities.",
             icon: "finger-print",
             color: "#4facfe",
             image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png"
         },
         {
             title: "Visit the PokéShop",
-            subtitle: "Customization & Power",
-            description: "Personalize your collection with mythical card effects and premium frames. Stand out from other Trainers!",
+            subtitle: "Style & Customization",
+            description: "Personalize your frames and unlock mythical card effects (Neon, Golden Glory, Bubble Beam) with Dex Coins!",
             icon: "cart",
             color: "#00f2fe",
             image: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/nugget.png"
         },
         {
             title: "Trainer Rewards",
-            subtitle: "Daily Bonuses",
-            description: "Sign in daily to claim Dex Coins and maintain your streak. Large bonuses await those who return consistently!",
+            subtitle: "Daily Incentives",
+            description: "Sign in daily for Dex Coins & progress your streak. Consecutive visits earn you massive 350+ coin bonuses!",
             icon: "gift",
             color: "#f093fb",
             image: dexCoinImg
@@ -108,6 +113,22 @@ export function WelcomeModal({ visible, onClose, darkMode }: WelcomeModalProps) 
                         <Text style={[styles.title, darkMode && styles.textWhite]}>{slide.title}</Text>
                         <Text style={[styles.subtitle, { color: slide.color }]}>{slide.subtitle}</Text>
                         <Text style={[styles.description, darkMode && styles.textGray]}>{slide.description}</Text>
+
+                        {slide.details && (
+                            <View style={styles.detailsContainer}>
+                                {slide.details.map((detail, idx) => (
+                                    <View key={idx} style={[styles.detailRow, darkMode && styles.detailRowDark]}>
+                                        <View style={[styles.detailIcon, { backgroundColor: slide.color + '15' }]}>
+                                            <Ionicons name={detail.icon as any} size={16} color={slide.color} />
+                                        </View>
+                                        <View>
+                                            <Text style={[styles.detailLabel, darkMode && styles.textWhite]}>{detail.label}</Text>
+                                            <Text style={[styles.detailValue, darkMode && styles.textGray]}>{detail.value}</Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
                     </View>
 
                     {/* Pagination Dots */}
@@ -293,5 +314,38 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+    },
+    detailsContainer: {
+        width: '100%',
+        marginTop: 20,
+        gap: 8,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        gap: 12,
+    },
+    detailRowDark: {
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    detailIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    detailLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1a1a1a',
+    },
+    detailValue: {
+        fontSize: 11,
+        color: '#666',
+        fontWeight: '500',
     },
 });
