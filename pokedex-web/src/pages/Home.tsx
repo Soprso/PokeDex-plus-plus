@@ -12,7 +12,6 @@ import { PokemonGrid } from '@/components/home/PokemonGrid';
 import { PokemonGridSkeleton } from '@/components/home/PokemonGridSkeleton'; // ADDED
 import { RadialMenu } from '@/components/home/RadialMenu';
 import { ToastNotification } from '@/components/home/ToastNotification';
-import { AuthModal } from '@/components/home/modals/AuthModal'; // ADDED
 import { BuddyModal } from '@/components/home/modals/BuddyModal';
 import { BuddyProgressModal } from '@/components/home/modals/BuddyProgressModal';
 import { CardStyleModal } from '@/components/home/modals/CardStyleModal';
@@ -21,6 +20,7 @@ import { EconomyModal } from '@/components/home/modals/EconomyModal';
 import { FilterModal } from '@/components/home/modals/FilterModal';
 import { SettingsModal } from '@/components/home/modals/SettingsModal';
 import { SortModal } from '@/components/home/modals/SortModal';
+import AuthModal from '@/modals/auth'; // UPDATED to use real auth modal directly
 import type { CardEffects, Inventory } from '@/types';
 
 // Hooks & Data
@@ -637,10 +637,6 @@ export default function HomeScreen() {
       <AuthModal
         visible={modals.auth}
         onClose={() => setModals({ ...modals, auth: false })}
-        onProfilePress={() => {
-          setModals({ ...modals, auth: false });
-          navigate('/profile');
-        }}
         darkMode={settings.darkMode}
       />
 
