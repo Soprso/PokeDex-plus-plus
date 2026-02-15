@@ -1,8 +1,15 @@
 import dexCoinImage from '@/assets/images/dex-coin.png';
 import dexWalletImage from '@/assets/images/dex-wallet.png'; // Corrected if it was wrong
 import { GlowBorder, ShineOverlay } from '@/components/card-effects'; // Assuming these exist
+import { Image, ImageBackground, Modal, Pressable, StyleSheet, Text, View } from '@/components/native';
 import { Ionicons } from '@/components/native/Icons';
-import { Image, ImageBackground, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { TYPE_BACKGROUNDS } from '@/constants/pokemonTypes';
+import { type ShopItem } from '@/constants/shopItems';
+
+// Coin Bundle Assets
+import imgChest from '@/assets/images/shop/coins_large.png';
+import imgSack from '@/assets/images/shop/coins_medium.png';
+import imgHandful from '@/assets/images/shop/coins_small.png';
 
 interface EconomyModalProps {
     visible: boolean;
@@ -17,6 +24,8 @@ interface EconomyModalProps {
     actionLabel?: string;
     isSignedIn?: boolean;
     onSignIn?: () => void;
+    item?: ShopItem | null;
+    selectedCurrency?: string;
 }
 
 export function EconomyModal({
@@ -31,7 +40,9 @@ export function EconomyModal({
     onAction,
     actionLabel,
     isSignedIn = true,
-    onSignIn
+    onSignIn,
+    item,
+    selectedCurrency = 'USD'
 }: EconomyModalProps) {
     const isError = type === 'error';
     const isConfirm = type === 'confirm';
@@ -98,7 +109,49 @@ export function EconomyModal({
 
                     {/* Body */}
                     <View style={styles.body}>
-                        <Text style={[styles.messageText, darkMode && styles.messageTextDark]}>
+                        {isConfirm && item && (
+                            <View style={styles.itemPreviewContainer}>
+                                <ImageBackground
+                                    source={TYPE_BACKGROUNDS['electric']}
+                                    style={styles.itemPreviewBg}
+                                    imageStyle={{ borderRadius: 16 }}
+                                >
+                                    <View style={[styles.itemPreviewCard, darkMode && styles.itemPreviewCardDark]}>
+                                        <Image
+                                            source={item.currency === 'usd' ? (
+                                                item.id === 'coins_small' ? imgHandful :
+                                                    item.id === 'coins_medium' ? imgSack :
+                                                        item.id === 'coins_large' ? imgChest :
+                                                            { uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }
+                                            ) : { uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
+                                            style={[
+                                                styles.itemPreviewImage,
+                                                item.currency === 'usd' && { mixBlendMode: 'screen' } as any
+                                            ]}
+                                            resizeMode="contain"
+                                        />
+                                        <View style={styles.itemPreviewBadge}>
+                                            <Text style={styles.itemPreviewBadgeText}>{item.category.toUpperCase()}</Text>
+                                        </View>
+                                    </View>
+                                </ImageBackground>
+                                <View style={styles.priceTag}>
+                                    {item.currency === 'usd' ? (
+                                        <Text style={styles.priceTagText}>
+                                            {selectedCurrency === 'INR' ? '₹' : '$'}
+                                            {selectedCurrency === 'INR' ? Math.round(item.price * 83) : item.price.toFixed(2)}
+                                        </Text>
+                                    ) : (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Image source={dexCoinImage} style={{ width: 16, height: 16, marginRight: 4 }} />
+                                            <Text style={styles.priceTagText}>{item.price}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        )}
+
+                        <Text style={[styles.messageText, darkMode && styles.messageTextDark, isConfirm && { fontSize: 16, fontWeight: '600', marginBottom: 24 }]}>
                             {message.replace(/🔥 Current Streak: \d+ Days/, '')}
                         </Text>
 
@@ -495,5 +548,70 @@ const styles = StyleSheet.create({
     loginButton: {
         flexDirection: 'row',
         backgroundColor: '#2563eb',
+    },
+    itemPreviewContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    itemPreviewBg: {
+        width: 140,
+        height: 140,
+        borderRadius: 16,
+        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    itemPreviewCard: {
+        flex: 1,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    itemPreviewCardDark: {
+        backgroundColor: 'rgba(0,0,0,0.3)',
+    },
+    itemPreviewImage: {
+        width: 100,
+        height: 100,
+    },
+    itemPreviewBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    itemPreviewBadgeText: {
+        color: '#fff',
+        fontSize: 8,
+        fontWeight: 'bold',
+    },
+    priceTag: {
+        position: 'absolute',
+        bottom: -15,
+        backgroundColor: '#10b981',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 3,
+        borderColor: '#fff',
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    priceTagText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '900',
     },
 });

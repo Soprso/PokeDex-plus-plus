@@ -298,9 +298,9 @@ const styles = StyleSheet.create({
         zIndex: 110,
     } as any,
     itemInfoOverlayDark: { backgroundColor: 'rgba(30, 30, 30, 0.9)', borderTopColor: 'rgba(255,255,255,0.05)' } as any,
-    itemName: { fontSize: 12, fontWeight: '700', marginBottom: 2, color: '#1a1a1a', letterSpacing: '-0.3px' } as any,
+    itemName: { fontSize: 18, fontWeight: '900', marginBottom: 4, color: '#1a1a1a', letterSpacing: '-0.5px' } as any,
     textDark: { color: '#fff' } as any,
-    itemDesc: { fontSize: 10, color: '#666', marginBottom: 6, height: 24, lineHeight: '12px' } as any,
+    itemDesc: { fontSize: 13, color: '#666', marginBottom: 8, height: 40, lineHeight: '18px' } as any,
     buyButton: {
         flexDirection: 'row',
         alignItems: 'center',

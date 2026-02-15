@@ -386,6 +386,8 @@ export default function ShopScreen() {
                 darkMode={isDark}
                 onAction={finalizePurchase}
                 actionLabel="Buy Now"
+                item={pendingItem}
+                selectedCurrency={selectedCurrency}
             />
 
             <EconomyModal
