@@ -169,7 +169,6 @@ export default function ShopScreen() {
 
                         await user.update({
                             unsafeMetadata: {
-                                ...currentMetadata,
                                 economy: { ...latestEconomy, balance: newBalance },
                                 inventory: newInventory
                             }
@@ -231,7 +230,6 @@ export default function ShopScreen() {
 
             await user.update({
                 unsafeMetadata: {
-                    ...currentMetadata,
                     economy: { ...latestEconomy, balance: newBalance },
                     inventory: newInventory
                 }

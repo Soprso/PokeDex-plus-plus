@@ -89,7 +89,9 @@ export function CardStyleModal({
                 <View style={styles.itemFooter}>
                     {isUnlocked || item.price === 0 ? (
                         <View style={styles.unlockedBadge}>
-                            <Text style={styles.unlockedText}>Permanent</Text>
+                            <Text style={styles.unlockedText}>
+                                Permanent{count > 0 ? ` (${count} Unused)` : ''}
+                            </Text>
                         </View>
                     ) : (
                         <View style={[styles.countBadge, !canUnlock && styles.emptyBadge]}>

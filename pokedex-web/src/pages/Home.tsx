@@ -328,7 +328,6 @@ export default function HomeScreen() {
       try {
         await user.update({
           unsafeMetadata: {
-            ...user.unsafeMetadata,
             [metadataKey]: updatedStyles
           }
         });
@@ -349,7 +348,6 @@ export default function HomeScreen() {
       try {
         await user.update({
           unsafeMetadata: {
-            ...user.unsafeMetadata,
             [metadataKey]: updatedStyles
           }
         });
@@ -417,7 +415,6 @@ export default function HomeScreen() {
 
       await user.update({
         unsafeMetadata: {
-          ...currentMetadata,
           inventory: newInventory,
           [metadataKey]: updatedStyles,
           [unlockedKey]: updatedUnlocked
@@ -469,7 +466,6 @@ export default function HomeScreen() {
 
       await user.update({
         unsafeMetadata: {
-          ...currentMetadata,
           buddyData: {
             ...(currentMetadata.buddyData as Record<number, BuddyData>),
             [pokemon.id]: newBuddyData,
@@ -513,7 +509,6 @@ export default function HomeScreen() {
       // 2. Persistent Update
       await user.update({
         unsafeMetadata: {
-          ...user.unsafeMetadata,
           nicknames: newNames
         }
       });
