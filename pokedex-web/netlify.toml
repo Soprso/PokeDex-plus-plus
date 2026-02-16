@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build:vite"
+  publish = "dist"
+  base = "pokedex-web"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
