@@ -140,72 +140,90 @@ export default function ShopScreen() {
         // USD Purchase via Razorpay
         if (item.currency === 'usd') {
             setIsProcessing(true);
-            const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+            try {
+                // 1. Create Order via Netlify Function
+                const orderResponse = await fetch('/.netlify/functions/create-order', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        amount: item.price,
+                        currency: selectedCurrency === 'INR' ? 'INR' : 'USD'
+                    })
+                });
 
-            if (!rzpKey) {
-                setModalConfig({ title: 'Config Error', message: 'Razorpay Key is missing.' });
+                if (!orderResponse.ok) {
+                    throw new Error('Failed to create secure order');
+                }
+
+                const order = await orderResponse.json();
+
+                const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+                if (!rzpKey) {
+                    throw new Error('Razorpay Key is missing.');
+                }
+
+                // 2. Open Razorpay Checkout with Order ID
+                const options = {
+                    key: rzpKey,
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: 'PokeDex Plus Plus',
+                    description: `Purchase ${item.name}`,
+                    image: coinIcon,
+                    order_id: order.id, // THE SECURE ORDER ID FROM SERVER
+                    handler: async function () {
+                        // On success, update metadata
+                        try {
+                            const currentMetadata = user.unsafeMetadata;
+                            const latestEconomy = (currentMetadata.economy as EconomyData) || { balance: 0, streak: 1 };
+                            const latestInventory = (currentMetadata.inventory as Inventory) || {};
+
+                            const newBalance = latestEconomy.balance + (item.rewardAmount || 0);
+                            const newInventory = { ...latestInventory, [item.id]: (latestInventory[item.id] || 0) + 1 };
+
+                            await user.update({
+                                unsafeMetadata: {
+                                    ...user.unsafeMetadata,
+                                    economy: { ...latestEconomy, balance: newBalance },
+                                    inventory: newInventory
+                                }
+                            });
+
+                            setBalance(newBalance);
+                            setInventory(newInventory);
+                            setModals(prev => ({ ...prev, confirm: false }));
+                        } catch (err) {
+                            console.error('Failed to update balance after payment', err);
+                        } finally {
+                            setIsProcessing(false);
+                            setPendingItem(null);
+                        }
+                    },
+                    prefill: {
+                        name: user.fullName || '',
+                        email: user.primaryEmailAddress?.emailAddress || '',
+                    },
+                    theme: { color: '#6366f1' },
+                    modal: {
+                        ondismiss: function () {
+                            setIsProcessing(false);
+                        }
+                    },
+                    method: {
+                        netbanking: true,
+                        card: true,
+                        upi: UPI_COUNTRIES.includes(userCountry),
+                        wallet: false,
+                    }
+                };
+
+                const rzp = new (window as any).Razorpay(options);
+                rzp.open();
+            } catch (err: any) {
+                console.error('Payment Error:', err);
+                setModalConfig({ title: 'Payment Error', message: err.message || 'Something went wrong.' });
                 setModals(m => ({ ...m, error: true, confirm: false }));
                 setIsProcessing(false);
-                return;
             }
-
-            const amount = selectedCurrency === 'INR' ? Math.round(item.price * 83) : item.price;
-            const options = {
-                key: rzpKey,
-                amount: Math.round(amount * 100), // In paise/cents
-                currency: selectedCurrency === 'INR' ? 'INR' : 'USD',
-                name: 'PokeDex Plus Plus',
-                description: `Purchase ${item.name}`,
-                image: coinIcon,
-                handler: async function () {
-                    // On success, update metadata
-                    try {
-                        const currentMetadata = user.unsafeMetadata;
-                        const latestEconomy = (currentMetadata.economy as EconomyData) || { balance: 0, streak: 1 };
-                        const latestInventory = (currentMetadata.inventory as Inventory) || {};
-
-                        const newBalance = latestEconomy.balance + (item.rewardAmount || 0);
-                        const newInventory = { ...latestInventory, [item.id]: (latestInventory[item.id] || 0) + 1 };
-
-                        await user.update({
-                            unsafeMetadata: {
-                                economy: { ...latestEconomy, balance: newBalance },
-                                inventory: newInventory
-                            }
-                        });
-
-                        setBalance(newBalance);
-                        setInventory(newInventory);
-                        setModals(prev => ({ ...prev, confirm: false }));
-                    } catch (err) {
-                        console.error('Failed to update balance after payment', err);
-                    } finally {
-                        setIsProcessing(false);
-                        setPendingItem(null);
-                    }
-                },
-                prefill: {
-                    name: user.fullName || '',
-                    email: user.primaryEmailAddress?.emailAddress || '',
-                },
-                theme: {
-                    color: '#6366f1',
-                },
-                modal: {
-                    ondismiss: function () {
-                        setIsProcessing(false);
-                    }
-                },
-                method: {
-                    netbanking: true,
-                    card: true,
-                    upi: UPI_COUNTRIES.includes(userCountry),
-                    wallet: false,
-                }
-            };
-
-            const rzp = new (window as any).Razorpay(options);
-            rzp.open();
             return;
         }
 
