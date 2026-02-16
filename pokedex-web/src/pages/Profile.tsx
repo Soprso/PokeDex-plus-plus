@@ -50,16 +50,26 @@ export default function ProfileScreen() {
     // 1. Data Loading Effect
     useEffect(() => {
         async function loadProfile() {
-            // Wait for Clerk to be ready
-            if (!isLoaded || !userLoaded) return;
+            console.log('[Profile] Sync Effect:', { isLoaded, userLoaded, isSignedIn, hasUser: !!user });
 
-            // If not signed in, we can stop loading immediately
-            if (!isSignedIn || !user) {
+            // 1. Wait for Auth foundational state (isSignedIn/isLoaded)
+            if (!isLoaded) return;
+
+            // 2. If we're absolute NOT signed in, we can render the "Guest" view immediately
+            if (!isSignedIn) {
+                console.log('[Profile] Guest detected, clearing loading state.');
                 setLoading(false);
                 return;
             }
 
+            // 3. If signed in, wait for the user object to fully populate
+            if (!userLoaded || !user) {
+                console.log('[Profile] Signed in but user object not ready yet...');
+                return;
+            }
+
             try {
+                console.log('[Profile] Loading data for user:', user.id);
                 // Load Streak & Balance
                 if (user.unsafeMetadata?.economy) {
                     const economy = user.unsafeMetadata.economy as any;
@@ -89,6 +99,7 @@ export default function ProfileScreen() {
             } catch (err) {
                 console.error('[Profile] Error loading data:', err);
             } finally {
+                console.log('[Profile] Data load complete, clearing loading state.');
                 setLoading(false);
             }
         }
@@ -96,12 +107,12 @@ export default function ProfileScreen() {
         loadProfile();
     }, [isLoaded, userLoaded, isSignedIn, user?.id]);
 
-    // 2. Separate Reward Check Effect (Depends on checkDailyReward identity)
+    // 2. Separate Reward Check Effect
     useEffect(() => {
-        if (isSignedIn && isLoaded && userLoaded) {
+        if (isSignedIn && isLoaded && userLoaded && user) {
             checkDailyReward();
         }
-    }, [isSignedIn, isLoaded, userLoaded]);
+    }, [isSignedIn, isLoaded, userLoaded, !!user]);
 
 
     const handleSave = async () => {
