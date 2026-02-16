@@ -16,7 +16,7 @@ if (!PUBLISHABLE_KEY) {
 
 function App() {
   return (
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/" signInUrl="/">
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />

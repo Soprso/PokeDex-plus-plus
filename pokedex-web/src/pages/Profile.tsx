@@ -107,6 +107,17 @@ export default function ProfileScreen() {
         loadProfile();
     }, [isLoaded, userLoaded, isSignedIn, user?.id]);
 
+    // 1.5 Safety Timeout for Loading
+    useEffect(() => {
+        if (loading) {
+            const timer = setTimeout(() => {
+                console.warn('[Profile] Loading safety timeout reached.');
+                setLoading(false);
+            }, 5000); // 5 seconds fallback
+            return () => clearTimeout(timer);
+        }
+    }, [loading]);
+
     // 2. Separate Reward Check Effect
     useEffect(() => {
         if (isSignedIn && isLoaded && userLoaded && user) {
@@ -161,9 +172,15 @@ export default function ProfileScreen() {
                     text: 'Sign Out',
                     style: 'destructive',
                     onPress: async () => {
-                        await signOut();
-                        closeAlert();
-                        navigate(-1);
+                        try {
+                            setLoading(true);
+                            closeAlert();
+                            await signOut({ redirectUrl: '/' });
+                        } catch (err) {
+                            console.error('[Profile] Sign out error:', err);
+                            setLoading(false);
+                            navigate('/');
+                        }
                     },
                 },
             ],
