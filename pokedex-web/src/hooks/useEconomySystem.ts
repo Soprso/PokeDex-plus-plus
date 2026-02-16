@@ -26,6 +26,26 @@ export function useEconomySystem() {
         console.log('Checking Daily Reward:', { lastDate: economy.lastDailyRewardDate, today });
         if (economy.lastDailyRewardDate === today) {
             console.log('Daily Reward already claimed for today');
+
+            // Self-correction for invalid streaks found in metadata
+            if (economy.streak > STREAK_INTERVAL) {
+                console.log('Correcting streak in metadata:', economy.streak);
+                try {
+                    await user.update({
+                        unsafeMetadata: {
+                            ...user.unsafeMetadata,
+                            economy: {
+                                ...economy,
+                                streak: 1 // Recover to 1
+                            }
+                        }
+                    });
+                } catch (e) {
+                    console.error('Failed to self-correct streak:', e);
+                }
+            }
+
+            setIsClaiming(false);
             return;
         }
 
@@ -34,8 +54,15 @@ export function useEconomySystem() {
         yesterday.setDate(yesterday.getDate() - 1);
         const isConsecutive = economy.lastDailyRewardDate === yesterday.toLocaleDateString('en-CA');
 
-        const newStreak = isConsecutive ? (economy.streak || 0) + 1 : 1;
-        const isBonusDay = newStreak > 0 && newStreak % STREAK_INTERVAL === 0;
+        const currentStreak = economy.streak || 0;
+        let newStreak = isConsecutive ? currentStreak + 1 : 1;
+
+        // If the streak was already 7 (or more due to bug), reset to 1
+        if (newStreak > STREAK_INTERVAL) {
+            newStreak = 1;
+        }
+
+        const isBonusDay = newStreak === STREAK_INTERVAL;
         const rewardAmount = DAILY_REWARD_AMOUNT + (isBonusDay ? STREAK_BONUS : 0);
         const newBalance = (economy.balance || 0) + rewardAmount;
 
@@ -47,7 +74,7 @@ export function useEconomySystem() {
                         ...economy,
                         balance: newBalance,
                         lastDailyRewardDate: today,
-                        streak: isBonusDay ? 0 : newStreak,
+                        streak: newStreak, // Store the actual new streak (1-7)
                     },
                 },
             });

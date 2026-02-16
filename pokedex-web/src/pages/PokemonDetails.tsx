@@ -756,7 +756,7 @@ export default function Details() {
             </TouchableOpacity>
 
             <Animated.ScrollView
-                style={{ flex: 1, opacity: fadeAnim, backgroundColor: '#fff' }}
+                style={{ flex: 1, opacity: 1, backgroundColor: '#fff' }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* HERO SECTION */}
@@ -775,10 +775,8 @@ export default function Details() {
                         style={StyleSheet.absoluteFill as any}
                     />
 
-                    {/* Dark overlay for readability */}
-                    <View style={styles.heroOverlay} />
-
                     {/* Type-specific animated effects */}
+
                     <TypeEffectOverlay type={mainType} />
 
                     {/* Shiny sparkle effect - shows when viewing shiny Pokemon */}

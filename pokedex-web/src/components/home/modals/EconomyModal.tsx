@@ -1,10 +1,13 @@
 import dexCoinImage from '@/assets/images/dex-coin.png';
 import dexWalletImage from '@/assets/images/dex-wallet.png'; // Corrected if it was wrong
-import { GlowBorder, ShineOverlay } from '@/components/card-effects'; // Assuming these exist
+import { GlowBorder, ShineOverlay } from '@/components/card-effects';
 import { Image, ImageBackground, Modal, Pressable, StyleSheet, Text, View } from '@/components/native';
+import { Animated } from 'react-native';
+
 import { Ionicons } from '@/components/native/Icons';
 import { TYPE_BACKGROUNDS } from '@/constants/pokemonTypes';
 import { type ShopItem } from '@/constants/shopItems';
+import { useState } from 'react';
 
 // Coin Bundle Assets
 import imgChest from '@/assets/images/shop/coins_large.png';
@@ -44,11 +47,42 @@ export function EconomyModal({
     item,
     selectedCurrency = 'USD'
 }: EconomyModalProps) {
+    const isReward = type === 'reward';
     const isError = type === 'error';
     const isConfirm = type === 'confirm';
 
+    // Animation state
+    const [buttonScale] = useState(new Animated.Value(1));
+
+    const handleClaim = () => {
+        if (onAction) {
+            // Pulse animation before closing
+            Animated.sequence([
+                Animated.timing(buttonScale, {
+                    toValue: 1.2,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(buttonScale, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                })
+            ]).start(() => {
+                onAction();
+                onClose();
+                // Reset scale for next time
+                buttonScale.setValue(1);
+            });
+        } else {
+            onClose();
+        }
+    };
+
+
     return (
-        <Modal visible={visible} animationType="fade" transparent presentationStyle="overFullScreen" onRequestClose={onClose}>
+        <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+
             <View style={styles.centeredModalOverlay}>
                 <View style={[
                     styles.modalContent,
@@ -65,10 +99,10 @@ export function EconomyModal({
                             style={[
                                 styles.economyModalHeader,
                                 type === 'reward' ? styles.economyModalHeaderReward : styles.economyModalHeaderInfo,
-                                isError && styles.economyModalHeaderError,
-                                isConfirm && styles.economyModalHeaderConfirm,
-                                darkMode && styles.economyModalHeaderDark
-                            ]}
+                                isError ? styles.economyModalHeaderError : {},
+                                isConfirm ? styles.economyModalHeaderConfirm : {},
+                                darkMode ? styles.economyModalHeaderDark : {}
+                            ] as any}
                             resizeMode="cover"
                         >
                             <ShineOverlay color={isError ? "rgba(239, 68, 68, 0.4)" : "rgba(255, 215, 0, 0.4)"} duration={3000} />
@@ -80,7 +114,7 @@ export function EconomyModal({
                                 ) : isConfirm ? (
                                     <Ionicons name="cart" size={80} color="#6366f1" />
                                 ) : (
-                                    <Image source={{ uri: dexCoinImage }} style={type === 'reward' ? styles.rewardCoinIconLarge : styles.rewardCoinIcon} />
+                                    <Image source={{ uri: dexCoinImage }} style={isReward ? styles.rewardCoinIconLarge : styles.rewardCoinIcon} />
                                 )}
 
                                 {type === 'reward' && (
@@ -94,14 +128,14 @@ export function EconomyModal({
                             </View>
 
                             <Text style={[
-                                styles.economyModalTitle,
+                                styles.economyModalTitle as any,
                                 {
                                     marginTop: (type === 'info' || isError || isConfirm) ? 8 : 16,
                                     color: darkMode ? '#fff' : '#000',
-                                    textShadowColor: darkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.3)',
-                                    textShadowRadius: 4
+                                    textShadow: darkMode ? '0 0 4px rgba(0,0,0,0.8)' : '0 0 4px rgba(255,255,255,0.3)',
                                 }
                             ]}>
+
                                 {title}
                             </Text>
                         </ImageBackground>
@@ -151,18 +185,19 @@ export function EconomyModal({
                             </View>
                         )}
 
-                        <Text style={[styles.messageText, darkMode && styles.messageTextDark, isConfirm && { fontSize: 16, fontWeight: '600', marginBottom: 24 }]}>
+                        <Text style={[styles.messageText as any, darkMode && (styles.messageTextDark as any), isConfirm && ({ fontSize: 16, fontWeight: '600', marginBottom: 24 } as any)]}>
                             {message.replace(/🔥 Current Streak: \d+ Days/, '')}
                         </Text>
 
                         {!isSignedIn && (
-                            <View style={[styles.loginIncentive, darkMode && styles.loginIncentiveDark]}>
+                            <View style={[styles.loginIncentive, darkMode ? styles.loginIncentiveDark : {}]}>
                                 <Ionicons name="information-circle-outline" size={20} color={darkMode ? "#60a5fa" : "#2563eb"} />
-                                <Text style={[styles.loginIncentiveText, darkMode && styles.loginIncentiveTextDark]}>
+                                <Text style={[styles.loginIncentiveText as any, darkMode ? (styles.loginIncentiveTextDark as any) : {}]}>
                                     Sign in to start earning coins, maintaining streaks, and participating in events!
                                 </Text>
                             </View>
                         )}
+
 
                         {(type === 'info' || message.includes('Streak')) && (
                             <StreakCard streak={streak} darkMode={darkMode} />
@@ -206,23 +241,27 @@ export function EconomyModal({
                                 </Pressable>
                             </View>
                         ) : (
-                            <Pressable
-                                style={({ pressed }) => [
-                                    styles.button,
-                                    isError && styles.errorButton,
-                                    darkMode && styles.buttonDark,
-                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-                                ]}
-                                onPress={() => {
-                                    if (onAction) onAction();
-                                    onClose();
-                                }}
-                            >
-                                <Text style={[styles.buttonText, darkMode && styles.buttonTextDark]}>
-                                    {type === 'reward' ? 'Claim Reward' : 'Got it'}
-                                </Text>
-                            </Pressable>
+                            <Animated.View style={{ width: '100%', transform: [{ scale: buttonScale }] }}>
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.button,
+                                        isError ? styles.errorButton : {},
+                                        darkMode ? styles.buttonDark : {},
+                                        pressed ? { opacity: 0.9, transform: 'scale(0.98)' } : {}
+                                    ] as any}
+                                    onPress={isReward ? handleClaim : () => {
+                                        if (onAction) onAction();
+                                        onClose();
+                                    }}
+                                >
+                                    <Text style={[styles.buttonText as any, darkMode ? (styles.buttonTextDark as any) : {}]}>
+                                        {isReward ? 'Claim Reward' : 'Got it'}
+                                    </Text>
+                                </Pressable>
+
+                            </Animated.View>
                         )}
+
                     </View>
                 </View>
             </View>

@@ -1,7 +1,9 @@
+import { EconomyModal } from '@/components/home/modals/EconomyModal';
 import { LinearGradient, SafeAreaView } from '@/components/native';
 import { Ionicons } from '@/components/native/Icons';
 import { TEAM_LIST, TEAMS, type TeamName } from '@/constants/teams';
 import { useThemedAlert } from '@/hooks/use-themed-alert';
+import { useEconomySystem } from '@/hooks/useEconomySystem';
 import AuthModal from '@/modals/auth';
 import { getUserProfile, saveUserProfile, type UserProfile } from '@/services/storage';
 import { useAuth, useUser } from '@clerk/clerk-react';
@@ -21,6 +23,7 @@ import {
 } from 'react-native';
 import { useNavigate } from 'react-router-dom';
 
+
 const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
@@ -30,6 +33,9 @@ export default function ProfileScreen() {
     const [authModalOpen, setAuthModalOpen] = useState(false);
     const [darkMode] = useState(false); // TODO: Get from settings context
 
+    // Economy System
+    const { checkDailyReward, rewardClaimed, resetRewardState } = useEconomySystem();
+
     // Profile State
     const [loading, setLoading] = useState(true);
     const [trainerName, setTrainerName] = useState('');
@@ -37,6 +43,7 @@ export default function ProfileScreen() {
     const [trainerLevel, setTrainerLevel] = useState('');
     const [selectedTeam, setSelectedTeam] = useState<TeamName | null>(null);
     const [streak, setStreak] = useState(0);
+    const [balance, setBalance] = useState(0);
     const [saving, setSaving] = useState(false);
     const { showAlert, closeAlert, AlertModal } = useThemedAlert();
 
@@ -48,6 +55,7 @@ export default function ProfileScreen() {
                 if (user.unsafeMetadata.economy) {
                     const economy = user.unsafeMetadata.economy as any;
                     setStreak(economy.streak || 0);
+                    setBalance(economy.balance || 0);
                 }
 
                 // 1. Try to load from Cloud (Clerk Metadata)
@@ -70,8 +78,6 @@ export default function ProfileScreen() {
                         setTrainerId(localProfile.trainerId || '');
                         setTrainerLevel(localProfile.trainerLevel || '');
                         setSelectedTeam(localProfile.team || null);
-                        // We don't auto-save here to avoid "silent" updates, 
-                        // but the next save will push to cloud.
                     } else {
                         // 3. New User or clean state
                         setTrainerName('');
@@ -84,7 +90,13 @@ export default function ProfileScreen() {
             setLoading(false);
         }
         loadProfile();
-    }, [isLoaded, isSignedIn, user?.id]);
+
+        // Check daily reward if signed in
+        if (isSignedIn && isLoaded) {
+            checkDailyReward();
+        }
+    }, [isLoaded, isSignedIn, user?.id, checkDailyReward]);
+
 
     const handleSave = async () => {
         if (!user) return;
@@ -151,8 +163,8 @@ export default function ProfileScreen() {
     // Loading state
     if (!isLoaded || loading) {
         return (
-            <SafeAreaView style={[styles.container, darkMode && styles.containerDark]} edges={['top']}>
-                <View style={styles.loadingContainer}>
+            <SafeAreaView style={[styles.container, darkMode ? styles.containerDark : { backgroundColor: '#fff' }]} edges={['top']}>
+                <View style={[styles.loadingContainer, { backgroundColor: darkMode ? '#000' : '#fff' }]}>
                     <ActivityIndicator size="large" color="#007AFF" />
                 </View>
             </SafeAreaView>
@@ -437,7 +449,17 @@ export default function ProfileScreen() {
                 </KeyboardAvoidingView>
             </SafeAreaView>
             <AlertModal />
-        </View>
+            <EconomyModal
+                visible={!!rewardClaimed}
+                onClose={resetRewardState}
+                type="reward"
+                title="Daily Reward!"
+                message={`You've received ${rewardClaimed?.amount} DexCoins!`}
+                balance={balance + (rewardClaimed?.amount || 0)}
+                streak={rewardClaimed?.streak || 0}
+                darkMode={darkMode}
+            />
+        </View >
     );
 }
 
