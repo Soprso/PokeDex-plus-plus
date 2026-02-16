@@ -15,7 +15,7 @@ function AnalyticsTracker() {
   useEffect(() => {
     const gtag = (window as any).gtag;
     if (typeof gtag === 'function') {
-      gtag('config', 'G-XXXXXXXXXX', {
+      gtag('config', 'G-KNRBNQLS83', {
         page_path: location.pathname + location.search,
       });
     }
