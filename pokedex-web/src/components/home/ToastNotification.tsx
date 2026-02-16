@@ -2,7 +2,6 @@ import { Ionicons } from '@/components/native/Icons';
 import { useEffect, useRef } from 'react';
 import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 
-
 interface ToastProps {
     visible: boolean;
     message: string;
@@ -38,11 +37,11 @@ export function ToastNotification({ visible, message, type = 'success', duration
 
             return () => clearTimeout(timer);
         } else {
-            // Ensure hidden state if props change rapidly
+            // Animate Out or Reset
             opacity.setValue(0);
             translateY.setValue(20);
         }
-    }, [visible, duration]);
+    }, [visible, duration, message, type]);
 
     const hideToast = () => {
         Animated.parallel([
@@ -61,8 +60,6 @@ export function ToastNotification({ visible, message, type = 'success', duration
         });
     };
 
-    if (!visible) return null;
-
     const config = {
         success: { backgroundColor: '#10B981', icon: 'checkmark-circle' }, // Emerald Green
         error: { backgroundColor: '#EF4444', icon: 'alert-circle' }, // Red
@@ -74,10 +71,11 @@ export function ToastNotification({ visible, message, type = 'success', duration
             style={[
                 styles.container,
                 {
-                    opacity,
+                    opacity: visible ? 1 : opacity, // Force visible if prop is true
                     transform: [{ translateY }]
                 }
             ]}
+            pointerEvents={visible ? 'auto' : 'none'}
         >
             <View style={[styles.card, { backgroundColor: config.backgroundColor }]}>
                 <Ionicons name={config.icon as any} size={20} color="#fff" style={styles.icon} />

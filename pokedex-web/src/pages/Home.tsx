@@ -436,7 +436,11 @@ export default function HomeScreen() {
 
   // Handle heart click
   const handleHeartClick = async (pokemon: PokemonWithNickname) => {
-    if (!user || isProcessing) return;
+    if (!user) {
+      setModals({ ...modals, auth: true });
+      return;
+    }
+    if (isProcessing) return;
     setIsProcessing(true);
 
     try {
