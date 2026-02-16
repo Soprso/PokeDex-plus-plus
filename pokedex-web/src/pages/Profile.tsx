@@ -1,4 +1,5 @@
 import { EconomyModal } from '@/components/home/modals/EconomyModal';
+import { ToastNotification } from '@/components/home/ToastNotification';
 import { LinearGradient, SafeAreaView } from '@/components/native';
 import { Ionicons } from '@/components/native/Icons';
 import { TEAM_LIST, TEAMS, type TeamName } from '@/constants/teams';
@@ -46,6 +47,11 @@ export default function ProfileScreen() {
     const [balance, setBalance] = useState(0);
     const [saving, setSaving] = useState(false);
     const { showAlert, closeAlert, AlertModal } = useThemedAlert();
+    const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+        visible: false,
+        message: '',
+        type: 'success'
+    });
 
     // 1. Data Loading Effect
     useEffect(() => {
@@ -124,6 +130,17 @@ export default function ProfileScreen() {
             checkDailyReward();
         }
     }, [isSignedIn, isLoaded, userLoaded, !!user]);
+
+    // 2.5 Toast Effect for Reward
+    useEffect(() => {
+        if (rewardClaimed) {
+            setToast({
+                visible: true,
+                message: `Claimed ${rewardClaimed.amount} DexCoins!`,
+                type: 'success'
+            });
+        }
+    }, [rewardClaimed]);
 
 
     const handleSave = async () => {
@@ -492,6 +509,12 @@ export default function ProfileScreen() {
                 balance={balance + (rewardClaimed?.amount || 0)}
                 streak={rewardClaimed?.streak || 0}
                 darkMode={darkMode}
+            />
+            <ToastNotification
+                visible={toast.visible}
+                message={toast.message}
+                type={toast.type}
+                onHide={() => setToast(prev => ({ ...prev, visible: false }))}
             />
         </View >
     );

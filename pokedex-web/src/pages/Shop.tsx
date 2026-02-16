@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 // const InteractionIcon = require('@/assets/images/pokeball.png');
 import coinIcon from '@/assets/images/dex-coin.png';
 import { EconomyModal } from '@/components/home/modals/EconomyModal';
+import { ToastNotification } from '@/components/home/ToastNotification';
 const CoinIcon = coinIcon;
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -35,6 +36,11 @@ export default function ShopScreen() {
     });
     const [pendingItem, setPendingItem] = useState<ShopItem | null>(null);
     const [modalConfig, setModalConfig] = useState({ title: '', message: '' });
+    const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+        visible: false,
+        message: '',
+        type: 'success'
+    });
 
     const { width } = useWindowDimensions();
     // ... rest of the code for dimensions ...
@@ -103,6 +109,7 @@ export default function ShopScreen() {
                 message: 'You must be signed in to purchase items. Please log in to your account.'
             });
             setModals(prev => ({ ...prev, error: true }));
+            setToast({ visible: true, message: 'Please sign in to buy items', type: 'error' });
             return;
         }
 
@@ -192,6 +199,7 @@ export default function ShopScreen() {
                             setBalance(newBalance);
                             setInventory(newInventory);
                             setModals(prev => ({ ...prev, confirm: false }));
+                            setToast({ visible: true, message: `Successfully purchased ${item.name}!`, type: 'success' });
                         } catch (err) {
                             console.error('Failed to update balance after payment', err);
                         } finally {
@@ -257,6 +265,7 @@ export default function ShopScreen() {
             setBalance(newBalance);
             setInventory(newInventory);
             setModals(prev => ({ ...prev, confirm: false }));
+            setToast({ visible: true, message: `Purchased ${item.name} for ${item.price} coins!`, type: 'success' });
         } catch (error) {
             console.error('Purchase failed', error);
             setModalConfig({
@@ -264,6 +273,7 @@ export default function ShopScreen() {
                 message: 'Something went wrong during the transaction. Please try again.'
             });
             setModals(prev => ({ ...prev, error: true, confirm: false }));
+            setToast({ visible: true, message: 'Transaction failed. Please try again.', type: 'error' });
         } finally {
             setIsProcessing(false);
             setPendingItem(null);
@@ -416,6 +426,12 @@ export default function ShopScreen() {
                 balance={balance}
                 streak={streak}
                 darkMode={isDark}
+            />
+            <ToastNotification
+                visible={toast.visible}
+                message={toast.message}
+                type={toast.type}
+                onHide={() => setToast(prev => ({ ...prev, visible: false }))}
             />
         </SafeAreaView>
     );
