@@ -142,10 +142,11 @@ export default function ShopScreen() {
             setIsProcessing(true);
             try {
                 // 1. Create Order via Netlify Function
+                const finalAmount = selectedCurrency === 'INR' ? Math.round(item.price * 83) : item.price;
                 const orderResponse = await fetch('/.netlify/functions/create-order', {
                     method: 'POST',
                     body: JSON.stringify({
-                        amount: item.price,
+                        amount: finalAmount,
                         currency: selectedCurrency === 'INR' ? 'INR' : 'USD'
                     })
                 });
