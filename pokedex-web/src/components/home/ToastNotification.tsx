@@ -1,8 +1,7 @@
 import { Ionicons } from '@/components/native/Icons';
 import { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 
-const { width } = Dimensions.get('window');
 
 interface ToastProps {
     visible: boolean;
@@ -92,8 +91,11 @@ const styles = StyleSheet.create({
     container: {
         position: 'absolute',
         bottom: 40,
-        alignSelf: 'center',
-        zIndex: 9999,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,

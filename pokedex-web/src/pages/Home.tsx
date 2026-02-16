@@ -94,14 +94,14 @@ export default function HomeScreen() {
   }, [user?.unsafeMetadata]);
 
   // Economy System
-  const { checkDailyReward, rewardClaimed, debugSetStreak, resetRewardState } = useEconomySystem();
+  const { checkDailyReward, rewardClaimed, resetRewardState } = useEconomySystem();
 
-  // Check daily reward on mount/auth
+  // Check daily reward on mount/auth only
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       checkDailyReward();
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Welcome Modal Logic for New Users
   useEffect(() => {
@@ -328,6 +328,7 @@ export default function HomeScreen() {
       try {
         await user.update({
           unsafeMetadata: {
+            ...user.unsafeMetadata,
             [metadataKey]: updatedStyles
           }
         });
@@ -348,6 +349,7 @@ export default function HomeScreen() {
       try {
         await user.update({
           unsafeMetadata: {
+            ...user.unsafeMetadata,
             [metadataKey]: updatedStyles
           }
         });
@@ -415,6 +417,7 @@ export default function HomeScreen() {
 
       await user.update({
         unsafeMetadata: {
+          ...user.unsafeMetadata,
           inventory: newInventory,
           [metadataKey]: updatedStyles,
           [unlockedKey]: updatedUnlocked
@@ -466,6 +469,7 @@ export default function HomeScreen() {
 
       await user.update({
         unsafeMetadata: {
+          ...currentMetadata,
           buddyData: {
             ...(currentMetadata.buddyData as Record<number, BuddyData>),
             [pokemon.id]: newBuddyData,
@@ -509,6 +513,7 @@ export default function HomeScreen() {
       // 2. Persistent Update
       await user.update({
         unsafeMetadata: {
+          ...user.unsafeMetadata,
           nicknames: newNames
         }
       });
@@ -611,7 +616,6 @@ export default function HomeScreen() {
         onClose={() => setModals({ ...modals, settings: false })}
         settings={settings}
         onUpdateSetting={(k, v) => setSettings({ ...settings, [k]: v })}
-        onDebugSetStreak={debugSetStreak}
       />
 
       <FilterModal
