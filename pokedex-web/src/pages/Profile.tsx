@@ -29,7 +29,7 @@ const { width } = Dimensions.get('window');
 export default function ProfileScreen() {
     const navigate = useNavigate();
     const { isSignedIn, signOut, isLoaded } = useAuth();
-    const { user } = useUser();
+    const { user, isLoaded: userLoaded } = useUser();
     const [authModalOpen, setAuthModalOpen] = useState(false);
     const [darkMode] = useState(false); // TODO: Get from settings context
 
@@ -47,18 +47,27 @@ export default function ProfileScreen() {
     const [saving, setSaving] = useState(false);
     const { showAlert, closeAlert, AlertModal } = useThemedAlert();
 
-    // Load profile data
+    // 1. Data Loading Effect
     useEffect(() => {
         async function loadProfile() {
-            if (isLoaded && isSignedIn && user) {
-                // Load Streak
-                if (user.unsafeMetadata.economy) {
+            // Wait for Clerk to be ready
+            if (!isLoaded || !userLoaded) return;
+
+            // If not signed in, we can stop loading immediately
+            if (!isSignedIn || !user) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                // Load Streak & Balance
+                if (user.unsafeMetadata?.economy) {
                     const economy = user.unsafeMetadata.economy as any;
                     setStreak(economy.streak || 0);
                     setBalance(economy.balance || 0);
                 }
 
-                // 1. Try to load from Cloud (Clerk Metadata)
+                // Load Trainer Profile
                 const cloudProfile = user.unsafeMetadata?.trainerProfile as UserProfile | undefined;
 
                 if (cloudProfile) {
@@ -68,34 +77,31 @@ export default function ProfileScreen() {
                     setTrainerLevel(cloudProfile.trainerLevel || '');
                     setSelectedTeam(cloudProfile.team || null);
                 } else {
-                    // 2. Fallback: Check Local Storage (Migration)
                     console.log('[Profile] No cloud profile, checking local storage for migration...');
                     const localProfile = await getUserProfile(user.id);
-
                     if (localProfile) {
-                        console.log('[Profile] Found local profile, migrating to cloud...');
                         setTrainerName(localProfile.trainerName || '');
                         setTrainerId(localProfile.trainerId || '');
                         setTrainerLevel(localProfile.trainerLevel || '');
                         setSelectedTeam(localProfile.team || null);
-                    } else {
-                        // 3. New User or clean state
-                        setTrainerName('');
-                        setTrainerId('');
-                        setTrainerLevel('');
-                        setSelectedTeam(null);
                     }
                 }
+            } catch (err) {
+                console.error('[Profile] Error loading data:', err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         }
-        loadProfile();
 
-        // Check daily reward if signed in
-        if (isSignedIn && isLoaded) {
+        loadProfile();
+    }, [isLoaded, userLoaded, isSignedIn, user?.id]);
+
+    // 2. Separate Reward Check Effect (Depends on checkDailyReward identity)
+    useEffect(() => {
+        if (isSignedIn && isLoaded && userLoaded) {
             checkDailyReward();
         }
-    }, [isLoaded, isSignedIn, user?.id, checkDailyReward]);
+    }, [isSignedIn, isLoaded, userLoaded]);
 
 
     const handleSave = async () => {
