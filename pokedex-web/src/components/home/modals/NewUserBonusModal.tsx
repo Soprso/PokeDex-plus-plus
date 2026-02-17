@@ -1,6 +1,7 @@
 import { ExtraLoveEffect } from '@/components/card-effects/ExtraLoveEffect';
 import { Ionicons } from '@/components/native/Icons';
 import {
+    Image,
     Modal,
     Pressable,
     StyleSheet,
@@ -44,9 +45,18 @@ export function NewUserBonusModal({ visible, onClose, darkMode }: NewUserBonusMo
                             <View style={[styles.mockCard, darkMode && styles.mockCardDark]}>
                                 <ExtraLoveEffect />
                                 <View style={styles.mockCardContent}>
-                                    <View style={styles.mockAvatar} />
-                                    <View style={styles.mockLine} />
-                                    <View style={[styles.mockLine, { width: '60%' }]} />
+                                    <View style={styles.pokemonImageContainer}>
+                                        <Image
+                                            source={{ uri: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png' }}
+                                            style={styles.pokemonImage}
+                                            resizeMode="contain"
+                                        />
+                                    </View>
+                                    <View style={styles.mockInfo}>
+                                        <View style={styles.mockAvatar} />
+                                        <View style={styles.mockLine} />
+                                        <View style={[styles.mockLine, { width: '60%' }]} />
+                                    </View>
                                 </View>
                             </View>
                         </View>
@@ -59,11 +69,11 @@ export function NewUserBonusModal({ visible, onClose, darkMode }: NewUserBonusMo
                         <Text style={[styles.instructionTitle, darkMode && styles.textWhite]}>How to use it:</Text>
                         <View style={styles.instructionItem}>
                             <View style={styles.stepNumber}><Text style={styles.stepText}>1</Text></View>
-                            <Text style={[styles.stepDescription, darkMode && styles.textGray]}>Long-press any Pokémon in your collection</Text>
+                            <Text style={[styles.stepDescription, darkMode && styles.textGray]}>Long-press any Pokémon in the PokéDex</Text>
                         </View>
                         <View style={styles.instructionItem}>
                             <View style={styles.stepNumber}><Text style={styles.stepText}>2</Text></View>
-                            <Text style={[styles.stepDescription, darkMode && styles.textGray]}>Tap on <Text style={{ fontWeight: '700' }}>'Nickname & Styles'</Text></Text>
+                            <Text style={[styles.stepDescription, darkMode && styles.textGray]}>Click on <Text style={{ fontWeight: '700' }}>Effects tab</Text></Text>
                         </View>
                         <View style={styles.instructionItem}>
                             <View style={styles.stepNumber}><Text style={styles.stepText}>3</Text></View>
@@ -178,9 +188,22 @@ const styles = StyleSheet.create({
     mockCardContent: {
         flex: 1,
         padding: 12,
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
+        opacity: 0.8,
+    },
+    pokemonImageContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    pokemonImage: {
+        width: 80,
+        height: 80,
+        zIndex: 10,
+    },
+    mockInfo: {
         gap: 6,
-        opacity: 0.5,
     },
     mockAvatar: {
         width: 40,

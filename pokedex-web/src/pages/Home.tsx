@@ -740,7 +740,10 @@ export default function HomeScreen() {
 
       <NewUserBonusModal
         visible={modals.newUserBonus}
-        onClose={() => setModals({ ...modals, newUserBonus: false })}
+        onClose={() => {
+          setModals({ ...modals, newUserBonus: false });
+          setToast({ visible: true, message: "Welcome Gift Claimed! Check your effects ❤️", type: 'success' });
+        }}
         darkMode={settings.darkMode}
       />
 
