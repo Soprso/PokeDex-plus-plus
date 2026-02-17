@@ -1,5 +1,6 @@
 import type { IconBaseProps } from 'react-icons';
 import { IoMdAdd, IoMdArrowBack, IoMdArrowForward, IoMdCamera, IoMdCart, IoMdCheckmark, IoMdClose, IoMdCreate, IoMdDownload, IoMdFingerPrint, IoMdFlash, IoMdFlashOff, IoMdGift, IoMdGlobe, IoMdHeart, IoMdHeartEmpty, IoMdHeartHalf, IoMdHome, IoMdImages, IoMdPerson, IoMdReverseCamera, IoMdRibbon, IoMdRocket, IoMdSearch, IoMdSettings, IoMdShare, IoMdStar, IoMdSwap, IoMdTrash } from "react-icons/io";
+import { IoDocumentText, IoHelpBuoy, IoHelpCircle, IoShieldCheckmark } from "react-icons/io5";
 import { MdFilterList } from "react-icons/md";
 
 
@@ -47,6 +48,10 @@ export const Ionicons = (props: { name: string; size?: number; color?: string; s
         case 'filter': return <MdFilterList {...iconProps} />;
         case 'planet': return <IoMdGlobe {...iconProps} />;
         case 'swap-vertical': return <IoMdSwap {...iconProps} />;
+        case 'document-text': return <IoDocumentText {...iconProps} />;
+        case 'help-circle': return <IoHelpCircle {...iconProps} />;
+        case 'shield-checkmark': return <IoShieldCheckmark {...iconProps} />;
+        case 'help-buoy': return <IoHelpBuoy {...iconProps} />;
         case 'alert-circle': return <span style={{ color, fontSize: size }}>!</span>;
         default: return null;
     }
