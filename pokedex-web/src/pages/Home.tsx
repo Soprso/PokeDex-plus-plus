@@ -17,6 +17,7 @@ import { CardStyleModal } from '@/components/home/modals/CardStyleModal';
 import { ComingSoonModal } from '@/components/home/modals/ComingSoonModal';
 import { EconomyModal } from '@/components/home/modals/EconomyModal';
 import { FilterModal } from '@/components/home/modals/FilterModal';
+import { NewUserBonusModal } from '@/components/home/modals/NewUserBonusModal';
 import { PoliciesModal } from '@/components/home/modals/PoliciesModal';
 import { SettingsModal } from '@/components/home/modals/SettingsModal';
 import { SortModal } from '@/components/home/modals/SortModal';
@@ -104,7 +105,6 @@ export default function HomeScreen() {
     }
   }, [user?.id]);
 
-  // Welcome Modal Logic for New Users
   useEffect(() => {
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeModal');
     if (!hasSeenWelcome) {
@@ -115,6 +115,38 @@ export default function HomeScreen() {
       return () => clearTimeout(timer);
     }
   }, []);
+
+  // New User Bonus Logic
+  useEffect(() => {
+    if (user?.id && !user.unsafeMetadata.hasReceivedNewUserBonus) {
+      const grantBonus = async () => {
+        try {
+          // Grant the "Extra Love" effect
+          const currentInventory = (user.unsafeMetadata.inventory as Inventory) || {};
+          const updatedInventory = {
+            ...currentInventory,
+            extra_love: (currentInventory.extra_love || 0) + 1
+          };
+
+          await user.update({
+            unsafeMetadata: {
+              ...user.unsafeMetadata,
+              inventory: updatedInventory,
+              hasReceivedNewUserBonus: true
+            }
+          });
+
+          // Show the bonus modal
+          setModals(prev => ({ ...prev, newUserBonus: true }));
+          console.log('Bonus granted to new user:', user.id);
+        } catch (error) {
+          console.error('Failed to grant new user bonus:', error);
+        }
+      };
+
+      grantBonus();
+    }
+  }, [user?.id, user?.unsafeMetadata.hasReceivedNewUserBonus]);
 
   const handleCloseWelcome = () => {
     setModals(prev => ({ ...prev, welcome: false }));
@@ -175,6 +207,7 @@ export default function HomeScreen() {
     styleConfirmation: false,
     welcome: false,
     policies: false,
+    newUserBonus: false,
   });
 
   const [styleConfirmationTarget, setStyleConfirmationTarget] = useState<{
@@ -702,6 +735,12 @@ export default function HomeScreen() {
       <PoliciesModal
         visible={modals.policies}
         onClose={() => setModals({ ...modals, policies: false })}
+        darkMode={settings.darkMode}
+      />
+
+      <NewUserBonusModal
+        visible={modals.newUserBonus}
+        onClose={() => setModals({ ...modals, newUserBonus: false })}
         darkMode={settings.darkMode}
       />
 
