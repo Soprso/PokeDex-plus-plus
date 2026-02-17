@@ -7,11 +7,12 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 interface HomeHeaderProps {
     balance: number;
     onBuddyHelpPress: () => void;
+    onPoliciesPress: () => void;
     onWalletPress: () => void;
     darkMode: boolean;
 }
 
-export function HomeHeader({ balance, onBuddyHelpPress, onWalletPress, darkMode }: HomeHeaderProps) {
+export function HomeHeader({ balance, onBuddyHelpPress, onPoliciesPress, onWalletPress, darkMode }: HomeHeaderProps) {
     return (
         <View style={styles.headerContainer}>
             {/* Wallet / Coin Display */}
@@ -27,6 +28,17 @@ export function HomeHeader({ balance, onBuddyHelpPress, onWalletPress, darkMode 
 
             {/* Main Logo */}
             <Image source={{ uri: logoImage }} style={styles.logoImage} resizeMode="contain" />
+
+            {/* Legal / Policies Button */}
+            <Pressable
+                style={[styles.legalButton, darkMode && styles.legalButtonDark]}
+                onPress={onPoliciesPress}
+            >
+                <Ionicons name="document-text" size={24} color={darkMode ? '#fff' : '#333'} />
+                <Text style={[styles.legalText, darkMode && styles.legalTextDark]}>
+                    Legal
+                </Text>
+            </Pressable>
 
             {/* Buddy Help Button */}
             <Pressable
@@ -95,6 +107,40 @@ const styles = StyleSheet.create({
     },
     coinWalletTextDark: {
         color: '#FFD700',
+    },
+    legalButton: {
+        position: 'absolute',
+        right: 120, // Positioned to the left of Help button
+        top: 15,
+        zIndex: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        paddingHorizontal: 16,
+        height: 50,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#eee',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        cursor: 'pointer',
+    },
+    legalButtonDark: {
+        backgroundColor: '#333',
+        borderColor: '#444',
+    },
+    legalText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+        marginLeft: 8,
+    },
+    legalTextDark: {
+        color: '#fff',
     },
     buddyHelpButton: {
         position: 'absolute',

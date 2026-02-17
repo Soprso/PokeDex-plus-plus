@@ -17,6 +17,7 @@ import { CardStyleModal } from '@/components/home/modals/CardStyleModal';
 import { ComingSoonModal } from '@/components/home/modals/ComingSoonModal';
 import { EconomyModal } from '@/components/home/modals/EconomyModal';
 import { FilterModal } from '@/components/home/modals/FilterModal';
+import { PoliciesModal } from '@/components/home/modals/PoliciesModal';
 import { SettingsModal } from '@/components/home/modals/SettingsModal';
 import { SortModal } from '@/components/home/modals/SortModal';
 import { WelcomeModal } from '@/components/home/modals/WelcomeModal';
@@ -173,6 +174,7 @@ export default function HomeScreen() {
     comingSoon: false,
     styleConfirmation: false,
     welcome: false,
+    policies: false,
   });
 
   const [styleConfirmationTarget, setStyleConfirmationTarget] = useState<{
@@ -543,6 +545,7 @@ export default function HomeScreen() {
         <HomeHeader
           balance={economy?.balance || 0}
           onBuddyHelpPress={() => setModals({ ...modals, welcome: true })}
+          onPoliciesPress={() => setModals({ ...modals, policies: true })}
           onWalletPress={() => setModals({ ...modals, economy: true })}
           darkMode={settings.darkMode}
         />
@@ -565,6 +568,7 @@ export default function HomeScreen() {
       <HomeHeader
         balance={economy?.balance || 0}
         onBuddyHelpPress={() => setModals({ ...modals, welcome: true })}
+        onPoliciesPress={() => setModals({ ...modals, policies: true })}
         onWalletPress={() => setModals({ ...modals, economy: true })}
         darkMode={settings.darkMode}
       />
@@ -692,6 +696,12 @@ export default function HomeScreen() {
       <WelcomeModal
         visible={modals.welcome}
         onClose={handleCloseWelcome}
+        darkMode={settings.darkMode}
+      />
+
+      <PoliciesModal
+        visible={modals.policies}
+        onClose={() => setModals({ ...modals, policies: false })}
         darkMode={settings.darkMode}
       />
 
