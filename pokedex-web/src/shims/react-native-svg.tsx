@@ -31,5 +31,9 @@ export const Text = createComponent('text');
 export const TextPath = createComponent('textPath');
 export const TSpan = createComponent('tspan');
 export const Use = createComponent('use');
+export const Filter = createComponent('filter');
+export const FeGaussianBlur = createComponent('feGaussianBlur');
+export const FeMerge = createComponent('feMerge');
+export const FeMergeNode = createComponent('feMergeNode');
 
 export default Svg;
