@@ -3,6 +3,7 @@ import { Ionicons } from '@/components/native/Icons';
 import OverlayPermissionModal from '@/modals/overlay-permission';
 import { getOverlayPermission } from '@/services/storage';
 import { useEffect, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigate } from 'react-router-dom';
 
@@ -47,6 +48,14 @@ export default function PokéHubScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+            <Helmet>
+                <title>PokéHub | PokeDex Plus Plus</title>
+                <meta name="description" content="Scan Pokémon screenshots, view your collection, and generate names in PokéHub — the ultimate Pokémon companion tool." />
+                <link rel="canonical" href="https://pokedexplus.shop/pokehub" />
+                <meta property="og:title" content="PokéHub | PokeDex Plus Plus" />
+                <meta property="og:description" content="Scan Pokémon screenshots, view your collection, and generate names in PokéHub." />
+                <meta property="og:url" content="https://pokedexplus.shop/pokehub" />
+            </Helmet>
             <Animated.View
                 style={[
                     styles.animatedContainer,

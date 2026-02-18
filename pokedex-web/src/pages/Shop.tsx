@@ -4,6 +4,7 @@ import { SHOP_ITEMS, type ShopItem } from '@/constants/shopItems';
 import { type EconomyData, type Inventory } from '@/types';
 import { useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigate } from 'react-router-dom';
@@ -303,6 +304,14 @@ export default function ShopScreen() {
 
     return (
         <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
+            <Helmet>
+                <title>Pokémon Shop | PokeDex Plus Plus</title>
+                <meta name="description" content="Buy card effects, frames, and items for your Pokémon collection in the PokeDex Plus Plus shop. Spend your Dex Coins on exclusive effects." />
+                <link rel="canonical" href="https://pokedexplus.shop/shop" />
+                <meta property="og:title" content="Pokémon Shop | PokeDex Plus Plus" />
+                <meta property="og:description" content="Buy card effects, frames, and items for your Pokémon collection in the PokeDex Plus Plus shop." />
+                <meta property="og:url" content="https://pokedexplus.shop/shop" />
+            </Helmet>
             {/* ... header ... */}
             <View style={[styles.header, isDark && styles.headerDark]}>
                 <Pressable onPress={() => navigate('/')} style={styles.backButton}>

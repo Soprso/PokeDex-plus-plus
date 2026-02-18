@@ -1,3 +1,4 @@
+import PokemonSEO from "@/components/PokemonSEO";
 import SkeletonPokemonDetails from "@/components/SkeletonPokemonDetails";
 import TypeEffectOverlay from "@/components/TypeEffectOverlay";
 import { LinearGradient, SafeAreaView } from '@/components/native';
@@ -746,6 +747,14 @@ export default function Details() {
     ======================= */
     return (
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+            {/* SEO: Per-Pokémon meta tags for Google indexing */}
+            <PokemonSEO
+                name={pokemon.name}
+                id={pokemon.id}
+                description={description}
+                imageUrl={pokemon.sprites.other?.["official-artwork"]?.front_default || pokemon.sprites.front_default || ''}
+                types={pokemon.types.map(t => t.type.name)}
+            />
             {/* BACK BUTTON */}
             <TouchableOpacity
                 style={styles.backButton}

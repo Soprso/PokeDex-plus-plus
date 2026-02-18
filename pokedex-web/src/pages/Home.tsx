@@ -2,6 +2,7 @@ import { SafeAreaView } from '@/components/native/SafeAreaView';
 import { useUser } from '@clerk/clerk-react';
 // import { useNavigation } from '@react-navigation/native'; // REMOVED
 import { useEffect, useMemo, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useNavigate, useSearchParams } from 'react-router-dom'; // UPDATED
 
@@ -574,6 +575,14 @@ export default function HomeScreen() {
     console.log('Home: Rendering Skeleton');
     return (
       <SafeAreaView style={[styles.container, settings.darkMode ? styles.darkContainer : undefined]}>
+        <Helmet>
+          <title>PokeDex Plus Plus - Your Ultimate Pokémon Adventure</title>
+          <meta name="description" content="Explore all Pokémon with PokeDex Plus Plus. Browse the complete Pokédex, track your buddy, and manage your collection." />
+          <link rel="canonical" href="https://pokedexplus.shop/" />
+          <meta property="og:title" content="PokeDex Plus Plus - Your Ultimate Pokémon Adventure" />
+          <meta property="og:description" content="Explore all Pokémon with PokeDex Plus Plus. Browse the complete Pokédex, track your buddy, and manage your collection." />
+          <meta property="og:url" content="https://pokedexplus.shop/" />
+        </Helmet>
         {/* Header */}
         <HomeHeader
           balance={economy?.balance || 0}
@@ -597,6 +606,14 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.container, settings.darkMode ? styles.darkContainer : undefined]}>
+      <Helmet>
+        <title>PokeDex Plus Plus - Your Ultimate Pokémon Adventure</title>
+        <meta name="description" content="Explore all Pokémon with PokeDex Plus Plus. Browse the complete Pokédex, track your buddy, and manage your collection." />
+        <link rel="canonical" href="https://pokedexplus.shop/" />
+        <meta property="og:title" content="PokeDex Plus Plus - Your Ultimate Pokémon Adventure" />
+        <meta property="og:description" content="Explore all Pokémon with PokeDex Plus Plus. Browse the complete Pokédex, track your buddy, and manage your collection." />
+        <meta property="og:url" content="https://pokedexplus.shop/" />
+      </Helmet>
       {/* Header */}
       <HomeHeader
         balance={economy?.balance || 0}

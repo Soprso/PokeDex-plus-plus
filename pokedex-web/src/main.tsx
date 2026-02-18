@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 // import Shop from './pages/Shop.tsx';
 import './index.css';
@@ -39,10 +40,12 @@ if (!rootElement) {
   try {
     createRoot(rootElement).render(
       <StrictMode>
-        <ErrorBoundary>
-          <App />
-          {/* <Shop /> */}
-        </ErrorBoundary>
+        <HelmetProvider>
+          <ErrorBoundary>
+            <App />
+            {/* <Shop /> */}
+          </ErrorBoundary>
+        </HelmetProvider>
       </StrictMode>,
     )
   } catch (e) {
