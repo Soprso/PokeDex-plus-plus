@@ -10,11 +10,7 @@ export default defineConfig({
     global: 'window',
   },
   plugins: [
-    react({
-      babel: {
-        plugins: ['react-native-reanimated/plugin'],
-      },
-    }),
+    react(),
   ],
   resolve: {
     alias: [
