@@ -283,7 +283,7 @@ export default function HomeScreen() {
     // 2. Type Filter
     if (selectedTypes.length > 0) {
       result = result.filter(p =>
-        selectedTypes.every(t => p.types.includes(t))
+        selectedTypes.some(t => p.types.includes(t))
       );
     }
 
