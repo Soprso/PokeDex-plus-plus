@@ -1,12 +1,11 @@
 import bestBuddyImage from '@/assets/images/best-buddy.png';
 import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect, ShineOverlay } from '@/components/card-effects';
-import { DiamondFrame, FireFrame, GoldFrame, NeonFrame } from '@/components/frame-effects';
-import { FlatList, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from '@/components/native';
+import { DiamondFrame, GoldFrame, NeonFrame } from '@/components/frame-effects';
 import { Ionicons } from '@/components/native/Icons';
 import { TYPE_BACKGROUNDS, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import type { BuddyData, CardEffects, PokemonWithNickname } from '@/types';
 import React from 'react';
-import { useWindowDimensions } from 'react-native';
+import { FlatList, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 // Interfaces
 interface PokemonGridProps {
@@ -104,7 +103,6 @@ export function PokemonGrid({
                 switch (frameId) {
                     case 'frame_gold': return <GoldFrame>{children}</GoldFrame>;
                     case 'frame_diamond': return <DiamondFrame>{children}</DiamondFrame>;
-                    case 'frame_fire': return <FireFrame>{children}</FireFrame>;
                     case 'frame_neon': return <NeonFrame>{children}</NeonFrame>;
                     default: return children;
                 }
