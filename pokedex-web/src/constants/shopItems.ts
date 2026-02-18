@@ -31,6 +31,14 @@ export const SHOP_ITEMS: ShopItem[] = [
         type: 'frame',
     },
     {
+        id: 'frame_fire',
+        name: 'Fire Frame',
+        description: 'A blazing frame — flames erupt from the top of your card.',
+        price: 200,
+        category: 'normal',
+        type: 'frame',
+    },
+    {
         id: 'frame_neon',
         name: 'Neon Frame',
         description: 'A pulsating neon green border.',

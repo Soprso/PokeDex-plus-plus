@@ -1,5 +1,5 @@
 import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect } from '@/components/card-effects';
-import { DiamondFrame, GoldFrame, NeonFrame } from '@/components/frame-effects';
+import { DiamondFrame, FireFrame, GoldFrame, NeonFrame } from '@/components/frame-effects';
 import { Image, Pressable, StyleSheet, Text, View } from '@/components/native';
 import { Ionicons } from '@/components/native/Icons';
 import { TYPE_BACKGROUNDS, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
@@ -109,6 +109,7 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth,
                     <View style={StyleSheet.absoluteFill}>
                         {item.id === 'frame_gold' && <GoldFrame />}
                         {item.id === 'frame_diamond' && <DiamondFrame />}
+                        {item.id === 'frame_fire' && <FireFrame />}
                         {item.id === 'frame_neon' && <NeonFrame />}
                     </View>
                 )}
