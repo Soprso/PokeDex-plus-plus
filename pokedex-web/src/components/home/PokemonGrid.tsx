@@ -1,6 +1,6 @@
 import bestBuddyImage from '@/assets/images/best-buddy.png';
 import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect, ShineOverlay } from '@/components/card-effects';
-import { DiamondFrame, FireFrame, GoldFrame, NeonFrame } from '@/components/frame-effects';
+import { DiamondFrame, EclipseFrame, ElectricFrame, FireFrame, GoldFrame, IceFrostFrame, NatureLeafFrame, NeonFrame, PoisonFrame, RainbowFrame, VoidFrame, WaterFrame } from '@/components/frame-effects';
 import { Ionicons } from '@/components/native/Icons';
 import { TYPE_BACKGROUNDS, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import type { BuddyData, CardEffects, PokemonWithNickname } from '@/types';
@@ -104,6 +104,14 @@ export function PokemonGrid({
                     case 'frame_gold': return <GoldFrame>{children}</GoldFrame>;
                     case 'frame_diamond': return <DiamondFrame>{children}</DiamondFrame>;
                     case 'frame_fire': return <FireFrame>{children}</FireFrame>;
+                    case 'frame_ice': return <IceFrostFrame>{children}</IceFrostFrame>;
+                    case 'frame_electric': return <ElectricFrame>{children}</ElectricFrame>;
+                    case 'frame_void': return <VoidFrame>{children}</VoidFrame>;
+                    case 'frame_water': return <WaterFrame>{children}</WaterFrame>;
+                    case 'frame_poison': return <PoisonFrame>{children}</PoisonFrame>;
+                    case 'frame_rainbow': return <RainbowFrame>{children}</RainbowFrame>;
+                    case 'frame_eclipse': return <EclipseFrame>{children}</EclipseFrame>;
+                    case 'frame_nature': return <NatureLeafFrame>{children}</NatureLeafFrame>;
                     case 'frame_neon': return <NeonFrame>{children}</NeonFrame>;
                     default: return children;
                 }

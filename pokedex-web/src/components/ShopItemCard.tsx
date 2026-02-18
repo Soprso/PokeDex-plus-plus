@@ -1,5 +1,5 @@
 import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect } from '@/components/card-effects';
-import { DiamondFrame, FireFrame, GoldFrame, NeonFrame } from '@/components/frame-effects';
+import { DiamondFrame, EclipseFrame, ElectricFrame, FireFrame, GoldFrame, IceFrostFrame, NatureLeafFrame, NeonFrame, PoisonFrame, RainbowFrame, VoidFrame, WaterFrame } from '@/components/frame-effects';
 import { Image, Pressable, StyleSheet, Text, View } from '@/components/native';
 import { Ionicons } from '@/components/native/Icons';
 import { TYPE_BACKGROUNDS, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
@@ -110,6 +110,14 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth,
                         {item.id === 'frame_gold' && <GoldFrame />}
                         {item.id === 'frame_diamond' && <DiamondFrame />}
                         {item.id === 'frame_fire' && <FireFrame />}
+                        {item.id === 'frame_ice' && <IceFrostFrame />}
+                        {item.id === 'frame_electric' && <ElectricFrame />}
+                        {item.id === 'frame_void' && <VoidFrame />}
+                        {item.id === 'frame_water' && <WaterFrame />}
+                        {item.id === 'frame_poison' && <PoisonFrame />}
+                        {item.id === 'frame_rainbow' && <RainbowFrame />}
+                        {item.id === 'frame_eclipse' && <EclipseFrame />}
+                        {item.id === 'frame_nature' && <NatureLeafFrame />}
                         {item.id === 'frame_neon' && <NeonFrame />}
                     </View>
                 )}
