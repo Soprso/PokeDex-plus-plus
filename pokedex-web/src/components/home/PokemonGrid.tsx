@@ -1,6 +1,6 @@
 import bestBuddyImage from '@/assets/images/best-buddy.png';
 import { AirSlashEffect, BubbleBeamEffect, ExtraLoveEffect, FrenzyPlantEffect, GhostlyMistEffect, GoldenGloryEffect, IcyWindEffect, MagmaStormEffect, NeonCyberEffect, RockTombEffect, ShineOverlay } from '@/components/card-effects';
-import { GoldFrame, NeonFrame } from '@/components/frame-effects';
+import { DiamondFrame, GoldFrame, NeonFrame } from '@/components/frame-effects';
 import { Ionicons } from '@/components/native/Icons';
 import { TYPE_BACKGROUNDS, TYPE_COLORS, TYPE_ICONS } from '@/constants/pokemonTypes';
 import type { BuddyData, CardEffects, PokemonWithNickname } from '@/types';
@@ -102,6 +102,7 @@ export function PokemonGrid({
             if (frameId && frameId !== 'none') {
                 switch (frameId) {
                     case 'frame_gold': return <GoldFrame>{children}</GoldFrame>;
+                    case 'frame_diamond': return <DiamondFrame>{children}</DiamondFrame>;
                     case 'frame_neon': return <NeonFrame>{children}</NeonFrame>;
                     default: return children;
                 }

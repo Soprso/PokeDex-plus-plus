@@ -23,6 +23,14 @@ export const SHOP_ITEMS: ShopItem[] = [
         type: 'frame',
     },
     {
+        id: 'frame_diamond',
+        name: 'Diamond Frame',
+        description: 'A platinum frame with sparkling diamond corners.',
+        price: 200,
+        category: 'normal',
+        type: 'frame',
+    },
+    {
         id: 'frame_neon',
         name: 'Neon Frame',
         description: 'A pulsating neon green border.',
