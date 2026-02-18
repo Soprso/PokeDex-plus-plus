@@ -28,6 +28,7 @@ import bgRockTomb from '@/assets/card-effects/rock-tomb.jpg';
 import imgChest from '@/assets/images/shop/coins_large.png';
 import imgSack from '@/assets/images/shop/coins_medium.png';
 import imgHandful from '@/assets/images/shop/coins_small.png';
+import imgStack from '@/assets/images/shop/coins_stack.png';
 
 interface ShopItemCardProps {
     item: ShopItem;
@@ -66,14 +67,17 @@ export const ShopItemCard = React.memo(({ item, count, isDark, onBuy, cardWidth,
             case 'coins_small': return imgHandful;
             case 'coins_medium': return imgSack;
             case 'coins_large': return imgChest;
+            case 'coins_stack': return imgStack;
             default: return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png';
         }
     };
     const isSpecialEffect = ['extra_love', 'effect_neon_cyber', 'effect_golden_glory', 'effect_ghostly_mist', 'effect_icy_wind', 'effect_magma_storm', 'effect_frenzy_plant', 'effect_bubble_beam', 'effect_air_slash', 'effect_rock_tomb'].includes(item.id);
 
-    const displayPrice = selectedCurrency === 'INR' && item.currency === 'usd'
-        ? Math.round(item.price * 83)
-        : item.price.toFixed(2);
+    const displayPrice = item.localPrices?.[selectedCurrency]
+        ? item.localPrices[selectedCurrency].toFixed(selectedCurrency === 'INR' ? 0 : 2)
+        : (selectedCurrency === 'INR' && item.currency === 'usd'
+            ? Math.round(item.price * 83).toString()
+            : item.price.toFixed(2));
 
     return (
         <View style={[

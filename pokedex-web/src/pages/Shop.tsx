@@ -124,9 +124,11 @@ export default function ShopScreen() {
         }
 
         const symbol = selectedCurrency === 'INR' ? '₹' : '$';
-        const displayPrice = selectedCurrency === 'INR' && item.currency === 'usd'
-            ? Math.round(item.price * 83)
-            : item.price.toFixed(2);
+        const displayPrice = item.localPrices?.[selectedCurrency]
+            ? item.localPrices[selectedCurrency].toFixed(selectedCurrency === 'INR' ? 0 : 2)
+            : (selectedCurrency === 'INR' && item.currency === 'usd'
+                ? Math.round(item.price * 83).toString()
+                : item.price.toFixed(2));
 
         setPendingItem(item);
         setModalConfig({
@@ -150,7 +152,10 @@ export default function ShopScreen() {
             setIsProcessing(true);
             try {
                 // 1. Create Order via Netlify Function
-                const finalAmount = selectedCurrency === 'INR' ? Math.round(item.price * 83) : item.price;
+                const finalAmount = item.localPrices?.[selectedCurrency]
+                    ? item.localPrices[selectedCurrency]
+                    : (selectedCurrency === 'INR' ? Math.round(item.price * 83) : item.price);
+
                 const orderResponse = await fetch('/.netlify/functions/create-order', {
                     method: 'POST',
                     body: JSON.stringify({

@@ -10,6 +10,7 @@ export interface ShopItem {
     currency?: 'coins' | 'usd'; // Default to 'coins'
     rewardAmount?: number; // For coin bundles
     image?: any; // Placeholder for require()
+    localPrices?: Record<string, number>; // Specific prices for different currencies (e.g. INR: 80)
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
@@ -229,5 +230,18 @@ export const SHOP_ITEMS: ShopItem[] = [
         type: 'consumable',
         currency: 'usd',
         rewardAmount: 10000,
+    },
+    {
+        id: 'coins_stack',
+        name: 'A Stack of Coins',
+        description: '200 Dex Coins. A quick boost!',
+        price: 0.96,
+        category: 'normal',
+        type: 'consumable',
+        currency: 'usd',
+        rewardAmount: 200,
+        localPrices: {
+            'INR': 80
+        }
     },
 ];
