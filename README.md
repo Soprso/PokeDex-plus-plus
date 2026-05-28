@@ -1,50 +1,211 @@
-# Welcome to your Expo app 👋
+# 📱 PokedexPlusPlus
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A modern Pokémon Pokédex mobile application built with **React Native CLI**, featuring Pokémon search, detailed stats, Google authentication with Supabase, profile management, offline caching, and a beautiful UI inspired by the Pokémon universe.
 
-## Get started
+---
 
-1. Install dependencies
+# ✨ Features
 
-   ```bash
-   npm install
-   ```
+* 🔍 Search Pokémon by name
+* 📖 View detailed Pokémon information
+* ❤️ Save favorites locally
+* 👤 Google Authentication with Supabase
+* ☁️ Persistent login sessions
+* 📱 Responsive mobile UI
+* ⚡ Offline Pokémon caching using AsyncStorage
+* 🎨 Clean modern Pokédex design
+* 🔄 Smooth navigation between screens
+* 📊 Trainer profile system
+* 🌈 Custom gradients and animations
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+# 🛠️ Tech Stack
 
-In the output, you'll find options to open the app in a
+## Frontend
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+* React Native CLI
+* TypeScript
+* React Navigation
+* React Native Vector Icons
+* React Native Linear Gradient
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Backend & Auth
 
-## Get a fresh project
+* Supabase
+* Google OAuth
 
-When you're ready, run:
+## Storage
+
+* AsyncStorage
+
+## APIs
+
+* PokéAPI
+
+---
+
+# 📸 Screenshots
+
+*Add your screenshots here*
+
+| Home Screen | Details Screen | Profile Screen |
+| ----------- | -------------- | -------------- |
+| Screenshot  | Screenshot     | Screenshot     |
+
+---
+
+# 🚀 Getting Started
+
+## 1️⃣ Clone the Repository
 
 ```bash
-npm run reset-project
+git clone https://github.com/yourusername/pokedexplusplus.git
+cd pokedexplusplus
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## 2️⃣ Install Dependencies
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+---
 
-## Join the community
+## 3️⃣ Start Metro
 
-Join our community of developers creating universal apps.
+```bash
+npx react-native start
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+
+## 4️⃣ Run on Android
+
+```bash
+npx react-native run-android
+```
+
+---
+
+# 🔐 Supabase Setup
+
+Create a `.env` file or configure your credentials inside:
+
+```ts
+supabase/client.ts
+```
+
+Add your:
+
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+```
+
+---
+
+# 🔗 Google OAuth Setup
+
+Inside Supabase:
+
+### Redirect URL
+
+```txt
+pokedex://login-callback
+```
+
+### Android Deep Link
+
+Configured in:
+
+```xml
+AndroidManifest.xml
+```
+
+---
+
+# 📂 Project Structure
+
+```bash
+PokedexPlusPlus/
+│
+├── screens/
+│   ├── HomeScreen.tsx
+│   ├── DetailsScreen.tsx
+│   ├── ProfileScreen.tsx
+│
+├── supabase/
+│   ├── auth.ts
+│   ├── client.ts
+│
+├── components/
+│
+├── assets/
+│
+├── App.tsx
+│
+└── package.json
+```
+
+---
+
+# 📦 Main Dependencies
+
+```json
+{
+  "@react-navigation/native": "^7",
+  "@supabase/supabase-js": "^2",
+  "react-native-linear-gradient": "^2",
+  "react-native-vector-icons": "^10"
+}
+```
+
+---
+
+# 🧠 What I Learned Building This
+
+* React Native CLI setup
+* Android native configuration
+* OAuth authentication flows
+* Deep linking
+* Supabase integration
+* State management with hooks
+* AsyncStorage caching
+* Mobile UI/UX design
+* Debugging Metro & Gradle issues
+
+---
+
+# 🔥 Future Improvements
+
+* Pokémon evolution chains
+* Team builder
+* Battle simulator
+* Dark mode
+* Firebase push notifications
+* Pokémon comparison tool
+* Cloud sync for favorites
+* Infinite scrolling & pagination
+
+---
+
+# 🤝 Contributing
+
+Pull requests are welcome.
+
+If you’d like to improve the project, feel free to fork the repo and submit a PR.
+
+---
+
+# 📜 License
+
+MIT License
+
+---
+
+# 👨‍💻 Author
+
+Built with ❤️ by Dipur Movies
